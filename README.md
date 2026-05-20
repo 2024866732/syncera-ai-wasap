@@ -11,9 +11,29 @@ AI-assisted WhatsApp business messenger and desktop CRM built with React, Electr
 - Electron desktop build setup with Vite and Tailwind CSS
 - Documentation for product overview, architecture, setup, privacy, API, and troubleshooting
 
+## Screenshots
+
+Customer names, phone numbers, and chat details are redacted in public screenshots.
+
+| Dashboard | Chats | Quick Send |
+| --- | --- | --- |
+| ![Dashboard](docs/screenshots/syncera-dashboard.png) | ![Chats](docs/screenshots/syncera-chats.png) | ![Quick Send](docs/screenshots/syncera-quicksend.png) |
+
+| Broadcast | Templates | Orders |
+| --- | --- | --- |
+| ![Broadcast](docs/screenshots/syncera-broadcast.png) | ![Templates](docs/screenshots/syncera-templates.png) | ![Orders](docs/screenshots/syncera-orders.png) |
+
+| Pipeline | Analytics | Reports |
+| --- | --- | --- |
+| ![Pipeline](docs/screenshots/syncera-pipeline.png) | ![Analytics](docs/screenshots/syncera-analytics.png) | ![Reports](docs/screenshots/syncera-reports.png) |
+
+| Insights | Reminders | Main View |
+| --- | --- | --- |
+| ![Insights](docs/screenshots/syncera-insights.png) | ![Reminders](docs/screenshots/syncera-reminders.png) | ![Main View](docs/screenshots/syncera-main.png) |
+
 ## Privacy Note
 
-This public repository excludes private customer data, chat exports, phone lists, WhatsApp auth sessions, local databases, build outputs, installers, logs, spreadsheets, and personal import scripts.
+This public repository excludes private customer data, chat exports, phone lists, WhatsApp auth sessions, local databases, build outputs, installers, logs, spreadsheets, personal import scripts, and unredacted screenshots.
 
 ## Getting Started
 
