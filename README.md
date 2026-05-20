@@ -6,10 +6,31 @@ AI-assisted WhatsApp business messenger and desktop CRM built with React, Electr
 
 - WhatsApp-style inbox with contact, message, and conversation management
 - AI auto-reply and outreach support through `electron/bridge/ai.js`
+- Local Ollama support through `http://localhost:11434`
 - Broadcast, quick send, templates, reminders, orders, reports, and analytics
 - Local SQLite-style database layer through SQL.js
 - Electron desktop build setup with Vite and Tailwind CSS
 - Documentation for product overview, architecture, setup, privacy, API, and troubleshooting
+
+## AI Agent
+
+The AI agent code is included in `electron/bridge/ai.js`.
+
+Supported backends:
+
+- Ollama local models
+- LM Studio, Jan AI, and LocalAI
+- Pollinations AI as a free cloud fallback
+- DuckDuckGo search helper for live web context
+
+For Ollama:
+
+```bash
+ollama pull llama3.2
+ollama serve
+```
+
+SYNCERA detects Ollama at `http://localhost:11434` and can use the available local models for AI replies.
 
 ## Screenshots
 
