@@ -5,7 +5,6 @@ dist-electron/
 build/
 outputs/
 qa-whatsapp-screens/
-docs/screenshots/
 docs/word/
 auth_info_baileys/
 wa-auth/
