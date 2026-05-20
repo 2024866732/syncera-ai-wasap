@@ -1,0 +1,139 @@
+{
+  "name": "syncera",
+  "version": "1.0.0",
+  "description": "SYNCERA — AI Messenger & Business OS for WhatsApp",
+  "author": {
+    "name": "Nazrin Zainal"
+  },
+  "license": "UNLICENSED",
+  "copyright": "Copyright © 2026 Darksea Network Sdn Bhd. All rights reserved.",
+  "homepage": "https://darksea.network",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "vite:build": "vite build",
+    "build": "npm run vite:build && electron-builder --win nsis",
+    "build:portable": "npm run vite:build && electron-builder --win portable",
+    "build:all": "npm run vite:build && electron-builder --win nsis portable",
+    "pack": "npm run vite:build && electron-builder --dir",
+    "electron": "electron ."
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.7.9",
+    "axios": "^1.7.2",
+    "electron-log": "^5.4.4",
+    "electron-updater": "^6.8.3",
+    "pino": "^9.3.2",
+    "qrcode": "^1.5.4",
+    "sql.js": "^1.12.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
+    "lucide-react": "^0.395.0",
+    "postcss": "^8.4.39",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.5.2",
+    "vite": "^5.3.1",
+    "wait-on": "^7.2.0",
+    "zustand": "^4.5.4"
+  },
+  "build": {
+    "appId": "com.syncera.aimessenger",
+    "productName": "SYNCERA",
+    "copyright": "Copyright © 2026 Darksea Network Sdn Bhd. All rights reserved.",
+    "artifactName": "SYNCERA-Setup-${version}-${arch}.${ext}",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/sql.js/dist/sql-wasm.wasm",
+      "node_modules/sql.js/dist/*.wasm",
+      "node_modules/@whiskeysockets/baileys/**/*",
+      "node_modules/libsignal/**/*",
+      "node_modules/node-cache/**/*",
+      "electron/splash.html"
+    ],
+    "compression": "maximum",
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "!**/.DS_Store",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "extraResources": [
+      { "from": "public/icon.ico", "to": "icon.ico" },
+      { "from": "public/icon.png", "to": "icon.png" },
+      { "from": "build/extras",    "to": "extras", "filter": ["**/*", "!README.md"] }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/icon.ico",
+      "publisherName": "Darksea Network Sdn Bhd",
+      "verifyUpdateCodeSignature": false,
+      "requestedExecutionLevel": "asInvoker",
+      "fileAssociations": []
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://updates.darksea.network/syncera/${channel}",
+        "channel": "latest",
+        "useMultipleRangeRequest": true
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "allowElevation": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "SYNCERA",
+      "menuCategory": "SYNCERA",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "displayLanguageSelector": false,
+      "installerLanguages": [
+        "en_US"
+      ],
+      "installerIcon": "public/icon.ico",
+      "uninstallerIcon": "public/icon.ico",
+      "uninstallDisplayName": "SYNCERA — AI Messenger",
+      "license": "build/LICENSE.txt",
+      "warningsAsErrors": false,
+      "differentialPackage": false
+    }
+  }
+}

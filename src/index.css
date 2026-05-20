@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ─── DARK theme (default) ─── */
+  :root, :root[data-theme="dark"] {
+    --bg-primary:   13 17 23;     /* #0D1117 */
+    --bg-secondary: 22 27 34;     /* #161B22 */
+    --bg-tertiary:  28 33 40;     /* #1C2128 */
+    --bg-hover:     33 38 45;     /* #21262D */
+    --bg-active:    45 51 59;     /* #2D333B */
+    --border:       48 54 61;     /* #30363D */
+    --border-light: 61 68 78;     /* #3D444E */
+    --text-primary:   230 237 243; /* #E6EDF3 */
+    --text-secondary: 139 148 158; /* #8B949E */
+    --text-muted:     110 118 129; /* #6E7681 */
+    color-scheme: dark;
+  }
+
+  /* ─── LIGHT theme ─── */
+  :root[data-theme="light"] {
+    --bg-primary:   255 255 255;  /* #FFFFFF */
+    --bg-secondary: 248 250 252;  /* #F8FAFC */
+    --bg-tertiary:  241 245 249;  /* #F1F5F9 */
+    --bg-hover:     226 232 240;  /* #E2E8F0 */
+    --bg-active:    203 213 225;  /* #CBD5E1 */
+    --border:       226 232 240;  /* #E2E8F0 */
+    --border-light: 203 213 225;  /* #CBD5E1 */
+    --text-primary:   15 23 42;    /* #0F172A — slate-900 */
+    --text-secondary: 71 85 105;   /* #475569 — slate-600 */
+    --text-muted:     148 163 184; /* #94A3B8 — slate-400 */
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: rgb(var(--bg-primary));
+    color: rgb(var(--text-primary));
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    user-select: none;
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+
+  ::-webkit-scrollbar            { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track      { background: transparent; }
+  ::-webkit-scrollbar-thumb      { background: rgb(var(--border)); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover{ background: rgb(var(--border-light)); }
+
+  input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+    font-family: inherit;
+    -webkit-app-region: no-drag;
+  }
+
+  select, button, label {
+    -webkit-app-region: no-drag;
+  }
+}
+
+@layer components {
+  /* ── Custom titlebar drag ── */
+  .drag-region { -webkit-app-region: drag; }
+  .no-drag     { -webkit-app-region: no-drag; }
+
+  .quicksend-root,
+  .quicksend-root * {
+    -webkit-app-region: no-drag;
+  }
+
+  .quicksend-root input,
+  .quicksend-root textarea,
+  .quicksend-root select {
+    pointer-events: auto !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
+  }
+
+  .quicksend-root button,
+  .quicksend-root label {
+    pointer-events: auto !important;
+  }
+
+  /* ── Message bubbles (WhatsApp-style, theme-aware) ── */
+  .bubble-out {
+    background: linear-gradient(135deg, #0e7c4a 0%, #128C7E 100%);
+    color: #ffffff;
+    @apply rounded-2xl px-3 py-2 break-words text-left shadow-md;
+    border-bottom-right-radius: 4px;
+  }
+  .bubble-in {
+    background: rgb(var(--bg-tertiary));
+    color: rgb(var(--text-primary));
+    @apply rounded-2xl px-3 py-2 break-words text-left shadow-sm;
+    border-bottom-left-radius: 4px;
+    border: 1px solid rgb(var(--border));
+  }
+  .bubble-out.tailed::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -6px;
+    width: 12px;
+    height: 13px;
+    background: #128C7E;
+    clip-path: polygon(0 0, 100% 100%, 0 100%);
+  }
+  .bubble-in.tailed::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -6px;
+    width: 12px;
+    height: 13px;
+    background: rgb(var(--bg-tertiary));
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  }
+
+  /* ── Sidebar row ── */
+  .conv-row {
+    @apply flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-100;
+  }
+  .conv-row:hover     { @apply bg-bg-hover; }
+  .conv-row.active    { @apply bg-bg-active; }
+
+  /* ── Input ── */
+  .field {
+    @apply w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary
+           placeholder-text-muted outline-none focus:border-accent-blue transition-colors;
+  }
+
+  /* ── Button ── */
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg bg-accent-green text-bg-primary font-medium text-sm
+           hover:bg-green-400 active:scale-95 transition-all duration-100 disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-ghost {
+    @apply px-3 py-1.5 rounded-lg text-text-secondary text-sm hover:bg-bg-hover
+           active:scale-95 transition-all duration-100;
+  }
+  .btn-danger {
+    @apply px-3 py-1.5 rounded-lg bg-status-danger/10 text-status-danger text-sm
+           hover:bg-status-danger/20 active:scale-95 transition-all duration-100;
+  }
+
+  /* ── Badge ── */
+  .badge {
+    @apply min-w-[18px] h-[18px] px-1 rounded-full bg-accent-green text-bg-primary text-[10px] font-bold
+           flex items-center justify-center;
+  }
+
+  /* ── Tag chip ── */
+  .tag-chip {
+    @apply text-[10px] px-2 py-0.5 rounded-full font-medium;
+  }
+
+  /* ── AI pulse indicator ── */
+  .ai-pulse::before {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-accent-blue opacity-30;
+    animation: ping 1.5s cubic-bezier(0,0,0.2,1) infinite;
+  }
+}
+
+@layer utilities {
+  .text-xxs { font-size: 0.65rem; line-height: 1rem; }
+
+  /* ── Typing dots ── */
+  .typing-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full bg-text-secondary;
+  }
+  .typing-dot:nth-child(1) { animation: typing 1.4s infinite 0ms; }
+  .typing-dot:nth-child(2) { animation: typing 1.4s infinite 200ms; }
+  .typing-dot:nth-child(3) { animation: typing 1.4s infinite 400ms; }
+
+  @keyframes ping {
+    75%, 100% { transform: scale(2); opacity: 0; }
+  }
+}
