@@ -32,6 +32,12 @@ ollama serve
 
 SYNCERA detects Ollama at `http://localhost:11434` and can use the available local models for AI replies.
 
+## Calendar Proof Video
+
+This demo shows the WhatsApp chat flow creating/saving a calendar event inside SYNCERA:
+
+[Watch the calendar proof demo](docs/videos/calendar-chat-proof-demo.mp4)
+
 ## Screenshots
 
 Customer names, phone numbers, and chat details are redacted in public screenshots.
@@ -54,7 +60,7 @@ Customer names, phone numbers, and chat details are redacted in public screensho
 
 ## Privacy Note
 
-This public repository excludes private customer data, chat exports, phone lists, WhatsApp auth sessions, local databases, build outputs, installers, logs, spreadsheets, personal import scripts, and unredacted screenshots.
+This public repository excludes private customer databases, WhatsApp auth sessions, local database files, build outputs, installers, logs, spreadsheets, personal import scripts, and unredacted screenshots. The calendar proof video is included intentionally to show the chat-to-calendar workflow.
 
 ## Getting Started
 
