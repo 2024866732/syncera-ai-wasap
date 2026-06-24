@@ -23,3 +23,10 @@ wa-auth/
 *.asar
 *.bak
 *.tmp
+
+# HAFJET Azure WhatsApp Bot - secrets
+bots/hafjet-azure/.env
+bots/hafjet-azure/*.zip
+bots/hafjet-azure/__pycache__/
+bots/hafjet-azure/venv/
+bots/hafjet-azure/.venv/
