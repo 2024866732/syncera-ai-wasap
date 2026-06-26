@@ -8,4 +8,4 @@ Tuan Hafizi's WhatsApp personal number is +60 11-1090 3799 (also 601110903799). 
 §
 HAFIZI GADJET ENTERPRISE (company name updated Jun 2026)
 §
-Tuan Hafizi — Managing Director of HAFIZI GADJET ENTERPRISE. UiTM student (study leave). Prefers casual Malay + Kelantan dialect. Gets frustrated with over-explaining. Primary master of Hermes-HAFJET system.
+Tuan Hafizi — Managing Director of HAFIZI GADJET ENTERPRISE (formerly HAFJET (M) SDN BHD, renamed Jun 2026). UiTM student (study leave). Prefers casual Malay + Kelantan dialect, switches to English for tech. Gets frustrated with over-explaining — wants concise, technical answers with real test evidence. Primary master of Hermes-HAFJET system.

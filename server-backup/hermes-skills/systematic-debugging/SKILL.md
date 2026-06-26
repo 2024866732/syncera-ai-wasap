@@ -275,6 +275,16 @@ If systematic investigation reveals issue is truly environmental, timing-depende
 
 **But:** 95% of "no root cause" cases are incomplete investigation.
 
+## Python `__pycache__` — The Silent Route Killer
+
+**Symptom:** New routes return 404 after deployment. `/openapi.json` shows old routes only. Source code has the new routes but server ignores them. Existing routes work fine.
+
+**Root cause:** Stale `.pyc` files in `__pycache__/` are newer than source after zip extraction. Python loads bytecode instead of source — new routes never register.
+
+**Fix:** Always `find . -name "__pycache__" -type d -exec rm -rf {} +` before starting server. Never include `__pycache__` in deployment zips.
+
+See `references/python-cache-pitfalls.md` for full details and the Azure startup command pattern.
+
 ## Async Python Webhook Pitfalls (FastAPI)
 
 When debugging async Python services (FastAPI webhook handlers, API servers), check these specific patterns before examining logic bugs:
@@ -294,6 +304,9 @@ These techniques are part of systematic debugging and available in this director
 - **`defense-in-depth.md`** - Add validation at multiple layers after finding root cause
 - **`condition-based-waiting.md`** - Replace arbitrary timeouts with condition polling
 - **`async-python-pitfalls.md`** - FastAPI/async-specific bugs (sync blocking, signature bypass, keyword routing)
+- **`python-cache-pitfalls.md`** - `__pycache__` stale bytecode causing 404s after deployment
+- **`azure-zip-deployment.md`** - Azure App Service zip deploy patterns, excludes, startup commands, env vars
+- **`ai-timeout-diagnosis.md`** - Diagnosing external AI API failures (OpenRouter, etc.) from Azure
 
 **Related skills:**
 - **superpowers:test-driven-development** - For creating failing test case (Phase 4, Step 1)

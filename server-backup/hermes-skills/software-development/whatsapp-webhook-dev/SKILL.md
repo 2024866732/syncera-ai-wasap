@@ -306,6 +306,8 @@ with zipfile.ZipFile('deploy.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
 ```
 Deploy: `az webapp deploy --resource-group <rg> --name <app> --src-path deploy.zip`
 
+17q-old. **⚠ React SPA dashboard served from FastAPI — mount order and `__pycache__` pitfall:** When serving a React/Vite build from FastAPI alongside API routes + WebSocket, the mount order is critical: (1) `app.mount("/dashboard/assets", StaticFiles(...))` BEFORE (2) `@app.get("/dashboard/{full_path:path}")` catch-all. Both MUST be at module level (before `if __name__`) for gunicorn to load them. Guard mount with `if os.path.exists(path)` — return error JSON if missing, never crash. See `references/azure-startup-issues.md` §2 for the full pattern. Also: after updating source with new routes, ALWAYS `find . -name "__pycache__" -type d -exec rm -rf {} +` before restarting — stale `.pyc` files cause 404 on new routes while old routes still work.
+
 17q. **⚠ Extended greeting detection for Malaysian WhatsApp bots:** Malaysian users use diverse greetings — BM formal, casual, English, Kelantan dialect. Static list of 4-6 greetings is insufficient. Use comprehensive detection:
 ```python
 greetings_exact = [
@@ -510,6 +512,9 @@ async def generate_reply(message: str, sender_name: str, sender_number: str) -> 
 
 ## See Also
 
+- `references/azure-startup-issues.md` — **Azure startup issues**: SQLite DB path detection (`WEBSITE_SITE_NAME`), StaticFiles mount failures, `init_db()` not running under gunicorn, startup probe timeouts, log streaming delays, `__pycache__` stale routes, zip size explosion
+- `references/react-dashboard-pattern.md` — **React SPA dashboard served from FastAPI**: Vite config, WebSocket hook with reconnect, dark theme colors, message bubbles, empty states, mobile responsive pattern
+- `references/webhook-signature-testing.md` — **Webhook signature testing with curl**: Python-generated compact JSON signature pattern, file payload approach, dedup testing, common failures
 - `references/azure-deployment-guide.md` — **Azure App Service deployment** (recommended production target): Free F1 tier, permanent HTTPS URL, step-by-step CLI commands
 - `references/azure-ai-integration.md` — **Azure-safe AI integration**: OpenRouter HTTP API pattern, env vars (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`), graceful degradation, model recommendations, cost estimation. Use this when deploying any AI-powered WhatsApp bot to Azure.
 - `references/publish-checklist.md` — **Meta App publish checklist**: Development → Live mode requirements, Privacy Policy hosting, Advanced Access, Business Verification, toggle Live

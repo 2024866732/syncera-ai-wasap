@@ -588,6 +588,26 @@ After commit, present:
 - Commit hash and message
 - Explicit note: **NOT pushed — awaiting review**
 
+## 12. Server Backup to Repo (Disaster Recovery)
+
+> See `references/server-backup-to-repo.md` for full pattern, script, and restore instructions.
+
+Back up server config/state (e.g. `~/.hermes/`, `~/.config/`) into a subfolder of an existing repo for disaster recovery.
+
+### Critical Pitfall: `~/.config/gh/hosts.yml`
+
+The `gh` CLI stores `gho_*` OAuth tokens in `hosts.yml`. **Never commit this file.** GitHub Push Protection will block the push if it detects the token in any commit — including past history. If it's already in history, use `git-filter-repo` to scrub it (see reference).
+
+### What to Exclude
+
+| Pattern | Reason |
+|---------|--------|
+| `.env`, `auth.json`, `*.key`, `*.pem` | Secrets |
+| `hosts.yml` (gh CLI) | OAuth tokens — triggers Push Protection |
+| `state.db*`, `models_dev_cache.json` | Large/volatile |
+
+---
+
 ## Quick Reference Table
 
 | Action | gh | git + curl |
@@ -602,3 +622,5 @@ After commit, present:
 | Rerun CI | `gh run rerun ID` | `curl POST /repos/o/r/actions/runs/ID/rerun` |
 | Set secret | `gh secret set KEY` | `curl PUT /repos/o/r/actions/secrets/KEY` (+ encryption) |
 | Migrate to subfolder | _(no gh equivalent)_ | `git checkout -b feat/X && mkdir -p subfolder && cp files && git add && git commit` |
+| Server backup to repo | _(no gh equivalent)_ | `cp ~/.hermes/* server-backup/ && git add && git commit && git push` |
+| Scrub secret from history | _(no gh equivalent)_ | `git filter-repo --invert-paths --path FILE --force` |
