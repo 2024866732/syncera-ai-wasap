@@ -1,0 +1,26 @@
+# Daily Sales Report - Loyverse Cron Job
+# Runs every day at 22:00 MYT (UTC+8) = 14:00 UTC
+
+job_id: "9408be4cd593"
+name: "Daily Sales Report"
+schedule: "0 14 * * *"   # 14:00 UTC = 22:00 MYT (Malaysia)
+repeat: forever
+deliver: origin          # Send output back to originating Telegram chat
+
+prompt: |
+  Run the daily Loyverse sales report and send the summary to Hafizi on Telegram.
+
+  Steps:
+  1. Get the LOYVERSE_ACCESS_TOKEN from ~/.hermes/.env (extract it with: grep LOYVERSE_ACCESS_TOKEN ~/.hermes/.env | head -1 | cut -d= -f2-)
+  2. Run the sales report script: LOYVERSE_ACCESS_TOKEN=*** python3 ~/.hermes/skills/fetch_sales.py
+  3. The script outputs a formatted summary to stdout and saves a CSV to ~/.hermes/reports/
+  4. Send the summary output directly to Hafizi in this Telegram chat.
+
+  Important: The script handles everything — fetching from Loyverse API, pagination, CSV saving, and formatting. Just run it and deliver the output.
+
+notes:
+  - Script: ~/.hermes/skills/fetch_sales.py
+  - CSV output: ~/.hermes/reports/sales_YYYY-MM-DD.csv
+  - API: Loyverse v1.0 (https://api.loyverse.com/v1.0)
+  - Pagination: limit=10 per page, cursor-based
+  - Token source: ~/.hermes/.env (LOYVERSE_ACCESS_TOKEN)

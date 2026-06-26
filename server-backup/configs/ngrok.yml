@@ -1,0 +1,4 @@
+version: "2"
+authtoken: 3Cq25gdbxDlZkmqtpfvjDv4Ndpn_7h7c5W9aCXcomoh5xQeLQ
+log_level: info
+log: /tmp/ngrok.log
