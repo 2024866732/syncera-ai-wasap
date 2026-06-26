@@ -30,3 +30,9 @@ bots/hafjet-azure/*.zip
 bots/hafjet-azure/__pycache__/
 bots/hafjet-azure/venv/
 bots/hafjet-azure/.venv/
+
+# Server backup secrets
+server-backup/**/.env
+server-backup/**/auth.json
+server-backup/**/*.key
+server-backup/**/*.pem
