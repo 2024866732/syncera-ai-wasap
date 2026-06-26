@@ -11,6 +11,7 @@ Priority:
 import os
 import json
 import logging
+import asyncio
 import httpx
 from typing import Optional
 
@@ -142,22 +143,23 @@ async def _ask_openrouter(prompt: str) -> Optional[str]:
 async def _ask_hermes_cli(prompt: str) -> Optional[str]:
     """Fallback: Call Hermes CLI (local development only)."""
     try:
-        import subprocess
-        result = subprocess.run(
-            [HERMES_CLI, "ask", "--no-stream", prompt],
-            capture_output=True,
-            text=True,
-            timeout=HERMES_TIMEOUT,
+        proc = await asyncio.create_subprocess_exec(
+            HERMES_CLI, "ask", "--no-stream", prompt,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        if result.returncode == 0 and result.stdout.strip():
-            reply = result.stdout.strip()
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(), timeout=HERMES_TIMEOUT
+        )
+        if proc.returncode == 0 and stdout.decode().strip():
+            reply = stdout.decode().strip()
             log.info(f"🤖 Hermes CLI reply: {reply[:100]}...")
             return reply
         else:
-            log.warning(f"⚠ Hermes CLI returned code={result.returncode}")
+            log.warning(f"⚠ Hermes CLI returned code={proc.returncode}")
     except FileNotFoundError:
         log.info("ℹ Hermes CLI not found (expected in Azure)")
-    except subprocess.TimeoutExpired:
+    except asyncio.TimeoutError:
         log.warning("⏱ Hermes CLI timeout")
     except Exception as e:
         log.error(f"❌ Hermes CLI error: {e}")
@@ -178,7 +180,10 @@ def should_use_ai(message: str) -> bool:
         "1️⃣", "2️⃣", "3️⃣", "4️⃣",
         "menu", "main", "balik", "kembali",
         "/help", "help", "bantu",
-        "job", "status", "status job", "semak status",
+        "semak status", "status job",
+        "semak harga",
+        "hubungi", "staff",
+        "lokasi", "waktu operasi",
     }
 
     if msg_lower in static_triggers:

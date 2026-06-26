@@ -8,6 +8,7 @@ Menerima mesej dari WhatsApp Cloud API via webhook.
 - Pertanyaan lain → Hermes Agent Core (AI)
 """
 
+import asyncio
 import os
 import sys
 import json
@@ -36,7 +37,7 @@ WEBHOOK_VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "HAFJET_RAUB_RAK")
 
 # ── Import Modules ──────────────────────────────────────────────────
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from hermes_ai import ask_hermes, should_use_ai
+from hermes_ai import ask_hermes
 from repair_db import check_repair_status, format_job_status
 
 # ── Logging ─────────────────────────────────────────────────────────
@@ -123,8 +124,11 @@ async def health():
 
 def _verify_signature(payload: bytes, signature: str) -> bool:
     """Verify HMAC-SHA256 signature dari Meta."""
-    if not signature or not APP_SECRET:
-        return True
+    if not APP_SECRET:
+        log.error("❌ APP_SECRET not configured — signature verification disabled!")
+        return False
+    if not signature:
+        return False
     expected = hmac.new(APP_SECRET.encode(), payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(f"sha256={expected}", signature)
 
@@ -191,7 +195,9 @@ async def generate_reply(message: str, sender_name: str, sender_number: str) -> 
     if _is_job_id(message):
         job_id = message.strip().upper().replace(" ", "")
         log.info(f"🔍 Checking repair status for: {job_id}")
-        job = check_repair_status(job_id)
+        # Run sync DB operation in thread pool to avoid blocking event loop
+        loop = asyncio.get_event_loop()
+        job = await loop.run_in_executor(None, check_repair_status, job_id)
         if job:
             return format_job_status(job)
         else:
@@ -267,7 +273,7 @@ def _static_menu_handler(msg_lower: str, sender_name: str, original_msg: str) ->
         )
 
     # ── Menu 1: Semak Harga Repair ──────────────────────────────
-    if msg_lower in ["1", "1️⃣", "harga", "repair", "semak harga"]:
+    if msg_lower in ["1", "1️⃣", "harga", "semak harga"]:
         return (
             "🔧 *Harga Repair HAFJET*\n\n"
             "Berikut adalah harga purata:\n\n"
@@ -283,7 +289,7 @@ def _static_menu_handler(msg_lower: str, sender_name: str, original_msg: str) ->
         )
 
     # ── Menu 2: Semak Status Job ────────────────────────────────
-    if msg_lower in ["2", "2️⃣", "status", "job", "semak status", "status job"]:
+    if msg_lower in ["2", "2️⃣", "semak status", "status job"]:
         return (
             "📋 *Semak Status Job*\n\n"
             "Sila masukkan *No. Job* anda.\n"
@@ -294,7 +300,7 @@ def _static_menu_handler(msg_lower: str, sender_name: str, original_msg: str) ->
         )
 
     # ── Menu 3: Hubungi Staff ───────────────────────────────────
-    if msg_lower in ["3", "3️⃣", "staff", "hubungi", "contact"]:
+    if msg_lower in ["3", "3️⃣", "staff", "hubungi"]:
         return (
             "📞 *Hubungi HAFJET*\n\n"
             "Waktu Operasi:\n"
@@ -308,7 +314,7 @@ def _static_menu_handler(msg_lower: str, sender_name: str, original_msg: str) ->
         )
 
     # ── Menu 4: Lokasi / Waktu Operasi ──────────────────────────
-    if msg_lower in ["4", "4️⃣", "lokasi", "waktu", "operasi", "alamat"]:
+    if msg_lower in ["4", "4️⃣", "lokasi", "waktu operasi"]:
         return (
             "📍 *Lokasi HAFJET*\n\n"
             "[Alamat Penuh Kedai]\n\n"
