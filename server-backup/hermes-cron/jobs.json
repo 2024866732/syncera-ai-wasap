@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 9
+        "completed": 10
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-06-27T07:00:00+00:00",
-      "last_run_at": "2026-06-26T07:03:19.113572+00:00",
+      "next_run_at": "2026-06-28T07:00:00+00:00",
+      "last_run_at": "2026-06-27T07:03:11.326178+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -62,15 +62,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 4
+        "completed": 5
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-06-27T14:00:00+00:00",
-      "last_run_at": "2026-06-25T14:00:54.739958+00:00",
+      "next_run_at": "2026-06-28T14:00:00+00:00",
+      "last_run_at": "2026-06-26T14:00:55.770075+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -104,16 +104,16 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 0
+        "completed": 1
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-06-27T14:00:00+00:00",
-      "last_run_at": null,
-      "last_status": null,
+      "next_run_at": "2026-06-28T14:00:00+00:00",
+      "last_run_at": "2026-06-26T14:00:34.529284+00:00",
+      "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
@@ -125,7 +125,49 @@
       },
       "enabled_toolsets": null,
       "workdir": null
+    },
+    {
+      "id": "06496e813cd5",
+      "name": "azure-credit-daily-check",
+      "prompt": "Run the Azure credit check script and report if costs are spiking.\n\nSteps:\n1. Run: bash /home/hafizi145/.hermes/scripts/azure_credit_check.sh\n2. If the cost exceeds $50 USD this month, send a warning: \"\u26a0\ufe0f Azure for Students credit alert: $X spent this month. Consider reviewing usage.\"\n3. If cost is $0-$50, just log silently \u2014 no need to bother the user.\n4. If the script fails (e.g., Azure CLI not available), report the error.\n\nOutput format: Only send a message to the user if there's a warning or error. Otherwise stay silent.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * *",
+        "display": "0 9 * * *"
+      },
+      "schedule_display": "0 9 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 1
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-27T06:52:16.690632+00:00",
+      "next_run_at": "2026-06-28T09:00:00+00:00",
+      "last_run_at": "2026-06-27T09:00:46.567747+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1485374469",
+        "chat_name": "Hafizi",
+        "thread_id": "20618"
+      },
+      "enabled_toolsets": null,
+      "workdir": null
     }
   ],
-  "updated_at": "2026-06-26T14:00:12.452160+00:00"
+  "updated_at": "2026-06-27T14:00:31.896815+00:00"
 }

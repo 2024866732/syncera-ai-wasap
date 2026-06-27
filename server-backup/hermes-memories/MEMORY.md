@@ -1,17 +1,17 @@
-Tuan Hafizi (Muhammad Syahrul Hafizi bin Zainal) — Managing Director of HAFJET (M) SDN BHD. UiTM student (Bachelor of Administrative Science, study leave). Prefers casual Malay + Kelantan dialect, switches to English for tech. Gets frustrated with over-explaining. Primary master of Hermes-HAFJET system.
+Tuan Hafizi (Muhammad Syahrul Hafizi bin Zainal) — Managing Director of HAFJET (M) SDN BHD. UiTM student (Bachelor of Administrative Science, study leave). Prefers casual Malay + Kelantan dialect, English for tech. Gets frustrated with over-explaining. GitHub: 2024866732, 35 repos. Sending screenshots = analyze images first. Diagnosis output: A-E sections.
 §
 GitHub: 2024866732, 35 repos. Privacy Pages: 2024866732/hafjet-privacy. WhatsApp Bot: 2024866732/hafjet-whatsapp-bot (v2.0.0).
 §
 Studying LAW299 — Topics: Intro to Law, Sources of Law, Court System, Partnership Act 1961, Companies Act 2016, Contracts Act 1950. Prefers quiz-style (T/F, MCQ) with concise BM answers + English case/Act refs.
 §
-HAFJET WhatsApp Bot v2.0 — Production ready (2026-06-26). Live on Azure + Meta. Canonical greeting, dedup (5min), strict AI (150 tokens, temp 0.3). GitHub: 2024866732/hafjet-whatsapp-bot (tag v2.0.0). Privacy: http://akaunai.me/hafjet-privacy/. Phone ID: 1089032617637482. Meta category: Messaging.
+Tuan Hafizi uses Telegram Forum/Topics. Sends screenshots as bug reports — analyze images first. Diagnosis output: A-E sections.
 §
-WhatsApp webhook tunnel: ngrok only (Cloudflare Tunnel incompatible). ngrok v3 token must be in config file.
+Azure deploy: `zip` command unavailable on HAFJET-Hermes-Server. Always use Python `zipfile` for deploy ZIP. deploy.py template at whatsapp-bot/deploy.sh (Python despite .sh name).
 §
-HAFJET WhatsApp Bot v2.1 Phase 1 deployed: DB logging (db_logger.py) + Dashboard API (/api/stats, /api/messages, /api/customers) + WebSocket (/ws). GitHub: 2024866732/hafjet-whatsapp-bot (main). Next: React dashboard frontend.
+Azure deploy workflow: stop on throttle (Retry-After:5 is deceptive, actual 15+min), reuse existing plans, set STARTUP_COMMAND before first deploy, prefer web app recreate over plan recreate. Region: Southeast Asia. No S1 scaling.
 §
-Meta WhatsApp App Publish: Category must be "Messaging" (not Business). Required fields for submission: App icon (1024x1024), Privacy Policy URL, Category. Data Deletion URL required (can be same page with dedicated section). DPO section only needed for EU-targeted apps. GitHub Pages API: `gh api repos/{owner}/{repo}/pages -X POST -f "source[branch]=main" -f "source[path]=/"`. URL format: `http://username.github.io/reponame/`.
+Tuan Hafizi's student cloud credits (as of June 2026): Azure for Students ($100/mo recurring), GitHub Student Pack ($200 DigitalOcean one-time, Heroku $13/mo for 24mo), AWS Free Tier ($200 one-time/6mo). Primary hosting: Azure App Service F1 (hafjet-whatsapp-bot). Prefers Malaysia/Southeast Asia datacenters. Prefers recurring credits over one-time for production workloads.
 §
-OpenRouter API key provided by user (starts with sk-or-...2e08) set in Azure app settings. Model changed from google/gemini-2.0-flash-001 (deprecated) to openrouter/owl-alpha. Azure WhatsApp Bot at https://hafjet-whatsapp-bot.azurewebsites.net/webhook
+User preference: Tuan Hafizi doesn't like over-explaining or verbosity. Got frustrated with previous verbose responses. Give concise, scannable answers with tables. Don't assume Free tier limitations without local reproduction proof first.
 §
-HAFJET WhatsApp Bot v2.1 Phase 1 deployed: db_logger.py + dashboard API + WebSocket. React dashboard built. Static files mount causes 500 in Azure — needs separate hosting.
+Deployment playbooks FINAL & ARCHIVED: Azure B1 = PRODUCTION-APPROVED, Heroku Eco = FALLBACK-APPROVED. No infra changes executed. All runbooks saved to skill/hafjet-deployment-plan + DEPLOYMENT.md.

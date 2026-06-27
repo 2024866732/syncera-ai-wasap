@@ -102,3 +102,9 @@ with zipfile.ZipFile('app_logs.txt', 'r') as z:
                         print(line.rstrip())
 "
 ```
+
+## Real-World Resolution (June 2026)
+
+**Outcome:** OpenRouter API confirmed unreachable from Azure Free F1 tier — `curl` from Kudu hangs indefinitely. Not a code bug, not a key issue, not a model name issue. The bot's fallback chain (canonical greeting → static menu → default response) handles all production traffic correctly without AI. AI enhancement is deferred until Basic tier or alternative hosting.
+
+**Key takeaway:** The fallback chain is NOT a degraded mode — it IS the production mode for Free tier deployments. AI is a bonus layer that works when network permits.

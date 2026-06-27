@@ -255,6 +255,30 @@ If you catch yourself thinking:
 | "I see the problem, let me fix it" | Seeing symptoms ≠ understanding root cause. |
 | "One more fix attempt" (after 2+ failures) | 3+ failures = architectural problem. Question pattern, don't fix again. |
 
+## SQLite Idempotent Schema Migration Pattern
+
+When you need to add columns to an existing SQLite database (common in lightweight projects that don't use Alembic):
+
+```python
+# In init_db(), after CREATE TABLE IF NOT EXISTS:
+for col_def in [
+    "escalated_at TIMESTAMP",
+    "resolved_at TIMESTAMP",
+    "assigned_to VARCHAR(50)",
+    "note TEXT",
+]:
+    try:
+        conn.execute(f"ALTER TABLE customers ADD COLUMN {col_def}")
+    except sqlite3.OperationalError:
+        pass  # Column already exists — skip
+```
+
+**Why this pattern:** SQLite lacks `ALTER TABLE ... IF NOT EXISTS`. Running `ALTER TABLE ADD COLUMN` on an existing column raises `OperationalError`. The try/except wrapper makes the migration idempotent — safe to run on every startup.
+
+**Detection:** If your API returns `sqlite3.OperationalError: no such column: resolved_at`, the migration didn't run because the column wasn't in the original CREATE TABLE and no ALTER was applied.
+
+**Fix:** Add the ALTER TABLE loop to `init_db()`, restart the server.
+
 ## Quick Reference
 
 | Phase | Key Activities | Success Criteria |

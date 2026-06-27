@@ -73,6 +73,22 @@ az webapp create \
 
 ## Step 5: Set Startup Command
 
+**Recommended: Use `start.sh` script** (handles `cd` to Azure path + pip install at startup):
+
+```bash
+az webapp config set \
+  --resource-group hafjet-bot-rg \
+  --name hafjet-whatsapp-bot \
+  --startup-file "start.sh"
+```
+
+The `start.sh` file (see `templates/start.sh`) should:
+- `cd /home/site/wwwroot` (Azure Linux container working directory)
+- Run `pip install -r requirements.txt` (idempotent)
+- Start gunicorn with `${WEBSITES_PORT:-8000}` binding
+- Log to stdout/stderr (Azure captures these)
+
+**Alternative (direct gunicorn command):**
 ```bash
 az webapp config set \
   --resource-group hafjet-bot-rg \
@@ -88,7 +104,7 @@ az webapp config show \
   --query "appCommandLine"
 ```
 
-Expected output: `gunicorn -w 2 -k uvicorn.workers.UvicornWorker webhook_listener:app --bind 0.0.0.0:8000`
+Expected output: `start.sh` or the gunicorn command.
 
 ## Step 6: Set Environment Variables (App Settings)
 
@@ -113,45 +129,77 @@ az webapp config appsettings set \
 
 ## Step 7: Deploy Code
 
+**Recommended method: `az webapp deploy --type zip`** (modern, replaces `az webapp deployment source config-zip`):
+
 ```bash
 cd ~/.hermes/whatsapp-bot
 
-# Option A: Using zip command (if available)
-zip -r hafjet-bot.zip . \
-  --exclude "*.pyc" \
-  --exclude "__pycache__/*" \
-  --exclude "venv/*" \
-  --exclude ".env"
-
-# Option B: Using Python zipfile (if zip command not available)
+# Create ZIP using Python zipfile (universal — works on any server)
 python3 << 'PYEOF'
 import zipfile, os
 
-exclude = {'__pycache__', 'venv', '.env', 'README.md', 'start.sh', 'startup.txt', '.env.example'}
+EXCLUDE_DIRS = {'__pycache__', 'node_modules', '.git', 'venv', 'dashboard'}
+EXCLUDE_FILES = {'.env', 'startup.txt', '.DS_Store', 'deploy.zip', 'bot_data.db'}
 
-with zipfile.ZipFile('/tmp/hafjet-bot.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
-    for root, dirs, files in os.walk('.'):
-        dirs[:] = [d for d in dirs if d not in exclude and not d.startswith('.')]
+with zipfile.ZipFile('/tmp/hafjet-prod.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+    # Core files (exclude dashboard source entirely)
+    for root, dirs, files in os.walk('.', topdown=True):
+        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
         for f in files:
-            if f.endswith('.pyc') or f in exclude:
+            if f in EXCLUDE_FILES or f.endswith(('.pyc', '.pyo')):
                 continue
-            fp = os.path.join(root, f)
-            zf.write(fp, os.path.relpath(fp, '.'))
+            full = os.path.join(root, f)
+            zf.write(full, os.path.relpath(full, '.'))
+    
+    # Add dashboard/dist separately (pre-built React SPA)
+    dd = os.path.join('dashboard', 'dist')
+    if os.path.exists(dd):
+        for root, dirs, files in os.walk(dd):
+            for f in files:
+                full = os.path.join(root, f)
+                zf.write(full, os.path.relpath(full, '.'))
 
-print(f'ZIP created: {os.path.getsize("/tmp/hafjet-bot.zip")} bytes')
+print(f'ZIP: {os.path.getsize("/tmp/hafjet-prod.zip")} bytes, {len(zf.infolist())} files')
 PYEOF
 
-# Deploy
+# Deploy to Azure
+az webapp deploy \
+  --resource-group hafjet-bot-rg \
+  --name hafjet-whatsapp-bot \
+  --src-path /tmp/hafjet-prod.zip \
+  --type zip
+```
+
+Expected output: `"status": "4"` (Succeeded) or `"status": "RuntimeSuccessful"`
+
+**After deploy — ALWAYS verify startup command:**
+```bash
+az webapp config show -g hafjet-bot-rg -n hafjet-whatsapp-bot --query "appCommandLine"
+# If null, re-set:
+az webapp config set -g hafjet-bot-rg -n hafjet-whatsapp-bot --startup-file "start.sh"
+```
+
+**Alternative (legacy method):**
+```bash
 az webapp deployment source config-zip \
   --resource-group hafjet-bot-rg \
   --name hafjet-whatsapp-bot \
   --src hafjet-bot.zip
 ```
 
-Expected output: `"status": "RuntimeSuccessful"`
+## Step 8: Configure Health Check & Verify Deployment
 
-## Step 8: Verify Deployment
+**Configure Health Check** (one-time, survives deploys):
+```bash
+az webapp config set \
+  --resource-group hafjet-bot-rg \
+  --name hafjet-whatsapp-bot \
+  --generic-configurations '{"healthCheckPath": "/health"}'
+```
 
+Without this, Azure may mark the app as unhealthy during cold starts and restart it unnecessarily.
+
+**Verify Deployment:**
 ```bash
 # Check app state
 az webapp show \
@@ -159,18 +207,27 @@ az webapp show \
   --name hafjet-whatsapp-bot \
   --query "state"
 
-# Expected: "Running"
+# Test health endpoint
+curl -s "https://hafjet-whatsapp-bot.azurewebsites.net/health"
 
 # Test webhook verification
 curl -s "https://hafjet-whatsapp-bot.azurewebsites.net/webhook?hub.mode=subscribe&hub.verify_token=YOUR_VERIFY_TOKEN&hub.challenge=TEST123"
-
 # Expected: TEST123
-
-# Test health endpoint (check configured: true)
-curl -s "https://hafjet-whatsapp-bot.azurewebsites.net/health"
-# Expected: {"configured": true, ...}
-# If configured: FALSE → env vars not loaded (see pitfall 15a in SKILL.md)
 ```
+
+**Full verification script:**
+```bash
+bash scripts/azure-deploy-verify.sh hafjet-whatsapp-bot hafjet-whatsapp-bot.azurewebsites.net
+```
+
+## Critical: SQLite Persistence Warning
+
+`bot_data.db` at `/home/site/wwwroot/bot_data.db` is stored on the **ephemeral container disk**. It WILL be wiped when:
+- Azure moves your app to a different container (auto-healing, scaling)
+- You redeploy with `az webapp deploy` (sometimes — Kudu may preserve wwwroot but not guaranteed)
+- The app Service Plan is scaled up/down
+
+**For production data:** Mount Azure Files or use Azure SQL Database. For dev/testing, accept data loss.
 
 ## Critical: Azure Env Var Loading Pattern
 
@@ -224,3 +281,9 @@ az webapp config appsettings list --resource-group hafjet-bot-rg --name hafjet-w
 | SSL | Yes (auto) |
 
 For a WhatsApp bot with moderate traffic (~100 msgs/day), F1 is sufficient.
+
+## Student Cloud Hosting Optimization
+
+When choosing between Azure, DigitalOcean, Heroku, or AWS for production:
+
+- `references/student-cloud-hosting-comparison.md` — **Platform comparison**: pricing tables (Azure B1 ~$12.40/mo, DO $6/mo, Heroku $5/mo, AWS $10.50/mo), credit validity (Azure $100/mo recurring > DO $200 one-time > AWS $200 6mo), decision matrix, and the rule: **use recurring credits for production, one-time credits for staging/tests**.
