@@ -37,9 +37,24 @@ az webapp config appsettings delete -g <rg> -n <app> --setting-names STARTUP_COM
 
 **Verify start.sh contents:**
 ```bash
-cat start.sh
-# Expected: cd /home/site/wwwroot, gunicorn with -w 1, --timeout 120,
-#           --access-logfile /dev/stdout, --error-logfile /dev/stderr
+python3 -c "
+import zipfile
+z = zipfile.ZipFile('/tmp/deploy.zip')
+content = z.read('start.sh').decode()
+# Check for local paths
+bad_paths = ['/home/hafizi', '/home/', 'hermes/whatsapp-bot']
+for p in bad_paths:
+    if p in content and '/home/site/wwwroot' not in content:
+        print(f'❌ BAD PATH FOUND: {p}')
+        break
+else:
+    print('✅ start.sh uses Azure-safe paths')
+# Check for cd to Azure
+if 'cd /home/site/wwwroot' in content:
+    print('✅ cd to /home/site/wwwroot')
+else:
+    print('⚠️  No cd to /home/site/wwwroot — gunicorn may fail')
+"
 ```
 
 ## 3. Stale Artifacts Cleanup
@@ -229,7 +244,23 @@ curl -s -o /dev/null -w "  POST /webhook → %{http_code}\n" -X POST "$APP.azure
   -H "Content-Type: application/json" -d '{}' && \
 echo "" && \
 echo "  Expected: 200 / 200 / 200 / challenge_string / 403"
+```
 
+## 8. Post-Deploy 10-Minute Checklist (Production Gate)
+
+After every successful deploy, run this 5-item checklist before declaring done:
+
+| # | Item | Command/Action | Expected |
+|---|------|----------------|----------|
+| 1 | **Test Webhook Meta** | `GET /webhook?hub.mode=subscribe&hub.challenge=X&hub.verify_token=TOKEN` → 200 + challenge string; `POST /webhook` without signature → 403 | ✅ Both pass |
+| 2 | **Remove .env from ZIP** | Verify ZIP has no `.env`, `.backup/`, `app_settings_*`, `azure-settings-backup*` | ✅ Clean |
+| 3 | **Check DB persistence** | Note: `/home/site/wwwroot/bot_data.db` is ephemeral — data lost on container recycle. For production: mount Azure Files or migrate to PostgreSQL | ⚠️ Known risk |
+| 4 | **Verify Meta Callback URL** | Meta Developer Portal → WhatsApp → Configuration: Callback URL = `https://<app>.azurewebsites.net/webhook`, Verify Token matches `VERIFY_TOKEN` in Azure App Settings | ✅ Match |
+| 5 | **Save clean deploy script** | `deploy.sh` in repo with exclude patterns for all sensitive files | ✅ Saved |
+
+**Critical:** `.env` in deploy zip is a SECRET LEAK. All values in `.env` should already be in Azure App Settings. The zip should contain only code + templates + static assets.
+
+**DB persistence warning:** SQLite on `/home/site/wwwroot/` is ephemeral. Options: (1) Azure Files mount for `/home/site/wwwroot/data/`, (2) migrate to Supabase/PostgreSQL, (3) accept data loss for dev/testing.
 1. **`bot_data.db` in zip overwrites production DB** — even though gitignored, the file sits in the directory and gets included in the zip. Always explicitly exclude it.
 2. **Stale `deploy_*.zip` files accumulate** — each deploy creates a new zip in the repo directory. They get included in the next deploy's zip (zip-inception). Always exclude `*.zip` and self-exclude `deploy.zip`.
 3. **Removing `STARTUP_COMMAND` is safe** — `start.sh` (via `appCommandLine`) is the effective runner. The env var is a leftover that causes confusion about which one runs.

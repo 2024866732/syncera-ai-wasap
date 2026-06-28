@@ -333,7 +333,11 @@ Combine with `max_tokens=150` and `temperature=0.3` in the AI API call for consi
 
 17v. **⚠ HMAC signature verification must NOT return True when APP_SECRET is empty:** `if not APP_SECRET: return True` silently disables all webhook signature verification. **Fix:** Return `False` when `APP_SECRET` is missing — reject all requests until properly configured. See `references/async-webhook-debugging.md` § Security.
 
-17w. **⚠ Azure startup.txt must cd to project directory:** Gunicorn startup command `gunicorn -w 2 -k uvicorn.workers.UvicornWorker webhook_listener:app` fails if the working directory doesn't contain `webhook_listener.py`. **Fix:** Always prefix with `cd /path/to/bot &&` in startup.txt. Azure App Service may not run from the expected directory.
+17v2. **⚠ OCI Always Free = 1 region only, no fallback:** Always Free tenancies are locked to their home region. You CANNOT subscribe to additional regions (`TenantCapacityExceeded` error). If your home region's A1.Flex is out of capacity, you CANNOT fall back to Singapore/Japan — your only options are: (1) retry later, (2) use E2.1.Micro (AMD, different capacity pool), (3) upgrade to Pay-As-You-Go. **Before attempting OCI deployment, always verify your home region has capacity.**
+
+17v3. **⚠ OCI non-admin users cannot launch instances:** If `oci compute instance launch` returns `NotAuthorizedOrNotFound` (404) even when all resources are confirmed available, the user likely isn't in the `Administrators` group. Non-admin users need IAM policies (`manage compute-instances`, `manage virtual-network-family`) which can ONLY be created through the Console UI (non-admins cannot call `oci iam policy create` via CLI). **Fix:** User must login to Console → Identity → Groups → add themselves to `Administrators`.
+
+17w. **⚠ Azure startup.txt/start.sh MUST use Azure paths, not local paths:** Gunicorn startup scripts must `cd /home/site/wwwroot` (Azure path), NEVER local paths like `cd /home/hafizi145/.hermes/whatsapp-bot`. Local paths don't exist on Azure → app crashes with "No such file or directory". Also: `SCM_DO_BUILD_DURING_DEPLOYMENT=false` does NOT install pip packages — if you disable build, dependencies are never installed and the app crashes on import. Keep `SCM_DO_BUILD_DURING_DEPLOYMENT=true` for Python apps. If you need to deploy without build (e.g., only static files), ensure packages are pre-installed in a persistent virtual environment.
 
 17ac. **⚠ Two Azure startup mechanisms can conflict — `STARTUP_COMMAND` app setting overrides `start.sh`:** Azure has TWO ways to start Python apps: (1) `appCommandLine` in site config (set via `--startup-file` or portal), and (2) `STARTUP_COMMAND` environment variable. **The `STARTUP_COMMAND` app setting takes precedence over `start.sh`.** If your `start.sh` has `--ws wsproto` but `STARTUP_COMMAND` still has the old command without it, the old command runs. **Best practice:** Keep them in sync — update BOTH `start.sh` in your repo AND `STARTUP_COMMAND` in Azure App Settings. Verify which one actually runs by checking logs after deploy:
 ```bash
@@ -364,7 +368,7 @@ This is a one-time config — survives deploys. Without it on Free tier, cold st
 
 17aa. **⚠ `az webapp config appsettings set --settings KEY=VALUE` NULLIFIES all other settings:** This command REPLACES the entire settings collection with only what you pass. Existing keys not included become null. **ALWAYS** backup → modify → apply ALL settings at once. See `references/azure-settings-preservation.md` for the safe Python workflow and `references/azure-safe-update-workflow.md` for the exact CLI commands used in production.
 
-17ab. **⚠ `az webapp deploy --type zip` and `appLineNumber` on Linux:** On Azure Linux App Service, zip deployment PRESERVES `appCommandLine` (it does NOT get nulled). Only Windows App Service resets it. Do NOT proactively re-set `appCommandLine` after every deploy on Linux — you risk conflicting with the working config. If `/health` works after deploy, `start.sh` is running correctly.
+17ab. **⚠ `az webapp deploy --type zip` on Linux App Service PRESERVES `appCommandLine`** — unlike Windows, Linux zip deploy does NOT reset the startup command. Do NOT proactively re-set `appCommandLine` after every Linux deploy — you risk conflicting with the working config. If `/health` works after deploy, `start.sh` is running correctly. Only re-set if `appCommandLine` is confirmed null via `az webapp config show --query appCommandLine`.
 
 17ag. **⚠ WebSocket 403 is a FASTAPI TYPE ANNOTATION bug, NOT an Azure tier limitation or uvicorn bug:** WebSocket connections to `/ws` return HTTP 403 (not 404) with empty body. **Root cause:** When using `@app.websocket("/ws")`, the handler parameter **MUST** have a `WebSocket` type annotation: `async def websocket_endpoint(websocket: WebSocket):`. Without the annotation, FastAPI treats `websocket` as a **query parameter**, Pydantic validation fails ("Field required"), and FastAPI sends `websocket.close` with code 1008 — which uvicorn logs as HTTP 403. **Evidence:** (1) raw `curl` with Upgrade headers gets `HTTP 403 Forbidden` with `Content-Length: 0`, (2) the handler code NEVER executes, (3) middleware logging reveals `{'type': 'websocket.close', 'code': 1008, 'reason': [{'type': 'missing', 'loc': ['query', 'websocket'], 'msg': 'Field required'}]}`, (4) it reproduces locally with `uvicorn.run()` — no Azure involved. **Fix:** Add the `WebSocket` type annotation:
 ```python
@@ -582,15 +586,19 @@ For operator-configurable bot behavior without redeploys, use a simple in-memory
 - `references/azure-safe-update-workflow.md` — **Safe settings update workflow**: backup → diff → bulk-apply → verify, with exact commands for avoiding the settings-nulling pitfall.
 - `references/azure-startup-issues.md` — **Azure startup issues**: SQLite DB path detection (`WEBSITE_SITE_NAME`), Vite `base: '/dashboard/'` for blank dashboard, StaticFiles mount failures, `init_db()` not running under gunicorn, startup probe timeouts (ContainerTimeout), log streaming delays, `__pycache__` stale routes, zip size explosion
 - `references/azure-deployment-recovery.md` — **Deployment recovery sequence**: safest-first recovery from 503/timeout/Application Error, user workflow preferences (no delete without approval, report-before-execute, stop-on-error), ContainerTimeout diagnosis, `az webapp up` vs `az webapp deploy`, required app settings checklist
+- `references/azure-subscription-throttle.md` — **Azure subscription throttle (429/51025)**: why it happens, why Retry-After is misleading, prevention rules (stop create/delete loops immediately), recovery options. Read BEFORE any plan create/delete operation.
+- `references/oracle-cloud-deployment.md` — **Oracle Cloud A1.Flex deployment**: Always Free tier limits (2 OCPU/12 GB as of Jun 2026), Malaysia Kulai region preferred, full deployment steps, risk matrix
 - `references/react-dashboard-pattern.md` — **React SPA dashboard served from FastAPI**: Vite config (`base: '/dashboard/'` required for subpath), WebSocket hook with reconnect, dark theme colors, message bubbles, empty states, mobile responsive pattern
 - `references/websocket-debugging.md` — **WebSocket 403 root cause**: uvicorn `check_request` bug, NOT Azure tier limitation. Full diagnostic methodology, local reproduction steps, the fix, and the "never assume platform limitation" lesson.
-- `references/post-deploy-hardening.md` — **Post-deployment hardening checklist**: health check verification, startup command duplicate detection, stale artifact cleanup, persistence risk matrix, known-good baseline template, pre-flight ZIP verification, safe deploy command
+- `references/post-deploy-hardening.md` — **Post-deployment hardening checklist**: health check verification, startup command duplicate detection, stale artifact cleanup, persistence risk matrix, known-good baseline template, pre-flight ZIP verification, safe deploy command, 10-minute post-deploy production gate
+- `references/bounded-execution-workflow.md` — **Bounded execution for DevOps debugging**: when user sets max-action limits, stop conditions, or report-only mode — count every tool call, stop exactly at limit, report in exact format requested, distinguish blocked vs complete vs budget-exhausted
 - `references/zip-build-pattern.md` — **ZIP build pattern**: Python `zipfile` fallback when `zip` unavailable, exclusion rules, self-exclusion pitfall, `.env.example` vs `.env`, pre-flight verification checklist
-- `templates/deploy.py` — **Universal deploy ZIP builder**: Python script that replaces `zip` command, handles all exclusions, self-excludes, reports size/entries
+- `templates/deploy.py` — **Universal deploy ZIP builder (Python)**: replaces `zip` command, handles all exclusions, self-excludes, reports size/entries
+- `templates/deploy.sh` — **One-shot deploy script**: builds clean ZIP (secrets excluded), deploys to Azure, validates `/health` after 60s warmup. Usage: `bash deploy.sh`
 - `references/azure-kudu-vfs-deploy.md` — **Kudu VFS API for static file deployment**: Update `dashboard/dist/` on Azure without triggering Python rebuild (401/400 troubleshooting, auth pattern, bulk ZIP alternative)
 - `references/azure-settings-preservation.md` — **Azure settings nulling pitfalls**: `az webapp config appsettings set` deletes other keys, `az webapp deploy` resets appCommandLine, Kudu creds always redacted — safe backup/modify/apply workflow
 - `references/webhook-signature-testing.md` — **Webhook signature testing with curl**: Python-generated compact JSON signature pattern, file payload approach, dedup testing, common failures
-- `references/student-cloud-hosting-comparison.md` — **Student cloud hosting cost comparison**: Azure for Students ($100/mo recurring), DigitalOcean ($200 one-time/12mo), Heroku ($13/mo/24mo), AWS ($200/6mo), pricing tables for B1/Droplet/Eco/t3.micro, decision matrix, "recurring for production, one-time for staging" rule, low-credit monitoring script.
+- `references/oracle-cloud-deployment.md` — **Oracle Cloud A1.Flex deployment**: Always Free tier limits (2 OCPU/12 GB as of Jun 2026), Fly.io NOT free for new accounts, OCI snapshots quota-dependent (5 included), instance splitting options, full deployment steps, risk matrix
 - `references/azure-deployment-guide.md` — **Azure App Service deployment** (recommended production target): Free F1 tier, permanent HTTPS URL, step-by-step CLI commands
 - `references/azure-ai-integration.md` — **Azure-safe AI integration**: OpenRouter HTTP API pattern, env vars (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`), graceful degradation, model recommendations, cost estimation. Use this when deploying any AI-powered WhatsApp bot to Azure.
 - `references/publish-checklist.md` — **Meta App publish checklist**: Development → Live mode requirements, Privacy Policy hosting, Advanced Access, Business Verification, toggle Live
@@ -601,6 +609,7 @@ For operator-configurable bot behavior without redeploys, use a simple in-memory
 - `references/security-hardening-audit.md` — **Security hardening audit**: Rate limiting (sliding window middleware), dashboard API auth (X-API-Key header), webhook signature fail-closed fix, structured JSON logging with phone/token masking, security event spike alerting, prioritized P1-P4 checklist
 - `references/meta-review-answers.md` — **Copy-paste ready Meta review answers**: Use case descriptions and data usage explanations for `whatsapp_business_messaging` and `whatsapp_business_management` permissions
 - `references/credential-debugging.md` — Full credential debugging flow: token validation, WABA/Phone ID mismatch diagnosis, safe .env token writing patterns, and **shell environment variable override detection** (the #1 silent failure)
+- `references/missing-file-safety-audit.md` — Missing-file crash risk audit: which files the bot references, whether missing files cause 500, and confirmation that free chat depends only on OpenRouter HTTP API (no external knowledge files)
 - `references/shell-quoting-workaround.md` — Shell quoting patterns for tokens with special chars, **shell env var override fix**, and the 3-step token write pattern
 - `references/system-user-token-guide.md` — Step-by-step System User token generation (the correct way to get a permanent WhatsApp token)
 - `references/hybrid-webhook-template.py` — Full working FastAPI webhook with hybrid AI routing, job ID detection, and database integration pattern
@@ -609,3 +618,54 @@ For operator-configurable bot behavior without redeploys, use a simple in-memory
 - `references/meta-app-category.md` — Meta App category selection for WhatsApp bots (Messaging, not Business), required fields, Data Deletion URL requirement
 - `references/tech-provider-vs-standard.md` — Tech Provider vs Standard App decision tree: when to use each, video documentation requirements for Tech Provider, recommendation for single-business bots
 - `business-api-integration` — General API integration patterns, credential security, pagination
+
+---
+
+## Azure Oryx Python Deployment — Critical Findings (2026-06-28)
+
+### Oryx Deletes `.py` Source from `/home/site/wwwroot`
+
+**Finding:** After Oryx build, `/home/site/wwwroot/` contains ONLY `output.tar.zst`, `oryx-manifest.toml`, `requirements.txt`, `hostingstart.html`. **NO `.py` source files.** Oryx packs everything into `output.tar.zst`, deletes originals, extracts to `/tmp/<random>/` at each cold start.
+
+**Implication:** `start.sh` CANNOT assume files are in `/home/site/wwwroot`. Must use `find` to locate the app dynamically:
+
+```bash
+APP_FILE=$(find /tmp /home -name "webhook_listener.py" 2>/dev/null | head -1)
+APP_DIR=$(dirname "$APP_FILE")
+export PYTHONPATH="$APP_DIR:$PYTHONPATH"
+cd "$APP_DIR"
+exec python3 -m gunicorn -w 1 -k uvicorn.workers.UvicornWorker webhook_listener:app --chdir "$APP_DIR" --bind 0.0.0.0:8000 --timeout 120 --access-logfile - --error-logfile -
+```
+
+### Missing Source Files in ZIP
+
+**Finding:** Any `.py` file not explicitly included in the deploy zip will be absent at runtime. `hermes_ai.py` was missing → `ModuleNotFoundError: No module named 'hermes_ai'` even though `webhook_listener.py` was found.
+
+**Fix:** Include ALL `.py` files in the zip build, not just a hardcoded list:
+```python
+for f in os.listdir('.'):
+    if f.endswith('.py') and f not in ('.env', 'bot_data.db'):
+        zf.write(f, f)
+```
+
+### Debugging Methodology
+
+When Azure App Service Linux returns 503 after successful Oryx build:
+1. Use `az webapp log startup show` (NOT `az webapp log tail` — crashes reset the stream)
+2. Add diagnostic `echo` + `ls` + `find` to `start.sh` to capture runtime state
+3. The startup log captures ALL stdout from the container — use it as your primary debug channel
+4. Look for `ContainerStream:` lines with your diagnostic output
+5. Fix ONE error at a time — the first `ModuleNotFoundError` is the real blocker; subsequent errors are cascades
+
+### SQLite DB Persistence — Use `/home/data/` NOT `/home/site/wwwroot/`
+
+`/home/site/wwwroot/` is ephemeral — Oryx wipes it on every deploy. Use `/home/data/` for persistent storage (survives restarts and redeploys). See `references/azure-db-persistence.md` for the code pattern, migration notes, and the `bot_data.db` zip exclusion rule.
+
+### Bounded Execution for DevOps Tasks
+
+When the user sets explicit limits ("max N actions", "stop after X", "report only"):
+1. Count every tool call as one action — batch independent calls to conserve budget
+2. Stop EXACTLY at the limit — do not start the next step
+3. Report in the EXACT format requested — no preamble, no unsolicited recommendations
+4. Distinguish: **complete** (goal reached) vs **blocked** (exact error) vs **budget exhausted** (findings so far + next step)
+5. See `references/bounded-execution-workflow.md` for the full pattern

@@ -329,7 +329,8 @@ These techniques are part of systematic debugging and available in this director
 - **`condition-based-waiting.md`** - Replace arbitrary timeouts with condition polling
 - **`async-python-pitfalls.md`** - FastAPI/async-specific bugs (sync blocking, signature bypass, keyword routing)
 - **`python-cache-pitfalls.md`** - `__pycache__` stale bytecode causing 404s after deployment
-- **`azure-zip-deployment.md`** - Azure App Service zip deploy patterns, excludes, startup commands, env vars
+- **`github-push-protection.md`** — GitHub Push Protection blocking `git push` due to secrets in history (gh OAuth tokens, API keys). Diagnostic + `git filter-repo` fix.
+- **`azure-zip-deployment.md`** — Azure App Service zip deploy patterns, excludes, startup commands, env vars
 - **`ai-timeout-diagnosis.md`** - Diagnosing external AI API failures (OpenRouter, etc.) from Azure
 
 **Related skills:**

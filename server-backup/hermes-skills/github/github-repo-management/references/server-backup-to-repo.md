@@ -47,11 +47,30 @@ remote:       —— GitHub OAuth Access Token —
 
 ### Fix: Remove from history with `git-filter-repo`
 
+**When the secret is only in the current commit:** `git rm --cached` + amend may suffice.
+
+**When the secret is in PRIOR commits (common with backup scripts that accidentally included `hosts.yml` on first run):** Must scrub entire history.
+
 ```bash
-pip install git-filter-repo
+# Step 1: Remove the file locally
+rm -f server-backup/configs/gh/hosts.yml
+git rm --cached server-backup/configs/gh/hosts.yml 2>/dev/null
+
+# Step 2: Install git-filter-repo
+pip install git-filter-repo  # or: pip3 install git-filter-repo
+
+# Step 3: Scrub from ALL history
 git filter-repo --invert-paths --path server-backup/configs/gh/hosts.yml --force
 # WARNING: filter-repo removes the 'origin' remote!
+
+# Step 4: Re-add remote
 git remote add origin https://github.com/OWNER/REPO.git
+
+# Step 5: Verify secret is gone from ALL commits
+git log --all --oneline -- server-backup/configs/gh/hosts.yml  # should return empty
+git grep -l "gho_" $(git rev-list --all) 2>/dev/null | head -5  # should return empty
+
+# Step 6: Force push (history was rewritten)
 git push origin BRANCH --force
 ```
 
@@ -59,7 +78,10 @@ git push origin BRANCH --force
 - `git-filter-repo` strips the file from ALL commits in history, not just HEAD
 - It **removes the `origin` remote** as a safety measure — you must re-add it
 - Force push is required since history is rewritten
-- After rewrite, verify: `git log --all --oneline -- path/to/file` should return empty
+- After rewrite, verify with both:
+  - `git log --all --oneline -- path/to/file` → empty
+  - `git grep -l "gho_" $(git rev-list --all)` → empty
+- If `git grep` still shows hits, the secret may be in a different path — run filter-repo again for that path
 
 ### Prevention
 
@@ -71,6 +93,19 @@ server-backup/**/auth.json
 server-backup/**/*.key
 server-backup/**/*.pem
 ```
+
+### Diagnostic: Confirm no secrets in history
+
+Before pushing, scan all commits for potential secrets:
+```bash
+# Check if token pattern exists in any commit
+git grep -l "gho_\|sk-\|csk-" $(git rev-list --all) 2>/dev/null
+
+# Check specific file in history
+git log --all --oneline -- path/to/suspicious/file
+```
+
+Run this after every backup copy to catch secrets before they reach GitHub.
 
 ## Backup Script Pattern
 

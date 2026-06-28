@@ -206,7 +206,43 @@ async def websocket_endpoint(websocket: WebSocket):  # ← type annotation requi
 
 **Also optional:** Add `--ws wsproto` to gunicorn startup + `wsproto==1.3.2` in requirements.txt for a lighter WebSocket implementation. This is NOT required for the fix.
 
+**Also optional:** Add `--ws wsproto` to gunicorn startup + `wsproto==1.3.2` in requirements.txt for a lighter WebSocket implementation. This is NOT required for the fix.
+
 **Key lesson:** WebSocket works perfectly on Free F1 tier when the code is correct. Never blame the tier — always reproduce locally first.
+
+## 7. `STARTUP_COMMAND` App Setting Overrides `start.sh`
+
+**Problem:** Azure has TWO startup mechanisms: (1) `STARTUP_COMMAND` app setting, and (2) `start.sh` in the project root. **`STARTUP_COMMAND` takes precedence over `start.sh`.** If `STARTUP_COMMAND` contains an old/incorrect command, your updated `start.sh` is silently ignored.
+
+**Evidence (2026-06-27 incident):**
+- `start.sh` was updated to use gunicorn + wsproto
+- But app still failed to start because `STARTUP_COMMAND` still had: `uvicorn webhook_listener:app --host 0.0.0.0 --port 8000`
+- The old command used single-process uvicorn without gunicorn workers
+
+**Fix — Always sync both:**
+```bash
+# Update STARTUP_COMMAND to match start.sh
+az webapp config appsettings set -g <rg> -n <app> \
+  --settings STARTUP_COMMAND="bash /home/site/wwwroot/start.sh"
+```
+
+**Verify which command actually runs:**
+```bash
+az webapp config show -g <rg> -n <app> --query "appCommandLine"
+```
+
+**Best practice:** Keep `start.sh` as the single source of truth, and set `STARTUP_COMMAND` to call it:
+```bash
+# start.sh (in project root)
+#!/bin/bash
+cd /home/site/wwwroot
+python3 -m gunicorn -w 1 -k uvicorn.workers.UvicornWorker webhook_listener:app --bind 0.0.0.0:${WEBSITES_PORT:-8000} --timeout 120 --ws wsproto
+```
+
+```bash
+# Azure app setting
+STARTUP_COMMAND = "bash /home/site/wwwroot/start.sh"
+```
 
 ## 7. Deployment Zip Best Practice
 

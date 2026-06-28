@@ -91,7 +91,7 @@ Run `scripts/azure-deploy-verify.sh hafjet-whatsapp-bot hafjet-whatsapp-bot.azur
 - [ ] `start.sh` uses `${WEBSITES_PORT:-8000}` for port binding
 - [ ] `start.sh` runs `pip install -r requirements.txt` at startup (for `SCM_DO_BUILD_DURING_DEPLOYMENT=false`)
 - [ ] `SCM_DO_BUILD_DURING_DEPLOYMENT=true` for most reliable dependency install
-- [ ] `appCommandLine=start.sh` set after every zip deploy
+- [ ] `appCommandLine=start.sh` — Linux zip deploy PRESERVES it; only re-set if confirmed null
 - [ ] `healthCheckPath=/health` configured (one-time)
 - [ ] Settings updated in bulk (all keys at once)
 - [ ] Backup kept before any settings change

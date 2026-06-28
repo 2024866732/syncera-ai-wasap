@@ -1,12 +1,12 @@
 ---
 name: hafjet-deployment-plan
-description: "Use when discussing, planning, or executing deployment for the HAFJET WhatsApp Bot. Locked strategy with three environments, exact CLI steps, and decision matrices for upgrades and failovers."
-version: 1.3.0
+description: "Use when discussing, planning, or executing deployment for the HAFJET WhatsApp Bot. Locked strategy with four environments (Azure, AWS, Heroku, Oracle), exact CLI steps, and decision matrices for upgrades, throttling recovery, and failovers."
+version: 1.4.0
 author: Hermes-HAFJET
 license: MIT
 metadata:
   hermes:
-    tags: [deployment, azure, aws, heroku, whatsapp-bot]
+    tags: [deployment, azure, aws, heroku, oracle, whatsapp-bot]
     related_skills: [whatsapp-webhook-dev]
 
 ---
@@ -16,7 +16,7 @@ metadata:
 ## Overview
 
 This skill documents the locked deployment strategy for HAFJET WhatsApp Bot v2.1.
-It covers three environments: Azure (primary production), AWS (staging), and Heroku (fallback).
+It covers four environments: Azure (primary production), AWS (staging), Heroku (fallback), and Oracle Cloud Always Free (fallback/throttle-recovery).
 **Do not execute migrations without explicit user confirmation.** This is a reference playbook only.
 
 ## Support Files
@@ -29,9 +29,12 @@ It covers three environments: Azure (primary production), AWS (staging), and Her
 | `references/security-hardening-phase1.md` | Phase 1 security hardening (signature fail-closed, API key auth, log masking) — EXACT code changes |
 | `references/vite-env-injection.md` | Build-time env var injection for Vite + Azure ZIP deploy |
 | `references/azure-debug-503.md` | Debugging 503 errors after deploy (QuotaExceeded, import errors, logging, **resource-not-found/app-deleted**) |
+| `references/fallback-provider-setup.md` | Fallback provider config pattern (Cerebras as OpenRouter backup) |
+| `references/server-backup-restore.md` | Server config backup/restore from GitHub |
 | `scripts/verify_endpoints.py` | Full endpoint verification script (health, dashboard, API, webhook GET/POST, WebSocket) |
 | `references/b1-upgrade-troubleshooting.md` | F1→B1 upgrade steps + app unreachable after upgrade |
 | `references/azure-webapp-up-deploy.md` | `az webapp up` full deploy pattern (Oryx build, startup time budget, common failures) |
+| `references/oracle-cloud-free-tier.md` | Oracle Cloud Always Free tier: limits, regions, OCI CLI auth, A1.Flex deployment, capacity risks |
 
 ## Workflow Rules
 
@@ -71,6 +74,7 @@ It covers three environments: Azure (primary production), AWS (staging), and Her
 | **Heroku (GitHub Student Pack)** | $13/month | 24 months | Eco $5, Basic $7 |
 | **DigitalOcean (GitHub Student Pack)** | $200 | 12 months | Basic 1GB: $6 |
 | **Oracle Cloud Always Free** | Never expires | Unlimited | A1.Flex: 2 OCPU/12 GB, $0 |
+| **Oracle Cloud (Kulai, Malaysia)** | `ap-kulai-2` | New region (Feb 2026), single AD | Best latency for Malaysia users |
 
 ---
 
@@ -322,18 +326,184 @@ curl https://hafjet-whatsapp-bot.herokuapp.com/dashboard
 
 ---
 
+## Playbook 4: Oracle Cloud Always Free (Malaysia/Kulai)
+
+### When to Trigger
+- Azure subscription throttled and cannot create plans
+- Azure region has capacity/startup issues
+- Need full root control (systemd, Nginx, custom SSL)
+- Want zero-cost hosting with no quota interruptions
+
+### Prerequisites
+- Oracle Cloud account with Always Free tier
+- OCI CLI installed + API key configured
+- Home region: `ap-kulai-2` (Malaysia West 2, Kulai)
+
+### Architecture
+```
+[WhatsApp Cloud API] → [Public IP:443] → [Ubuntu 22.04 ARM VM]
+                                         ├── Nginx (SSL termination, port 443)
+                                         ├── gunicorn (uvicorn workers, port 8000)
+                                         ├── webhook_listener.py
+                                         ├── SQLite DB (local, WAL mode)
+                                         └── Let's Encrypt SSL (certbot)
+```
+
+### Instance Spec
+| Setting | Value | Cost |
+|---------|-------|------|
+| Shape | VM.Standard.A1.Flex | $0/mo |
+| OCPU | 1 (of 2 free) | |
+| RAM | 1 GB (of 12 GB free) | |
+| Boot disk | 50 GB (of 200 GB free) | |
+| OS | Ubuntu 22.04 aarch64 | |
+| Network | 1 VCN + 1 public subnet | $0 |
+| Public IP | 1 (IPv4, free) | $0 |
+
+### Deployment Steps
+
+#### Step 1: Verify OCI Auth
+```bash
+oci iam availability-domain list \
+  -c <tenancy-ocid> --region ap-kulia-2
+```
+
+#### Step 2: Create VCN + Subnet
+```bash
+oci vcn create --cidr-block 10.0.0.0/16 \
+  --display-name hafjet-vcn \
+  --compartment-id <tenancy-ocid>
+
+oci subnet create --cidr-block 10.0.1.0/24 \
+  --display-name hafjet-subnet \
+  --vcn-id <vcn-id> \
+  --availability-domain <ad-name> \
+  --compartment-id <tenancy-ocid>
+```
+
+#### Step 3: Open Firewall (Security List)
+```bash
+oci network security-list update \
+  --security-list-id <sl-id> \
+  --ingress-security-rules '[{"source":"0.0.0.0/0","protocol":"6","tcpOptions":{"destinationPortRange":{"min":443,"max":443}}},{"source":"0.0.0.0/0","protocol":"6","tcpOptions":{"destinationPortRange":{"min":22,"max":22}}}]'
+```
+
+#### Step 4: Launch Instance
+```bash
+oci compute instance launch \
+  --availability-domain <ad-name> \
+  --compartment-id <tenancy-ocid> \
+  --shape VM.Standard.A1.Flex \
+  --shape-config '{"ocpus":1,"memoryInGBs":1}' \
+  --source-details '{"sourceType":"image","imageId":"<ubuntu-arm-image-id>"}' \
+  --subnet-id <subnet-id> \
+  --display-name hafjet-whatsapp-bot
+```
+
+#### Step 5: Deploy App
+```bash
+# SSH into instance
+ssh ubuntu@<public-ip>
+
+# Install dependencies
+sudo apt update && sudo apt install -y python3-pip nginx certbot python3-certbot-nginx git
+
+# Clone and setup
+git clone https://github.com/2024866732/hafjet-whatsapp-bot.git
+cd hafjet-whatsapp-bot
+pip3 install -r requirements.txt
+
+# Create systemd service
+sudo tee /etc/systemd/system/hafjet-bot.service << 'EOF'
+[Unit]
+Description=HAFJET WhatsApp Bot
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/hafjet-whatsapp-bot
+ExecStart=/usr/local/bin/gunicorn -w 1 -k uvicorn.workers.UvicornWorker webhook_listener:app --bind 0.0.0.0:8000 --timeout 120 --ws wsproto
+Restart=always
+Environment=WEBSITES_PORT=8000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl enable hafjet-bot
+sudo systemctl start hafjet-bot
+```
+
+#### Step 6: SSL via Let's Encrypt
+```bash
+sudo certbot --nginx -d <your-domain.com> --non-interactive --agree-tos -m <email>
+# Or for IP-only: use self-signed cert
+```
+
+#### Step 7: Update Meta Webhook
+1. Go to Meta Developer Portal → WhatsApp → Configuration
+2. Edit Webhook URL to: `https://<your-domain-or-ip>/webhook`
+3. Click Verify and Save
+
+### Oracle Free Tier Limits
+| Resource | Limit | Our Usage |
+|----------|-------|-----------|
+| A1.Flex OCPU | 2 | 1 |
+| A1.Flex RAM | 12 GB | 1 GB |
+| Block Storage | 200 GB | 50 GB |
+| Outbound Data | 10 TB/mo | ~50 GB |
+| Object Storage | 20 GB | < 1 GB |
+| MySQL DB | 1 OCPU, 20 GB | Not needed (SQLite) |
+| Load Balancer | 1 NLB, 10 Mbps | Not needed |
+
+### Cost Analysis
+| Item | Monthly Cost | Notes |
+|------|-------------|-------|
+| A1.Flex VM (1 OCPU/1 GB) | $0 | Always Free |
+| VCN + Subnet + Public IP | $0 | Always Free |
+| Block Storage (50 GB) | $0 | Within 200 GB free |
+| Outbound Data | $0 | Within 10 TB free |
+| **Total** | **$0** | **Never expires** |
+
+### Risks & Mitigations
+| Risk | Mitigation |
+|------|------------|
+| No uptime SLA | Acceptable for non-critical; monitor with uptime robot |
+| ARM64 only | All Python packages have ARM wheels; test before production |
+| Capacity out in Kulai | Try AD-2; or use US San Jose (~150ms latency) |
+| CPU throttling (10% sustained) | WhatsApp bot is bursty; unlikely to trigger |
+| No managed DB | Use SQLite with WAL mode + daily backups |
+| No auto-restart on crash | systemd `Restart=always` handles this |
+| SSL cert renewal | certbot.timer auto-renews; monitor with cron |
+
+### Verification
+```bash
+# On the VM
+curl http://localhost:8000/health
+curl http://localhost:8000/dashboard
+
+# From external
+curl https://<your-domain>/health
+curl https://<your-domain>/dashboard
+```
+
+---
+
 ## Environment Comparison Matrix
 
-| Factor | Azure (current) | AWS (staging) | Heroku (fallback) |
-|--------|-----------------|---------------|-------------------|
-| **Monthly cost** | $0 (F1) | $0 (free tier) | $5 (Eco) |
-| **24mo cash cost** | $0 | $0-120 | $0 |
-| **Stability** | High | High | Medium |
-| **WebSocket** | Working | Supported | Supported |
-| **Custom domain** | B1+ | Yes | Yes ($7/mo for SSL) |
-| **Migration effort** | None | Medium | High |
-| **Credit exhaustion** | Low (recurring) | High (6mo one-time) | Low (24mo recurring) |
-| **DB persistence** | Local | RDS free 12mo | Ephemeral or Atlas $50 credit |
+| Factor | Azure (current) | AWS (staging) | Heroku (fallback) | Oracle A1.Fallback) |
+|--------|-----------------|---------------|-------------------|-------------------|
+| **Monthly cost** | $0 (F1) | $0 (free tier) | $5 (Eco) | $0 |
+| **24mo cash cost** | $0 | $0-120 | $0 | $0 |
+| **Stability** | High | High | Medium | Medium (no SLA) |
+| **WebSocket** | Working | Supported | Supported | Supported |
+| **Custom domain** | B1+ | Yes | Yes ($7/mo for SSL) | Yes (full control) |
+| **Migration effort** | None | Medium | High | Medium (systemd + Nginx) |
+| **Credit exhaustion** | Low (recurring) | High (6mo one-time) | Low (24mo recurring) | Never (Always Free) |
+| **DB persistence** | Local | RDS free 12mo | Ephemeral or Atlas $50 credit | Local (full root) |
+| **Region** | SE Asia | Configurable | US/EU | Kulai (Malaysia) |
+| **Root access** | No | Yes | No | Yes |
+| **Always On** | B+ tier | Yes (pay) | Eco sleeps 30min | Yes (no quota) |
 
 ---
 
@@ -347,6 +517,8 @@ curl https://hafjet-whatsapp-bot.herokuapp.com/dashboard
 | Azure subscription ends | Migrate to Heroku with AWS S3 | Account disabled |
 | Test new features | Deploy to AWS staging | Before production push |
 | Long-term (24mo+) | Return to Azure F1 or DigitalOcean | Credit landscape changes |
+| **Azure plan throttled (429/51025)** | **Wait 15-30 min OR deploy to Oracle Free Tier** | **Cannot create new plan** |
+| **Azure region has capacity issues** | **Deploy to Oracle A1.Flex (Kulai)** | **App never starts on existing plan** |
 
 ---
 
@@ -381,6 +553,125 @@ Configure SG for port 443, deploy code via git clone or SSM, test inbound webhoo
 
 ---
 
+## Playbook 5: Server Config Backup & Restore (GitHub)
+
+### When to Trigger
+- Fresh server install / migration to new VPS
+- Config corruption or accidental deletion
+- Disaster recovery after server compromise
+
+### Strategy
+All Hermes config (excluding secrets) is backed up to the `syncera-ai-wasap` repo under `server-backup/` folder. Secrets are **never** committed to git.
+
+### What's Backed Up
+| Folder | Contents |
+|--------|----------|
+| `server-backup/hermes-config/` | `config.yaml`, `SOUL.md`, `.hermes_history` |
+| `server-backup/hermes-skills/` | All custom skills (~43 skill directories) |
+| `server-backup/hermes-memories/` | Persistent memory files |
+| `server-backup/hermes-cron/` | Cron job definitions + output history |
+| `server-backup/hermes-scripts/` | Custom scripts |
+| `server-backup/configs/` | `ngrok.yml` (no secrets) |
+
+### What's NOT Backed Up
+- `.env`, `.env.save` — API keys & tokens
+- `auth.json` — WhatsApp OAuth
+- `gh/hosts.yml` — GitHub OAuth tokens (push protection blocks this)
+- `state.db` (13MB+ session DB)
+- `node_modules/`, `venv/`, `__pycache__/`
+
+### Backup Script
+```bash
+bash ~/syncera-ai-wasap/scripts/backup-server.sh
+```
+Runs daily via cron job at 14:00 UTC. Pulls latest, copies config, commits, pushes.
+
+### Restore Process (Fresh Server)
+```bash
+# 1. Clone repo
+git clone https://github.com/2024866732/syncera-ai-wasap.git
+cd syncera-ai-wasap
+
+# 2. Restore hermes config
+cp server-backup/hermes-config/config.yaml ~/.hermes/
+cp server-backup/hermes-config/SOUL.md ~/.hermes/
+
+# 3. Restore skills
+cp -r server-backup/hermes-skills/* ~/.hermes/skills/
+
+# 4. Restore memories
+cp -r server-backup/hermes-memories/* ~/.hermes/memories/
+
+# 5. Restore cron jobs
+cp -r server-backup/hermes-cron/* ~/.hermes/cron/
+
+# 6. Restore scripts
+cp -r server-backup/hermes-scripts/* ~/.hermes/scripts/
+
+# 7. Restore other configs
+cp server-backup/configs/ngrok.yml ~/.config/ngrok/ 2>/dev/null
+```
+
+### Secrets That Must Be Re-Created Manually
+| Secret | Where to Get It | Command |
+|--------|-----------------|---------|
+| `OPENROUTER_API_KEY` | OpenRouter dashboard | `hermes config set model.api_key <value>` |
+| `CEREBRAS_API_KEY` | Cerebras dashboard | `export CEREBRAS_API_KEY=...` in `~/.bashrc` |
+| WhatsApp tokens | Meta Developer Portal | Copy from Azure App Settings |
+| `gh auth` | GitHub | `gh auth login` |
+| Azure credentials | Azure Portal | `az login` |
+
+### Git Safety Rules
+1. **Never commit `gh/hosts.yml`** — contains OAuth tokens, triggers GitHub push protection
+2. **Never commit `.env`** — contains API keys
+3. **Always use `key_env` reference** in config.yaml for custom providers (not inline keys)
+4. **If push protection blocks a push**, use `git filter-repo --invert-paths --path <file> --force` to remove from history, then force push
+
+---
+
+## Fallback Provider Setup
+
+### When to Trigger
+- Primary provider (`openrouter/owl-alpha`) hits rate limit (429)
+- Primary provider returns 503/529 (overload)
+- Connection failure to primary endpoint
+
+### Config Pattern
+```yaml
+# Primary model
+model:
+  provider: openrouter
+  base_url: https://openrouter.ai/api/v1
+  default: openrouter/owl-alpha
+
+# Fallback provider
+providers:
+  cerebras:
+    base_url: https://api.cerebras.ai/v1
+    api_mode: chat_completions
+    key_env: CEREBRAS_API_KEY
+
+fallback:
+  provider: cerebras
+  model: gpt-oss-120b
+```
+
+### Key Points
+- Use `key_env` (env var reference) instead of inline `api_key` — keeps secrets out of config.yaml
+- Set the env var in `~/.bashrc`: `export CEREBRAS_API_KEY="..."`
+- Fallback triggers automatically on 429/529/connection errors
+- Restart gateway after config change: `hermes gateway restart` (must run from outside gateway process)
+
+### Supported Fallback Triggers
+| HTTP Code | Meaning | Action |
+|-----------|---------|--------|
+| 429 | Rate limited | Switch to fallback |
+| 529 | Overloaded | Switch to fallback |
+| 503 | Service unavailable | Switch to fallback |
+| Connection error | Network failure | Switch to fallback |
+
+---
+
 ## Approval Status (2026-06-27)
 
 | Playbook | Status | Approved By |
@@ -388,6 +679,7 @@ Configure SG for port 443, deploy code via git clone or SSM, test inbound webhoo
 | Playbook 1: Azure F1 → B1 | ✅ PRODUCTION-APPROVED | Tuan Hafizi |
 | Playbook 2: Heroku Eco Fallback | ✅ FALLBACK-APPROVED | Tuan Hafizi |
 | Playbook 3: AWS Staging | 📋 Reference only (not executed) | — |
+| Playbook 4: Oracle A1.Flex | 📋 PLAN-APPROVED (awaiting provision) | Tuan Hafizi |
 
 ## Heroku Eco Caution Notes
 
@@ -449,6 +741,13 @@ If frontend doesn't send auth headers, blanket `/api/*` protection **breaks the 
    az rest --method GET --uri "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/sites/{name}/config/web?api-version=2022-03-01" --query "properties.appCommandLine"
    ```
    **Safe approach:** Set `STARTUP_COMMAND` explicitly AND include a correct `start.sh`. Deploy once. If Oryx still auto-detects `application:app`, set `ENABLE_ORYX_BUILD=false` to force Oryx to respect your startup command.
+28. **OCI API key fingerprint mismatch** — When using `oci` CLI, the local private key fingerprint MUST match the public key uploaded to OCI Console. If you get `NotAuthenticated: Failed to verify the HTTP(S) Signature`, compare:
+   ```bash
+   openssl rsa -in <key>.pem -pubout -outform DER 2>/dev/null | openssl md5 -c
+   ```
+   against the fingerprint shown in OCI Console → Identity → Users → API Keys. If they differ, the local key file is wrong/stale. Generate new key pair and upload public key to Console.
+29. **Oracle A1.Flex capacity risk** — New regions (like `ap-kulai-2`, launched Feb 2026) typically have abundant Always Free capacity. Older regions (Singapore, Japan, Johannesburg) frequently report "Out of host capacity" errors. Always provision in the home region first; if capacity error, try different ADs or wait.
+30. **Oracle Always Free CPU throttling** — A1.Flex instances are limited to 10% sustained CPU (4 OCPU/24GB or 2 OCPU/12GB depending on tenancy age). Exceeding this for 45+ minutes triggers decommissioning. WhatsApp bot traffic is bursty and well within limits, but monitor if adding heavy AI processing.
 
 ---
 
