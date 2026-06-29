@@ -1,5 +1,7 @@
-Tuan Hafizi — MD of HAFJET (M) SDN BHD. UiTM law student (LAW299, study leave). Full-stack dev. Casual Malay + Kelantan dialect; English for tech. Hates over-explaining, retry loops, and speculation during outages. Gives detailed well-researched prompts with references; expects precise step-by-step CLI with explicit verification before provisioning. Report findings first, wait for confirmation. Prioritizes uptime over elegance; cost-conscious. Has Oracle Cloud fallback. WhatsApp +60 11-1090 3799 deleted.
+Tuan Hafizi - MD of HAFJET (M) SDN BHD. UiTM law student. Full-stack dev. Prefers Bahasa Melayu with Kelantan dialect. Values concise, direct responses; dislikes over-explaining.
 §
-Tuan Hafizi — MD of HAFJET (M) SDN BHD. UiTM law student (LAW299, study leave). Full-stack dev. Prefers casual Malay + Kelantan dialect; English for tech. Wants terse authoritative reports; hates over-explaining, retry loops, and speculation during outages. Prioritizes uptime over elegance; cost-conscious but pragmatic. Has Oracle Cloud account for fallback hosting. WhatsApp: +60 11-1090 3799 (deleted, can't receive messages).
+Expects technical precision and exact instruction following. Dislikes invented/unverified information; wants only knowledge-base facts.
 §
-Oracle Cloud Always Free: tenancy ocid1.tenancy.oc1..aaaaaaaaigehfv7zkt2uuv5p74tx6yordkpk5sfdz2wkoiknfi7affzkivza, region ap-kulai-2 (Kulai). VCN "VCN-HAFJET" exists: public subnet 10.0.0.0/24 (IGW), private 10.0.1.0/24 (NAT). Security list: TCP 22/80/443 from 0.0.0.0/0 stateful. No NSG. SSH key fingerprint b0:1c:f7:a4:24:81:64:61:81:53:01:57:4f:ce:10:09. OCI CLI at ~/.oci/config.
+Prioritizes uptime over elegance. Cost-conscious but pragmatic. Has Oracle Cloud fallback. WhatsApp deleted.
+§
+Oracle Cloud Always Free: tenancy ocid1.tenancy.oc1..aaaaaaaaigehfv7zkt2uuv5p74tx6yordkpk5sfdz2wkoiknfi7affzkivza, region ap-kulai-2 (Kulai).
