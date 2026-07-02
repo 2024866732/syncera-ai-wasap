@@ -66,15 +66,23 @@ def api_get(path, params=None):
         return None
 
 def fetch_all_receipts(gte, lte):
+    """Fetch receipts with client-side date filtering.
+
+    Loyverse API ignores created_at.gte/lte on some plans, so we
+    fetch everything available and filter by date locally.
+    """
+    target_date = gte[:10]  # YYYY-MM-DD
     all_receipts = []
-    params = {"created_at.gte": gte, "created_at.lte": lte, "limit": LIMIT}
+    params = {"created_at.min": gte, "limit": LIMIT}
     page = 1
     while True:
         data = api_get("/receipts", params)
         if data is None:
             break
         receipts = data.get("receipts", [])
-        all_receipts.extend(receipts)
+        # Client-side filter: only keep receipts from target_date
+        today_receipts = [r for r in receipts if r.get("created_at", "").startswith(target_date)]
+        all_receipts.extend(today_receipts)
         cursor = data.get("cursor")
         if not cursor or not receipts:
             break
@@ -119,7 +127,7 @@ def save_csv(receipts, date_str):
     return filepath
 
 def summarize(receipts):
-    total_sales = total_tax = total_discount = 0.0
+    total_sales = total_tax = total_discount = total_cost = 0.0
     payment_totals = {}
     item_totals = {}
     for r in receipts:
@@ -132,10 +140,13 @@ def summarize(receipts):
         for item in r.get("line_items", []):
             name = item.get("item_name", "Unknown")
             item_totals[name] = item_totals.get(name, 0) + float(item.get("quantity", 0))
+            total_cost += float(item.get("cost_total", 0))
+    gross_profit = total_sales - total_cost
     top_items = sorted(item_totals.items(), key=lambda x: x[1], reverse=True)[:5]
     return {
         "total_sales": total_sales, "total_tax": total_tax,
-        "total_discount": total_discount, "transaction_count": len(receipts),
+        "total_discount": total_discount, "total_cost": total_cost,
+        "gross_profit": gross_profit, "transaction_count": len(receipts),
         "payment_totals": payment_totals, "top_items": top_items,
     }
 
@@ -147,6 +158,8 @@ def format_summary(s, date_str):
         f"Transaksi: {s['transaction_count']}",
         f"Tax: RM {s['total_tax']:,.2f}",
         f"Discount: RM {s['total_discount']:,.2f}",
+        f"COGS: RM {s['total_cost']:,.2f}",
+        f"Gross Profit: RM {s['gross_profit']:,.2f}",
     ]
     if s["payment_totals"]:
         lines += ["", "Breakdown Bayaran:"]

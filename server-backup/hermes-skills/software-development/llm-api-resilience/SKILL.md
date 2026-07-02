@@ -193,9 +193,7 @@ def ask_hermes(user_message: str, wa_name: Optional[str] = None) -> Optional[str
     end_time = time.time()
     print(f"[hermes_ai] [ASK_HERMES] Total time: {end_time - start_time:.2f} seconds")
     return fallback_msg
-```
-
-## Fallback Strategy
+```\n\n## HTTP Status Code Handling\n\nDifferent HTTP error codes from LLM providers require different responses:\n\n| Code | Meaning | Recommended Action |\n|------|---------|-------------------|\n| **401** | API key invalid/revoked | Log error, do NOT retry. Fall back immediately. |\n| **402** | Payment required / insufficient credits | Log error, do NOT retry. Fall back or notify user. |\n| **404** | Model not found | Check model name spelling. If `:free` suffix used, verify model still supports free tier. |\n| **429** | Rate limited | **Retry once after 2s sleep**, then fall back. See section below. |\n| 5xx | Provider error | Log raw body. Optionally retry with backoff. |\n\n### 429 Rate Limit Retry Pattern\n\nFree models (especially `:free` suffix on OpenRouter) have ~20 req/min limits. When a 429 is received:\n\n```python\nif resp.status_code == 429:\n    print(\"[hermes_ai] Rate limited (429) — retrying once after 2s sleep\")\n    time.sleep(2)\n    resp = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=30)\n    if resp.status_code >= 200 and resp.status_code < 300:\n        # Retry succeeded\n        data = resp.json()\n        content = data.get(\"choices\", [{}])[0].get(\"message\", {}).get(\"content\", \"\").strip()\n        if content:\n            return content\n    print(\"[hermes_ai] Retry also failed — falling back\")\n    return None\n```\n\nAlways log the retry attempt and its outcome for monitoring rate limit frequency.\n\n## Async Safety: Detecting `await` on Sync Functions\n\nA common bug in async webhook handlers is using `await` on synchronous functions:\n\n```python\n# ❌ BUG: ask_hermes is NOT async\nai_reply = await ask_hermes(message, sender_name)  # TypeError: 'str' object is not awaitable\n\n# ✅ FIX: Run sync function in executor\nloop = asyncio.get_event_loop()\ntry:\n    ai_reply = await loop.run_in_executor(None, ask_hermes, message, sender_name)\nexcept Exception as e:\n    log.error(f\"AI exception: {e}\")\n    ai_reply = None\n```\n\n### Audit Pattern\nTo find all `await` calls on sync functions:\n```bash\n# List all await calls\ngrep -n \"await \" webhook_listener.py\n# List all function definitions to cross-reference\ngrep -n \"^def \\|^async def \" hermes_ai.py\n# Any 'await call' invoked on a 'def' (not 'async def') function is a bug\n```\n\n## CLI Binary Existence Guard\n\nWhen a fallback to a CLI binary (`hermes`, `ollama`, etc.) is configured, check the binary exists before attempting to call it — avoids wasting ~0.4s on `FileNotFoundError`:\n\n```python\ndef ask_hermes_cli(user_message: str) -> Optional[str]:\n    import shutil\n    if not shutil.which(\"hermes\"):\n        print(\"[hermes_ai] CLI not found — skipping fallback\")\n        return None\n    try:\n        result = subprocess.run([\"hermes\", \"ask\", user_message], ...)\n        ...\n```\n\n## Fallback Strategy
 When the primary LLM call fails:
 1. Try a secondary LLM provider or model (if configured).
 2. Fall back to a local rule-based or retrieval system.
@@ -212,6 +210,9 @@ When the primary LLM call fails:
 - [ ] Empty content is treated as a failure.
 - [ ] All exceptions are caught and traceback logged.
 - [ ] Fallback message is clear and actionable.
+- [ ] No `await` on sync functions — cross-reference `def` vs `async def` definitions.
+- [ ] CLI fallback binary checked with `shutil.which()` before calling.
+- [ ] 429 rate limited handled with at least one retry after short sleep.
 
 ## Common Pitfalls
 - **Missing timeout**: Causes indefinite hangs during network issues.
@@ -220,6 +221,9 @@ When the primary LLM call fails:
 - **Ignoring empty responses**: Treating empty content as success leads to silent failures.
 - **No fallback**: Users receive no response when service is down.
 - **Hardcoded configuration**: Makes deployment inflexible; use environment variables.
+- **`await` on sync function**: Calling `await sync_func()` raises `TypeError`. Use `loop.run_in_executor(None, sync_func, args)` instead.
+- **CLI fallback without guard**: Calling a missing CLI binary (`hermes`, `ollama`) adds ~0.4s delay and ugly tracebacks. Use `shutil.which()` to check first.
+- **Rate-limit retry with no backoff**: Without a short sleep before retry, rate-limited requests almost always fail again.
 
 ## References
 - See `references/hermes_ai_patch_example.md` for a concrete example of applying this pattern to `hermes_ai.py`.

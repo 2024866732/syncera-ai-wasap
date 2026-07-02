@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 12
+        "completed": 15
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-06-30T07:00:00+00:00",
-      "last_run_at": "2026-06-29T07:03:04.548490+00:00",
+      "next_run_at": "2026-07-03T07:00:00+00:00",
+      "last_run_at": "2026-07-02T07:04:26.661531+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -62,17 +62,17 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 7
+        "completed": 10
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-06-30T14:00:00+00:00",
-      "last_run_at": "2026-06-28T14:01:53.310987+00:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-07-03T14:00:00+00:00",
+      "last_run_at": "2026-07-01T14:00:30.255606+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 404: No endpoints found for openrouter/owl-alpha.",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -104,17 +104,17 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 3
+        "completed": 6
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-06-30T14:00:00+00:00",
-      "last_run_at": "2026-06-28T14:01:30.509135+00:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-07-03T14:00:00+00:00",
+      "last_run_at": "2026-07-01T14:00:29.523014+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 404: No endpoints found for openrouter/owl-alpha.",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -146,15 +146,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 3
+        "completed": 6
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-06-30T09:00:00+00:00",
-      "last_run_at": "2026-06-29T09:01:35.224185+00:00",
+      "next_run_at": "2026-07-03T09:00:00+00:00",
+      "last_run_at": "2026-07-02T09:00:57.953133+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -169,5 +169,5 @@
       "workdir": null
     }
   ],
-  "updated_at": "2026-06-29T14:00:57.367968+00:00"
+  "updated_at": "2026-07-02T14:00:18.598417+00:00"
 }

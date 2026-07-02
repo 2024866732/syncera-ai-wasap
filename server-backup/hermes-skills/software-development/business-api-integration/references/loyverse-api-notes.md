@@ -67,8 +67,19 @@ GET /receipts?limit=10&created_at.gte=2026-06-22T00:00:00.000Z
   "item_name": "HOTLINK RM30 MAXIS",
   "quantity": 1,
   "price": 30.00,
-  "total_money": 30.00
+  "total_money": 30.00,
+  "cost": 25.00,
+  "cost_total": 25.00,
+  "gross_total_money": 30.00
 }
+```
+
+**Profit calculation:** Each line item includes `cost` (unit cost) and `cost_total` (cost × quantity), enabling gross profit calculation:
+```python
+gross_profit = sum(
+    float(item.get("total_money", 0)) - float(item.get("cost_total", 0))
+    for item in line_items
+)
 ```
 
 ## Known Issues
@@ -90,6 +101,17 @@ GET /receipts?limit=10&created_at.gte=2026-06-22T00:00:00.000Z
   ```
   ?created_at.gte=2026-06-22T00:00:00+08:00&created_at.lte=2026-06-22T23:59:59+08:00&limit=10
   ```
+
+### ⚠ CRITICAL: Server-side date filters are IGNORED (confirmed June 2026)
+- **Loyverse API ignores `created_at.gte` and `created_at.lte` parameters** on some plans
+- The API returns ALL receipts within the 31-day window regardless of the date filter
+- **Fix: Always implement client-side date filtering** after fetching:
+  ```python
+  target_date = "2026-06-25"
+  today_receipts = [r for r in receipts if r.get("created_at", "").startswith(target_date)]
+  ```
+- Without this fix, daily reports will include receipts from previous days, inflating totals
+- **Verification tip:** Always cross-check the first page's `created_at` values against your target date
 
 ### HTTP 402 — clarified root cause
 - Loyverse free tier only allows retrieving receipts **created within the last 31 days**

@@ -239,7 +239,7 @@ APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
 
 17d. **⚠ AI integration in Azure MUST use HTTP API, not CLI:** The Hermes CLI (`subprocess.run(["hermes", "ask", ...])`) does NOT exist in Azure App Service Linux containers. Local API fallback (`localhost:3000`) also fails. Symptom: "Hermes CLI not found, using API fallback" → "AI fallback — using default response" in logs. Bot works but always uses static default replies for non-menu messages. **Fix:** Use an HTTP-based AI provider (e.g., OpenRouter) as the primary AI method. See `references/azure-ai-integration.md` for the complete Azure-safe AI architecture, required env vars (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`), and the refactored `hermes_ai.py` pattern. Key: OpenRouter API key is set via Azure App Settings, never in `.env` (which doesn't exist in Azure).
 
-17e. **⚠ OpenRouter model names MUST be verified against available models for your key:** Model names like `google/gemini-2.0-flash-001` may be deprecated or unavailable for your specific key tier. Symptom: `404 — No endpoints found for google/gemini-2.0-flash-001` in logs, AI always falls back to default. **Fix:** Before deploying, call `GET https://openrouter.ai/api/v1/models` with your key and verify the exact model ID exists. Recommended free models that are widely available: `openrouter/owl-alpha` (1M context), `qwen/qwen3-coder:free`, `google/gemma-4-26b-a4b-it:free`. Always set model via `OPENROUTER_MODEL` env var so it can be changed without code changes.
+17e. **⚠ OpenRouter model names MUST be verified against available models for your key:** Model names like `google/gemini-2.0-flash-001` or `openrouter/owl-alpha` may be deprecated or unavailable for your key tier. Symptom: `404 — No endpoints found for {model}` in logs, AI always falls back to default. **Fix:** Before deploying, call `GET https://openrouter.ai/api/v1/models` with your key, extract all `:free` models, and test the candidate(s) with an actual completion request. Never assume a model name works — verify it via the API. Recommended free models verified as of July 2026: `nvidia/nemotron-3-super-120b-a12b:free`, `openai/gpt-oss-120b:free`, `qwen/qwen3-coder:free`. Always set model via `OPENROUTER_MODEL` env var so it can be changed without code changes. See `references/openrouter-free-model-verification.md` for the full verification script and process.
 
 17f. **⚠ Azure Free tier may have outbound network restrictions causing API timeouts:** External API calls (OpenRouter, OpenAI, etc.) from Azure App Service Free F1 tier may hang or timeout (>30s) even when the same call works fine from your local machine. Symptom: webhook received but no reply, no error logs (async handler still waiting for external API). **Diagnosis:** Test the external API from Kudu console (`curl -v https://api.openrouter.ai/api/v1/key` from Kudu terminal). If curl times out from Azure but works from local, it's an Azure network restriction. **Mitigation:** Set fail-fast timeouts (connect=5s, read=10s), always have a default fallback response. Consider upgrading to Basic tier if AI response time is critical. See `references/ai-timeout-diagnosis.md` for the full diagnostic methodology and curl test patterns.
 
@@ -255,7 +255,7 @@ APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
 
 17l. **⚠ Azure log streaming delay — `az webapp log tail` shows stale output:** The `az webapp log tail` command frequently shows old log entries and misses recent webhook activity. Symptom: you deploy new code but the log stream still shows output from the previous deployment. **Workaround:** Use `az webapp log download --log-file /tmp/app_logs.txt` to download all logs as a zip, then extract and read the `containerStream.log` files directly. Alternatively, access logs via Kudu API (`https://{app}.scm.azurewebsites.net/api/vfs/LogFiles/`) — but Kudu requires its own auth token. For real-time debugging, add explicit `log.info()` calls in your code and grep the downloaded log file.
 
-17m. **⚠ OpenRouter model availability must be verified via API before deployment:** Model names from documentation may be deprecated or unavailable for your key tier. Symptom: `404 — No endpoints found for {model}` in logs, AI always falls back to default. **Diagnostic:** Before deploying, call `curl -s https://openrouter.ai/api/v1/models | python3 -m json.tool | grep -i "model_name"` and verify the exact model ID exists. Also call `curl -s https://openrouter.ai/api/v1/key` to check your key tier and available credits. Recommended widely-available free models: `openrouter/owl-alpha` (1M context), `google/gemma-4-26b-a4b-it:free`. Set model via `OPENROUTER_MODEL` env var so it can be changed without code changes.
+17m. **⚠ OpenRouter model availability must be verified via API before deployment:** Model names from documentation may be deprecated or unavailable for your key tier. Symptom: `404 — No endpoints found for {model}` in logs, AI always falls back to default. **Diagnostic:** Before deploying, call `curl -s https://openrouter.ai/api/v1/models | python3 -m json.tool | grep -i "model_name"` and verify the exact model ID exists. Also call `curl -s https://openrouter.ai/api/v1/key` to check your key tier and available credits. Verify free models by actually submitting a completion request (not just listing). Recommended widely-available free models (Jul 2026): `nvidia/nemotron-3-super-120b-a12b:free`, `liquid/lfm-2.5-1.2b-instruct:free`. Set model via `OPENROUTER_MODEL` env var so it can be changed without code changes.
 
 17n. **⚠ In-memory message deduplication pattern for webhook handlers:** To prevent duplicate replies when Meta re-delivers the same webhook event, implement a lightweight in-memory dedup dict keyed by `msg_id`:
 
@@ -319,15 +319,52 @@ def _is_too_long(text: str, max_len: int = 500) -> bool:
     return len(text) > max_len
 
 # In generate_reply():
-ai_reply = await ask_hermes(message, sender_name)
+loop = asyncio.get_event_loop()
+try:
+    ai_reply = await loop.run_in_executor(None, ask_hermes, message, sender_name)
+except Exception as e:
+    log.error(f"AI exception: {e}", exc_info=True)
+    ai_reply = None
 if ai_reply and not _is_too_long(ai_reply):
     return ai_reply
-# Fallback if AI output too long
+# Fallback if AI output too long or AI failed
 return CANONICAL_FALLBACK
 ```
 Combine with `max_tokens=150` and `temperature=0.3` in the AI API call for consistent short output.
 
 17t. **⚠ Sync I/O in async webhook handlers blocks the event loop:** When using FastAPI async handlers, calling synchronous file I/O (JSON read/write, SQLite) or `subprocess.run()` directly blocks the entire event loop — other webhook requests queue behind it. **Fix:** Wrap sync operations with `await loop.run_in_executor(None, sync_func, args)`. For subprocess, use `await asyncio.create_subprocess_exec()` with `await asyncio.wait_for(proc.communicate(), timeout=N)`. See `references/async-webhook-debugging.md` for complete patterns.
+
+17t2. **⚠ `await` on sync function crashes webhook handler — silent message drop:** Calling `await sync_func(...)` where `sync_func()` is a regular `def` (not `async def`) raises `TypeError: 'str' object is not awaitable` (or similar). This is **not caught by any try/except** in the webhook route — it propagates to FastAPI's exception handler which returns HTTP 200 with `{"status": "ok"}` but **never sends a WhatsApp reply**. Symptom: menu items (1/2/3/4) work perfectly because they return before the AI call, but every free-text question gets silently dropped.
+
+**Detection:** Cross-reference every `await X(...)` call against the function definition:
+
+```bash
+# List all async defs
+grep -n "^async def " webhook_listener.py hermes_ai.py db_logger.py
+# List all sync defs  
+grep -n "^def " *.py | grep -v "^def __\|# "
+# Find every await call
+grep -n "await " webhook_listener.py
+```
+
+Any `await` call to a function listed only under `^def ` (not `^async def`) is a bug.
+
+**Fix:** Wrap sync AI calls with `run_in_executor`:
+
+```python
+# BEFORE (broken — TypeError at runtime):
+ai_reply = await ask_hermes(message, sender_name)
+
+# AFTER (correct):
+loop = asyncio.get_event_loop()
+try:
+    ai_reply = await loop.run_in_executor(None, ask_hermes, message, sender_name)
+except Exception as e:
+    log.error(f"AI exception: {e}", exc_info=True)
+    ai_reply = None
+```
+
+See `references/async-webhook-debugging.md` § Pattern 5 for full diagnostic methodology. Also covered in `systematic-debugging` skill's `references/async-python-pitfalls.md`, Pattern 5.
 
 17u. **⚠ Overly broad keyword triggers cause misrouting:** Single-word triggers like `"repair"`, `"job"`, `"status"`, `"contact"` match unintended messages (e.g., "battery repair shop near me" → Menu 1). **Fix:** Use multi-word phrases only: `"semak harga"`, `"status job"`, `"hubungi staff"`. Keep single-digit menu numbers (`"1"`, `"2"`) as the only single-character triggers. See `references/async-webhook-debugging.md` § Logic.
 
@@ -516,10 +553,10 @@ Create a separate module for AI integration:
 ```python
 SOUL_CONTEXT = """You are the [BUSINESS] WhatsApp assistant..."""
 
-async def ask_hermes(user_message: str, sender_name: str) -> Optional[str]:
+def ask_hermes(user_message: str, sender_name: str) -> Optional[str]:
     """Send to Hermes Agent Core. Returns reply or None on failure."""
-    # Method 1: Try Hermes CLI
-    # Method 2: Try local API endpoint
+    # Method 1: Try OpenRouter HTTP API
+    # Method 2: Try local CLI fallback
     # Method 3: Return None (caller uses fallback)
 ```
 
@@ -562,13 +599,62 @@ async def generate_reply(message: str, sender_name: str, sender_number: str) -> 
         return reply
     
     # Tier 3: AI
-    ai_reply = await ask_hermes(message, sender_name)
+    # ⚠ ask_hermes() is typically sync — never use `await` directly
+    loop = asyncio.get_event_loop()
+    try:
+        ai_reply = await loop.run_in_executor(None, ask_hermes, message, sender_name)
+    except Exception as e:
+        log.error(f"AI exception: {e}", exc_info=True)
+        ai_reply = None
     if ai_reply:
         return ai_reply
     
     # Fallback
     return "Terima kasih! Sila tulis *menu* untuk pilihan."
 ```
+
+### Routing Logging Pattern
+
+Log every message's routing decision to enable debugging:
+
+```python
+# In _process_message(), before calling generate_reply:
+_routing = _detect_routing(user_message)
+log.info(f"🔄 Routing: teks='{user_message}' → intent={_routing}")
+
+reply_text = await generate_reply(user_message, sender_name, from_number)
+
+# After receiving reply:
+log.info(f"📤 Reply: intent={_routing}, latency={latency_ms}ms, fallback={reply_text == CANONICAL_FALLBACK}")
+```
+
+This produces the pattern:
+```
+🔄 Routing: teks='Malam ni bukak lagi ke' → intent=ai_query
+🤖 Routing to Hermes AI: 'Malam ni bukak lagi ke'
+📤 Reply: intent=ai_query, latency=1234ms, fallback=False
+```
+
+Use `_detect_routing()` function:
+```python
+def _detect_routing(message: str) -> str:
+    msg_lower = message.lower().strip()
+    if _is_greeting(msg_lower):    return "greeting"
+    if msg_lower in static_menu:   return "static_menu"
+    if _is_job_id(message):        return "job_status"
+    return "ai_query"
+```
+
+### Standard Fallback Message
+
+When AI fails or no valid response is generated, use this fallback:
+
+```
+Maaf, sistem sibuk sekejap. Untuk bantuan segera WhatsApp admin:
++60 16-980 8736 (https://hafjetraub.wasap.my/)
+```
+
+Store as `CANONICAL_FALLBACK` constant, not as a random string. Make it changeable via runtime settings: `get_runtime("fallback_message", CANONICAL_FALLBACK)`.
 
 ## Runtime Settings with In-Memory Cache
 

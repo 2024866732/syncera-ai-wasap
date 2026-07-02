@@ -1,7 +1,7 @@
 ---
 name: hafjet-deployment-plan
 description: "Use when discussing, planning, or executing deployment for the HAFJET WhatsApp Bot. Locked strategy with four environments (Azure, AWS, Heroku, Oracle), exact CLI steps, and decision matrices for upgrades, throttling recovery, and failovers."
-version: 1.5.0
+version: 1.7.0
 author: Hermes-HAFJET
 license: MIT
 metadata:
@@ -35,19 +35,20 @@ It covers four environments: Azure (primary production), AWS (staging), Heroku (
 | `references/b1-upgrade-troubleshooting.md` | F1→B1 upgrade steps + app unreachable after upgrade |
 | `references/azure-webapp-up-deploy.md` | `az webapp up` full deploy pattern (Oryx build, startup time budget, common failures) |
 | `references/oracle-cloud-free-tier.md` | Oracle Cloud Always Free tier: limits, regions, OCI CLI auth, A1.Flex deployment, capacity risks |
-| `references/placeholder-patch-deploy.md` | Placeholder replacement and deployment procedure for business information updates |
+| `references/pre-deploy-verification.md` | Pre-deploy verification workflow: show diff → test → wait for approval → deploy. Business data integrity rules. Routing debug pattern. |
 
 ## Workflow Rules
 
-1. **Always show exact diff before implementing** — Tuan Hafizi reviews code changes before any deployment. Never apply changes silently.
-2. **Audit before protecting** — When adding auth/middleware, audit frontend consumers first to avoid breaking existing functionality.
-3. **Fail closed, not open** — Security checks should reject by default when config is missing, not silently skip.
-4. **Minimal first pass** — Protect only what's necessary (write routes first, read routes later) to reduce blast radius.
-5. **Coordinated frontend-backend deploys** — When backend adds auth, frontend must send headers in the SAME deploy. Never deploy backend-only auth without updating frontend first. See `references/vite-env-injection.md` for the Vite build-time env var pattern.
-6. **Verify before declaring success** — After deploy, always run health checks + test protected routes with valid AND invalid credentials. Don't assume deployment = working.
-7. **Stop operations on throttle, do not retry** — If Azure returns 429 on plan create/delete, STOP all create/delete operations immediately. Do not retry until 15+ minutes have passed. Reuse existing resources only. See pitfall #23.
-8. **Prefer web app recreate over plan recreate** — Never delete the App Service Plan unless absolutely necessary. Deleting the last web app on a plan auto-deletes the plan regardless of `--keep-empty-plan`. If you must delete a web app, expect the plan to be deleted too and plan for the throttle window.
-9. **Verify before declaring success** — After deploy, always run health checks + test protected routes with valid AND invalid credentials. Don't assume deployment = working.
+1. **Show diff + test log before deploying** — Tuan Hafizi reviews code AND test output BEFORE any deployment. Never apply changes in production without prior approval.
+2. **Deploy only on explicit "deploy sekarang" command** — Do NOT deploy after showing diff. Wait for "deploy sekarang" or "DEPLOY SEKARANG". Showing approval-ready commands is fine; running them is not. Deploying without explicit approval is a violation.
+3. **Never invent business data** — Operating hours, prices, promotions, stock must come ONLY from verified files (business_info.txt, system_prompt.txt, intent_rules.json). If data is "belum sahkan"/"PENDING"/unconfirmed, don't change it. If missing, tell the user — never hardcode or fabricate.
+4. **Audit before protecting** — When adding auth/middleware, audit frontend consumers first to avoid breaking existing functionality.
+5. **Fail closed, not open** — Security checks reject by default when config is missing, never silently skip.
+6. **Minimal first pass** — Protect write routes first, read routes later — smaller blast radius.
+7. **Coordinated frontend-backend deploys** — Backend auth + frontend headers in the SAME deploy. Never deploy backend-only auth without frontend update first. See `references/vite-env-injection.md`.
+8. **Verify after deploy** — Health checks + test protected routes with valid AND invalid credentials. Don't assume deployment = working.
+9. **Stop on throttle, do not retry** — 429 on plan create/delete = STOP. Wait 15+ min, reuse existing resources.
+10. **Prefer web app recreate over plan recreate** — Deleting last web app auto-deletes plan. Expect it and plan for throttle window.
 
 ## Current State (2026-06-28)
 
@@ -149,7 +150,7 @@ path = Path("webhook_listener.py")
 text = path.read_text(encoding="utf-8")
 
 replacements = {
-    "[Nombor HAFJET]": "+60 11-4956 1698",
+    "[Nombor HAFJET]": "+60 16-980 8736",
     "[Alamat Kedai HAFJET]": "No. 890 Jalan Lestari 20, Taman Amalina Lestari, 27600 Raub, Pahang",
     "[Alamat Penuh Kedai]": "No. 890 Jalan Lestari 20, Taman Amalina Lestari, 27600 Raub, Pahang",
     "[Google Maps link]": "https://g.co/kgs/95C9TB",

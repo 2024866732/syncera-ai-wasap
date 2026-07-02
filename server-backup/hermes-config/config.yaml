@@ -1,14 +1,18 @@
 model:
   provider: openrouter
   base_url: https://openrouter.ai/api/v1
-  default: openrouter/owl-alpha
+  default: deepseek/deepseek-v4-flash
   api_mode: chat_completions
 providers:
   cerebras:
     base_url: https://api.cerebras.ai/v1
     api_mode: chat_completions
     key_env: CEREBRAS_API_KEY
-fallback_providers: []
+fallback_providers:
+  - provider: openrouter
+    model: openrouter/qwen3-coder:free
+  - provider: cerebras
+    model: gpt-oss-120b
 credential_pool_strategies: {}
 toolsets:
 - hermes-cli
@@ -21,6 +25,7 @@ agent:
   service_tier: ''
   tool_use_enforcement: auto
   task_completion_guidance: true
+  parallel_tool_call_guidance: true
   environment_probe: true
   environment_hint: ''
   coding_context: auto
@@ -113,6 +118,18 @@ compression:
   protect_first_n: 3
   abort_on_summary_failure: false
   codex_gpt55_autoraise: true
+kanban:
+  dispatch_in_gateway: true
+  dispatch_interval_seconds: 60
+  failure_limit: 2
+  worker_log_rotate_bytes: 2097152
+  worker_log_backup_count: 1
+  orchestrator_profile: ''
+  default_assignee: ''
+  max_in_progress_per_profile: null
+  auto_decompose: true
+  auto_decompose_per_tick: 3
+  dispatch_stale_timeout_seconds: 14400
 prompt_caching:
   cache_ttl: 5m
 openrouter:
@@ -451,6 +468,7 @@ approvals:
   destructive_slash_confirm: true
 command_allowlist: []
 quick_commands: {}
+platform_hints: {}
 hooks: {}
 hooks_auto_accept: false
 personalities: {}
@@ -470,18 +488,6 @@ security:
 cron:
   wrap_response: true
   max_parallel_jobs: null
-kanban:
-  dispatch_in_gateway: true
-  dispatch_interval_seconds: 60
-  failure_limit: 2
-  worker_log_rotate_bytes: 2097152
-  worker_log_backup_count: 1
-  orchestrator_profile: ''
-  default_assignee: ''
-  max_in_progress_per_profile: null
-  auto_decompose: true
-  auto_decompose_per_tick: 3
-  dispatch_stale_timeout_seconds: 14400
 code_execution:
   mode: project
 tools:
@@ -608,6 +614,3 @@ image_gen:
   provider: openai-codex
   use_gateway: false
   model: gpt-image-2-medium
-fallback:
-  provider: cerebras
-  model: gpt-oss-120b

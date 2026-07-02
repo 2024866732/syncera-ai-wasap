@@ -188,11 +188,11 @@ See `references/telegram-delivery-pattern.md` for the full pattern including:
 
 ## See Also
 
-- `references/loyverse-api-notes.md` — Loyverse-specific API quirks and working patterns
+- `references/loyverse-api-notes.md` — Loyverse-specific API quirks and working patterns (includes client-side date filtering, cost/profit fields)
 - `references/cron-timezone-guide.md` — Server UTC vs MYT timezone conversion for cron jobs
 - `references/shell-token-extraction.md` — Why shell grep|cut fails for token extraction
 - `references/telegram-delivery-pattern.md` — Telegram bot delivery pattern for report summaries
-- `scripts/fetch_sales.py` — Working example: Loyverse daily sales report script with CSV export
+- `scripts/fetch_sales.py` — Working example: Loyverse daily sales report with client-side date filtering, profit calculation, and CSV export
 - `whatsapp-webhook-dev` — WhatsApp Cloud API webhook development (FastAPI, Meta Graph API)
 
 ## Skill Authoring Note

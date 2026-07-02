@@ -115,15 +115,68 @@ if msg_lower.startswith("job-"):
     return False  # Only Job ID format
 ```
 
+## Pattern 5: `await` on Sync Function (Non-Coroutine)
+
+### Symptom
+Silent message drop in webhook handlers. Bot works for keyword-triggered menu items but **never replies** to free-text messages. No reply is sent, only a logger warning about an unexpected exception.
+
+### Root Cause
+Calling `await sync_func(...)` where `sync_func()` is a **regular `def`** (not `async def`). Python evaluates the call, then tries to `await` the returned value (string, None, dict, etc.) — raising `TypeError: 'str' object is not awaitable` (or similar).
+
+### Detection
+
+**Step 1:** Find every `await` call and verify the target is actually `async def`:
+
+```bash
+# List all async defs
+grep -n "^async def " webhook_listener.py hermes_ai.py db_logger.py
+
+# List all sync defs
+grep -n "^def " webhook_listener.py hermes_ai.py db_logger.py | grep -v "^def __\|# "
+
+# Find every await call
+grep -n "await " webhook_listener.py
+```
+
+**Step 2:** Cross-reference each `await X(...)` call against the function definitions:
+- `await async_func(...)` — ✅ correct (async defines exist)
+- `await sync_func(...)` — ❌ BUG (will crash at runtime)
+
+### Fix
+
+```python
+import asyncio
+
+# BEFORE (broken — TypeError at runtime):
+ai_reply = await ask_hermes(message, sender_name)
+
+# AFTER (correct — runs sync function in executor):
+loop = asyncio.get_event_loop()
+try:
+    ai_reply = await loop.run_in_executor(None, ask_hermes, message, sender_name)
+except Exception as e:
+    log.error(f"Ai exception: {e}", exc_info=True)
+    ai_reply = None
+```
+
+### Why it happens
+A developer makes `generate_reply()` async (because it awaits async helpers like `send_whatsapp_message`), then naively adds `await ask_hermes(...)` assuming it's also async. Import-time inspection of `async def` vs `def` would reveal the mismatch immediately.
+
+### Real-world impact
+This was the root cause of the HAFJET WhatsApp bot's "silent 500 / no response" for free-text messages. Menu items (1/2/3/4) returned before STEP 5 and worked fine, but every free-text question triggered the TypeError and silently dropped the reply.
+
 ## Quick Scan Command
 
 ```bash
 # Find all potential async blocking issues
-grep -n "subprocess\.run\|\.read()\|\.write()\|json\.load\|json\.dump" webhook_listener.py hermes_ai.py
+grep -n "subprocess\\.run\\|\\.read()\\|\\.write()\\|json\\.load\\|json\\.dump" webhook_listener.py hermes_ai.py
 
 # Find signature bypass patterns
-grep -n "or not.*KEY\|or not.*SECRET\|or not.*TOKEN" *.py
+grep -n "or not.*KEY\\|or not.*SECRET\\|or not.*TOKEN" *.py
 
 # Find overly broad keyword triggers
-grep -n 'msg_lower in \[' webhook_listener.py
+grep -n 'msg_lower in \\[' webhook_listener.py
+
+# Find 'await on sync function' bugs (cross-reference with ^def, not ^async def)
+grep -n "await " webhook_listener.py | grep -v "run_in_executor\|asyncio\." | grep -v "get_stats\|log_inbound\|log_outbound\|get_recent\|get_customer\|send_whatsapp\|websocket\|call_next\|request\.body\|client\.post"
 ```

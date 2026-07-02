@@ -332,6 +332,7 @@ These techniques are part of systematic debugging and available in this director
 - **`github-push-protection.md`** — GitHub Push Protection blocking `git push` due to secrets in history (gh OAuth tokens, API keys). Diagnostic + `git filter-repo` fix.
 - **`azure-zip-deployment.md`** — Azure App Service zip deploy patterns, excludes, startup commands, env vars
 - **`ai-timeout-diagnosis.md`** - Diagnosing external AI API failures (OpenRouter, etc.) from Azure
+- **`ai-llm-logging-fallback.md`** - Detailed logging of LLM requests/responses, config validation, timeout handling, empty/None response fallback
 
 **Related skills:**
 - **superpowers:test-driven-development** - For creating failing test case (Phase 4, Step 1)
