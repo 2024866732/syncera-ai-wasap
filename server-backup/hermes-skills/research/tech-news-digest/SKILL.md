@@ -2,7 +2,7 @@
 name: tech-news-digest
 description: Produce structured technology and AI news digest reports in Malay with Kelantan dialect. Covers web searching, article extraction, GitHub trending, and formatted delivery for solo founder/director consumption.
 trigger: top technology news, AI news roundup, open source AI digest, GitHub trending, tech digest, weekly tech report, AI industry news summary, tech news this week
-version: 1
+version: 2
 ---
 
 # Tech News & AI Digest
@@ -32,15 +32,22 @@ Add a 4th query if a specific variant is requested. Run all searches in a single
 
 ### 2. Extract Details from Best Results (3-5 URLs)
 
-Try `web_extract` first. If it fails (DuckDuckGo backend is search-only), fall back to browser extraction.
+**Skip `web_extract` entirely.** In this environment web_extract always fails (DuckDuckGo ddgs is a search-only backend). Go directly to browser extraction.
 
-**Do NOT use web_extract as a standalone tool when the error says "search-only backend".** Use the browser fallback pattern below.
+**Primary method — browser_snapshot (simplest, works universally):**
+1. `browser_navigate(url)` — returns initial snapshot
+2. `browser_scroll(direction='down')` — triggers lazy content
+3. `browser_snapshot(full=true)` — returns complete page text
 
-Browser fallback pattern:
+This works for every page type regardless of HTML structure. No CSS selectors or JS needed.
+
+**Alternative — browser_console JS extraction (faster for known sites):**
 1. `browser_navigate(url)`
 2. `browser_console(expression="document.querySelector('article').innerText")` — works for most news sites
 3. If article selector returns null: `browser_console(expression="document.body.innerText.substring(0, 8000)")`
 4. If truncated by page laziness: scroll down then re-extract
+
+Choose browser_snapshot for unknown sites (works always), browser_console for sites you know have clean `<article>` tags (faster, less overhead).
 
 ### 3. Compose the Report
 

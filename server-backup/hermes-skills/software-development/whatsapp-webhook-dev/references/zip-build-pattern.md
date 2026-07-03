@@ -39,13 +39,27 @@ Verify with: `head -3 .env.example` — should show `your_token_here` style plac
 ## Pre-Flight Verification
 
 After building, always verify:
-1. Required files included (`webhook_listener.py`, `start.sh`, etc.)
+1. Required files included (`webhook_listener.py`, `db_logger.py`, `hermes_ai.py`, `repair_db.py`, `start.sh`, etc.)
 2. Dashboard dist included (4+ files)
 3. `bot_data.db` excluded
 4. `.env` excluded
 5. No `node_modules/` entries
 6. No `deploy.zip` self-inclusion
 7. Report total size and entry count
+
+**Pitfall — zipfile timeout on huge `node_modules`:** If `os.walk('.')` with `zipfile.ZipFile` times out because `node_modules` is massive, switch to an explicit file list instead of recursive walk:
+```python
+files = [
+    'webhook_listener.py', 'db_logger.py', 'hermes_ai.py', 'repair_db.py',
+    'requirements.txt', 'start.sh',
+]
+for f in files:
+    if os.path.exists(f): z.write(f, f)
+for root, dirs, fnames in os.walk('dashboard/dist'):
+    for f in fnames:
+        z.write(os.path.join(root, f), os.path.relpath(os.path.join(root, f), '.'))
+```
+This avoids descending into `node_modules` entirely and guarantees predictable build time.
 
 ## Integration with pip install on Azure
 

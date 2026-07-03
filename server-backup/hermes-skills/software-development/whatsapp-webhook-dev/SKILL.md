@@ -403,6 +403,8 @@ This is a one-time config — survives deploys. Without it on Free tier, cold st
 
 17z. **⚠ Deploying updated dashboard/dist to Azure without triggering rebuild:** Prefer `az webapp deploy --type zip --src-path dist.zip` over Kudu VFS API. VFS upload requires Kudu credentials which are always redacted by Azure CLI. If you must update only `dashboard/dist/`, deploy the full zip with `SCM_DO_BUILD_DURING_DEPLOYMENT=false` + `ENABLE_ORYX_BUILD=false` to skip Oryx build entirely. See `references/azure-kudu-vfs-deploy.md` for when VFS is the only option.
 
+17aa. **⚠ `routing_path` string mismatch causes silent analytics failure:** When `_detect_routing()` returns a value that differs from the hardcoded strings in SQL analytics queries, counters silently return zero while the bot operates normally. Example: `_detect_routing()` returns `"ai_query"` but `_query_stats()` filters with `WHERE routing_path='ai'`. Symptom: dashboard shows `today_ai_calls=0` and `fallback_rate=100%` despite bot replying correctly. **Detection:** (1) Compare producer constants vs SQL literals with `grep`. (2) If stored `routing_path` values differ from query filters, queries will return 0. (3) Add `SELECT routing_path, COUNT(*) FROM messages GROUP BY routing_path` to inspect actual values. **Fix:** Make producer and consumer use identical strings. See `references/routing-path-mismatch.md` for the diagnostic recipe.
+
 17aa. **⚠ `az webapp config appsettings set --settings KEY=VALUE` NULLIFIES all other settings:** This command REPLACES the entire settings collection with only what you pass. Existing keys not included become null. **ALWAYS** backup → modify → apply ALL settings at once. See `references/azure-settings-preservation.md` for the safe Python workflow and `references/azure-safe-update-workflow.md` for the exact CLI commands used in production.
 
 17ab. **⚠ `az webapp deploy --type zip` on Linux App Service PRESERVES `appCommandLine`** — unlike Windows, Linux zip deploy does NOT reset the startup command. Do NOT proactively re-set `appCommandLine` after every Linux deploy — you risk conflicting with the working config. If `/health` works after deploy, `start.sh` is running correctly. Only re-set if `appCommandLine` is confirmed null via `az webapp config show --query appCommandLine`.
@@ -423,6 +425,36 @@ async def websocket_endpoint(websocket: WebSocket):
 **Never assume tier limitation** — always test locally first. See `references/websocket-debugging.md`.
 
 17x. **⚠ Telegram DM topic stuck — cron job delivery anchor error:** Cron jobs with `deliver: "origin"` fail with "Telegram DM topic delivery requires a reply anchor" when the origin has a `thread_id`. **Fix:** Remove `thread_id` from cron job origin or set deliver to target the main chat explicitly. See `references/async-webhook-debugging.md` § Telegram DM Topic Debugging.
+
+17ah. **⚠ VITE_API_KEY must be set at build time for dashboard auth — unprotected 401 on all write routes:** If VITE_API_KEY is not set during npm run build, the React frontend sends X-API-Key: "" (empty string) on all protected API calls. The backend middleware checks if provided != DASHBOARD_API_KEY and returns 401. This affects: Manual Takeover, Resolve, Escalate, Note, and Handoff endpoints. Fix: set VITE_API_KEY before build: VITE_API_KEY=$DASHBOARD_API_KEY npm run build (fetch DASHBOARD_API_KEY from Azure App Settings).
+
+17ai. **⚠ Field name mismatch between DB columns and React frontend — all messages show "SYSTEM" with blank content:** The /api/messages/{phone} endpoint returns raw SQLite rows with `content` column, but MessageBubble.jsx reads `message.message` for text and `message.source` for the StatusBadge label. Both fields are undefined, causing StatusBadge to always show "SYSTEM" and text content to render blank. Fix: Add response transformation in the API endpoint to alias content → message and derive source from direction. See patch code above.
+
+17aj. **⚠ WebSocket event name mismatch between backend broadcast and frontend handler:** Backend `broadcast_ws()` sends events with `{"event": "inbound_message", "data": {"phone": ..., "content": ...}}`, but ChatView.jsx checks `data.type === 'new_message' && data.data` and `msg.from === phone || msg.to === phone`. Neither the event name nor the field names match → WebSocket never appends new messages to the chat view. Fix in ChatView.jsx:
+
+```javascript
+const handleWsMessage = (event) => {
+  const data = JSON.parse(event.data);
+  const isNewMsg = data.event === 'inbound_message' || data.event === 'outbound_message';
+  if (isNewMsg && data.data) {
+    const msg = data.data;
+    // broadcast sends phone, not from/to
+    if (msg.phone === phone) {
+      // Ensure content→message and direction→source aliases for MessageBubble
+      msg.message = msg.message || msg.content || '';
+      msg.source = msg.source || msg.direction || 'bot';
+      setMessages(...);
+    }
+  }
+};
+```
+
+**Double mismatch to verify:**
+| Layer | Event Type Key | Customer ID Key |
+|-------|---------------|-----------------|
+| Backend broadcast | `event` | `phone` |
+| Frontend (broken) | `type` | `from` / `to` |
+| Frontend (fixed) | `event` | `phone` |
 
 17s. **⚠ GitHub Pages hosting for Privacy Policy (Meta compliance):** Fastest way to host a Privacy Policy for Meta App Review:
 ```bash
@@ -690,7 +722,7 @@ For operator-configurable bot behavior without redeploys, use a simple in-memory
 - `references/publish-checklist.md` — **Meta App publish checklist**: Development → Live mode requirements, Privacy Policy hosting, Advanced Access, Business Verification, toggle Live
 - `templates/privacy-policy.html` — **Privacy Policy HTML template**: Ready-to-customize template for Meta Publish requirement. Replace `[COMPANY_NAME]` placeholders, host on GitHub Pages. Includes PDPA 2010 compliance sections
 - `references/reply-dedup-pattern.md` — **Anti-duplicate reply architecture**: greeting detection in both layers, canonical constants, msg_id deduplication (5-min window), AI output constraints, routing priority order
-- `references/operator-actions.md` — **Operator dashboard actions backend**: SQLite migration pattern (try/except ALTER), resolve/escalate/note/handoff endpoints, status tracking, WebSocket broadcast, settings API with type validation, POST JSON body pattern for optional fields
+references/analytics-chart-upgrade.md — Analytics chart upgrade pattern (Reply.la-style): backend endpoints, Recharts frontend, CircularProgress component, SPA catch-all route for React Router, deploy workflow
 - `references/async-webhook-debugging.md` — **Async webhook audit**: Security (signature bypass), performance (event loop blocking from sync I/O & subprocess), logic (overly broad keyword triggers), Telegram DM topic debugging (session IDs, flood control, cron delivery anchor errors)
 - `references/security-hardening-audit.md` — **Security hardening audit**: Rate limiting (sliding window middleware), dashboard API auth (X-API-Key header), webhook signature fail-closed fix, structured JSON logging with phone/token masking, security event spike alerting, prioritized P1-P4 checklist
 - `references/meta-review-answers.md` — **Copy-paste ready Meta review answers**: Use case descriptions and data usage explanations for `whatsapp_business_messaging` and `whatsapp_business_management` permissions

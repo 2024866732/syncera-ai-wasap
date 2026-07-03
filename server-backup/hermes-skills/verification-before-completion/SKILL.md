@@ -53,6 +53,7 @@ Skip any step = lying, not verifying
 
 - Using "should", "probably", "seems to"
 - Expressing satisfaction before verification ("Great!", "Perfect!", "Done!", etc.)
+- **Reassurance phrases without evidence**: "semua ok", "all ok", "everything looks good", "should work now", "no issues" — ALL of these require a fresh verification command + exit code in the same message. Phrase alone = claim without evidence.
 - About to commit/push/PR without verification
 - Trusting agent success reports
 - Relying on partial verification

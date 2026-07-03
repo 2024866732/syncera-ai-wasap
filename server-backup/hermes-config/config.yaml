@@ -1,18 +1,15 @@
 model:
-  provider: openrouter
-  base_url: https://openrouter.ai/api/v1
-  default: deepseek/deepseek-v4-flash
+  provider: opencode-zen
+  base_url: https://opencode.ai/zen/v1
+  default: deepseek-v4-flash-free
+  api_key: user_3j26u9xomcftzkdU61r2hb9x8xAJcSaBKvZmAXB65CRLkpLSbh92TaU6eT1sPCrkUdKZb2JwKoHacSYLAnAeCkEq
   api_mode: chat_completions
 providers:
   cerebras:
     base_url: https://api.cerebras.ai/v1
     api_mode: chat_completions
     key_env: CEREBRAS_API_KEY
-fallback_providers:
-  - provider: openrouter
-    model: openrouter/qwen3-coder:free
-  - provider: cerebras
-    model: gpt-oss-120b
+fallback_providers: []
 credential_pool_strategies: {}
 toolsets:
 - hermes-cli
@@ -614,3 +611,6 @@ image_gen:
   provider: openai-codex
   use_gateway: false
   model: gpt-image-2-medium
+fallback_model:
+  provider: cerebras
+  model: gpt-oss-120b

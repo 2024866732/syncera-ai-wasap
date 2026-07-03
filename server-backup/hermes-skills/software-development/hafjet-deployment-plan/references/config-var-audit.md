@@ -12,7 +12,7 @@
 | `APP_SECRET` | `APP_SECRET` | `4160d...148b` | No | Used for webhook signature verification |
 | `WEBHOOK_VERIFY_TOKEN` | `VERIFY_TOKEN` | `HAFJET_RAUB_RAK` | Yes (`HAFJET_RAUB_RAK`) | |
 | `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY` | `sk-or-...` | No | |
-| `OPENROUTER_MODEL` | `OPENROUTER_MODEL` | `openrouter/owl-alpha` | Yes | |
+| `OPENROUTER_MODEL` | `OPENROUTER_MODEL` | `nvidia/nemotron-3-super-120b-a12b:free` | Yes | Env > DB > default. DB cannot disable. |
 | `OPENROUTER_BASE_URL` | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Yes | |
 | `OPENROUTER_TIMEOUT` | `AI_TIMEOUT` | `30` | Yes (`30`) | |
 | `port` | `WEBHOOK_PORT` | (not set) | Yes (`8443`) | Not needed on Heroku (uses `$PORT`) |
@@ -46,7 +46,7 @@ heroku config:set \
   APP_SECRET="REPLACE" \
   VERIFY_TOKEN="HAFJET_RAUB_RAK" \
   OPENROUTER_API_KEY="REPLACE" \
-  OPENROUTER_MODEL="openrouter/owl-alpha" \
+  OPENROUTER_MODEL="nvidia/nemotron-3-super-120b-a12b:free" \
   OPENROUTER_BASE_URL="https://openrouter.ai/api/v1" \
   AI_TIMEOUT="30" \
   APP_REFERER="https://hafjet.com"

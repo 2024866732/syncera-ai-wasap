@@ -33,30 +33,82 @@ for col_def in [
 
 **Why:** Run on every startup — new columns added only if not present. Zero-downtime, no migration scripts.
 
-## API Endpoints
+## Async-Safe DB Operations — `run_in_executor`
 
-### GET /api/customers/{phone}
-Single customer details.
+**Critical:** All operator action endpoints call synchronous database functions. In FastAPI async handlers, sync DB calls BLOCK the event loop. If SQLite is busy (e.g., another webhook saving a message), the request hangs indefinitely → frontend spinner never stops.
 
-### POST /api/customers/{phone}/resolve
-Set `status='resolved'`, set `resolved_at`.
+### Fix Pattern
 
-### POST /api/customers/{phone}/escalate
-Set `status='escalated'`, set `escalated_at`.
+Wrap every sync DB call with `await loop.run_in_executor(None, sync_func, args)`:
 
-### POST /api/customers/{phone}/note
-Accept JSON body `{"note": "text"}`. Updates note field.
-
-### Response format:
-```json
-{"status": "ok", "action": "resolved", "customer": {...}}
-```
-
-### 404 if customer doesn't exist:
 ```python
-if not data:
-    raise HTTPException(status_code=404, detail="Customer not found")
+@app.post("/api/customers/{phone}/note")
+async def api_note(phone: str, data: dict, operator: str = "dashboard"):
+    try:
+        note = data.get("note", "")
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, update_customer_note, phone, note, operator)
+        if not result:
+            raise HTTPException(status_code=404, detail="Customer not found")
+        return {"status": "ok", "action": "note_updated", "customer": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error(f"❌ api_note failed: {e}", exc_info=True)
+        return {"status": "error", "success": False, "error": str(e)}
 ```
+
+**Also apply to:** `api_resolve`, `api_escalate`, `api_handoff`.
+
+### `broadcast_ws` Must Be OUTSIDE the Executor Thread
+
+`broadcast_ws()` calls `asyncio.get_event_loop().create_task(...)`. Inside a thread executor, `get_event_loop()` returns a **different event loop** than the main async context. The broadcast silently fails.
+
+```python
+# WRONG — broadcast_ws inside the executor function:
+def _do_handoff():
+    conn.execute(...)
+    conn.commit()
+    broadcast_ws(...)  # ⚠️ asyncio.get_event_loop() in executor thread → silent failure
+    conn.close()
+    return get_customer_detail(phone)
+
+detail = await loop.run_in_executor(None, _do_handoff)
+
+# RIGHT — broadcast_ws in main async context:
+def _do_handoff():
+    conn.execute(...)
+    conn.commit()
+    conn.close()
+    return get_customer_detail(phone)
+
+detail = await loop.run_in_executor(None, _do_handoff)
+broadcast_ws("customer_handoff", {...})  # ✅ main async context
+```
+
+### Error Response for Frontend
+
+Always include try/except with fallback JSON response:
+
+```python
+except Exception as e:
+    log.error(f"❌ api_resolve failed: {e}", exc_info=True)
+    return {"status": "error", "success": False, "error": str(e)}
+```
+
+This ensures the frontend gets a valid JSON response and can show meaningful error toasts instead of hanging forever.
+
+### Diagnosis: Spinner Never Stops
+
+If a spinner keeps spinning after clicking an action button:
+
+1. **Check Azure logs** for the endpoint — look for 200 (success), 500/503 (exception), or no log line (request never arrived)
+2. **If no log line:** Request hung before reaching the endpoint — likely auth middleware (401) or CORS issue
+3. **If 500 with `TypeError`:** Likely `await` on a sync function — check the signaure
+4. **If 500 with no obvious error:** Sync DB call blocking the event loop — add `run_in_executor`
+5. **If 200 with `{"success": false}`:** Exception was caught and returned as error JSON — check the `error` field
+
+**Most common cause:** Sync `update_customer_note()`, `resolve_customer()`, or `escalate_customer()` called directly in an `async def` handler without `run_in_executor`.
 
 ## Status Values
 
@@ -79,28 +131,39 @@ When staff wants to manually take over a conversation from the bot:
 ```python
 @app.post("/api/customers/{phone}/handoff")
 async def api_handoff(phone: str, data: dict, operator: str = "dashboard"):
-    status = data.get("status", "handoff")
-    message = data.get("message", "")
+    try:
+        status = data.get("status", "handoff")
+        message = data.get("message", "")
 
-    # Optionally send a WhatsApp message as staff
-    if message:
-        asyncio.create_task(send_whatsapp_message(phone, message))
+        # Optionally send a WhatsApp message as staff
+        if message:
+            asyncio.create_task(send_whatsapp_message(phone, message))
 
-    # Update status
-    conn = _get_db()
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    conn.execute(
-        "UPDATE customers SET status=?, handoff_at=? WHERE phone=?",
-        (status, now, phone)
-    )
-    conn.commit()
-    broadcast_ws("customer_handoff", {"phone": phone, "status": "handoff"})
-    conn.close()
+        # Update status via executor — DB ops block event loop
+        def _do_handoff():
+            conn = _get_db()
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            conn.execute(
+                "UPDATE customers SET status=?, handoff_at=? WHERE phone=?",
+                (status, now, phone)
+            )
+            conn.commit()
+            conn.close()
+            return get_customer_detail(phone)
 
-    detail = get_customer_detail(phone)
-    if not detail:
-        raise HTTPException(status_code=404, detail="Customer not found")
-    return {"status": "ok", "action": "handoff", "customer": detail}
+        loop = asyncio.get_event_loop()
+        detail = await loop.run_in_executor(None, _do_handoff)
+        # broadcast_ws must be in main async context, not inside executor
+        broadcast_ws("customer_handoff", {"phone": phone, "status": "handoff"})
+
+        if not detail:
+            raise HTTPException(status_code=404, detail="Customer not found")
+        return {"status": "ok", "action": "handoff", "customer": detail}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error(f"❌ api_handoff failed: {e}", exc_info=True)
+        return {"status": "error", "success": False, "error": str(e)}
 ```
 
 ### POST Endpoint Pattern — JSON Body for Optional Fields

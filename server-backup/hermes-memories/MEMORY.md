@@ -4,8 +4,12 @@ User preference: Concise, scannable answers (tables/bullets). One unit of work p
 §
 Azure deploy: Python zipfile (no zip cmd). Throttle 429→STOP, never loop. Region SE Asia. Never az webapp up (nulls settings). Oryx DELETES .py from /home/site/wwwroot→start.sh must `find /tmp /home -name webhook_listener.py` dynamically. Include ALL .py in ZIP (not hardcoded list). ZIP excludes .env,node_modules,__pycache__,.git,venv.
 §
-OCI migration (2026-06-27): Region ap-kulai-2 (Malaysia). Tenancy=ocid1.tenancy.oc1..aaaaaaaaigehfv7zkt2uuv5p74tx6yordkpk5sfdz2wkoiknfi7affzkivza. Target: A1.Flex 1 OCPU/6GB Ubuntu 24.04 aarch64. Do NOT provision without confirmation after availability check.
+WhatsApp Bot: single source of truth = Azure env vars. Critical keys: OPENROUTER_MODEL, AI_ENABLED, BOT_ACTIVE. DB is fallback only. Always show diff+test before deploy; deploy only on explicit command.
 §
-WhatsApp Bot Azure (2026-06-28): ONLINE ✅ HTTP 200. Oryx path fix (dynamic find + PYTHONPATH), all .py in ZIP, DB at /home/data/bot_data.db (persistent), webhook verify + /health live.
+HAFJET bot deployed with env-override config precedence. Effective model = nvidia/nemotron-3-super-120b-a12b:free. Dashboard shows effective values + today-only analytics with date picker. MODEL_DEBUG logging active.
 §
-Hermes model chain: Primary nvidia/nemotron-3-super-120b-a12b:free via OpenRouter (base_url https://openrouter.ai/api/v1/chat/completions). Free models: ~20 req/min limit, 429 retry once after 2s fallback. Dedup bug: _is_duplicate() never saved msg_id to dict — fixed by adding _processed_messages[msg_id]=now. Business data confirmed: Phone=+60 16-980 8736 (single number), Hours=9AM-9PM every day, Location=Raub Pahang.
+FastAPI SPA catch-all: When serving React SPA alongside API, add `@app.get("/{full_path:path}")` as LAST route with `if full_path.startswith("api/"): raise HTTPException(404)` guard. Route order matters — catch-all must be after all other routes.
+§
+User is cost-conscious; prefers OpenAI-compatible endpoints for Hermes. Currently evaluating providers: OpenCode Go $10/mo (preferred), OpenRouter :free fallback, direct APIs.
+§
+Sprint 1 Feature 3 Analytics deployed: `/api/analytics/overview` + `/api/analytics/chart?days=7` (X-API-Key protected). `start.sh` auto-installs missing Python deps to fix cold-start `ModuleNotFoundError`.

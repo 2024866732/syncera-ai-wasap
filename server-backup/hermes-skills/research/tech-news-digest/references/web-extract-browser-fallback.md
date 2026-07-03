@@ -7,13 +7,23 @@ This is a hard limitation when the Hermes session is configured with `web_extrac
 
 **Solution:** Use the browser tool as the article extraction path.
 
-## Extraction Sequence
+## Extraction Sequence (Two Methods)
 
-1. Navigate: `browser_navigate(url)`
-2. Extract text: `browser_console(expression="document.querySelector('article').innerText")`
+### Method A: browser_snapshot (preferred — works universally)
+
+1. `browser_navigate(url)` — navigate to page
+2. `browser_scroll(direction='down')` — trigger lazy content
+3. `browser_snapshot(full=true)` — get full page content as text
+
+This method works for ALL page types regardless of HTML structure. No CSS selectors needed.
+
+### Method B: browser_console JS extraction (faster for known sites)
+
+1. `browser_navigate(url)` — navigate to page
+2. `browser_console(expression="document.querySelector('article').innerText")` — extract via JS selector
 3. If too long, truncate: `browser_console(expression="document.querySelector('article').innerText.substring(0, 8000)")`
-4. If no `<article>` tag exists: `browser_console(expression="document.body.innerText.substring(0, 5000)")`
-5. If content is lazy-loaded: `browser_scroll(direction='down')` then retry extraction
+4. If no `<article>` tag: `browser_console(expression="document.body.innerText.substring(0, 5000)")`
+5. If content lazy-loaded: `browser_scroll(direction='down')` then retry
 
 ## Important Notes
 

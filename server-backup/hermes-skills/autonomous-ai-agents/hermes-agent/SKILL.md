@@ -399,8 +399,15 @@ Full config reference: https://hermes-agent.nousresearch.com/docs/user-guide/con
 | OpenCode Zen | API key | `OPENCODE_ZEN_API_KEY` |
 | OpenCode Go | API key | `OPENCODE_GO_API_KEY` |
 | Qwen OAuth | OAuth | `hermes auth add qwen-oauth` |
+| CommandCode | API key | `model.api_key` in config.yaml |
 | Custom endpoint | Config | `model.base_url` + `model.api_key` in config.yaml |
 | GitHub Copilot ACP | External | `COPILOT_CLI_PATH` or Copilot CLI |
+
+**Custom provider notes:**
+- CommandCode exposes both OpenAI-compatible `/chat/completions` and Anthropic-compatible `/messages` under `https://api.commandcode.ai/provider/v1`.
+- Some CommandCode models must be called through `/messages` even from OpenAI-format clients; Hermes routes using `model.api_mode` (`chat_completions` or `messages`).
+- CommandCode Go plan can list models but may reject inference calls; upgrade to Provider/Max for chat access.
+- CommandCode supports `Authorization: Bearer *** and `x-api-key: <token>` auth; test both if one fails.
 
 Full provider docs: https://hermes-agent.nousresearch.com/docs/integrations/providers
 
@@ -822,7 +829,9 @@ and logs — avoids shell-escaping backslashes in bash.
 1. `hermes doctor` — check config and dependencies
 2. `hermes auth` — re-authenticate OAuth providers (or `hermes auth add <provider>`)
 3. Check `.env` has the right API key
-4. **Copilot 403**: `gh auth login` tokens do NOT work for Copilot API. You must use the Copilot-specific OAuth device code flow via `hermes model` → GitHub Copilot.
+**4. Copilot 403**: `gh auth login` tokens do NOT work for Copilot API. You must use the Copilot-specific OAuth device code flow via `hermes model` → GitHub Copilot.
+**5. CommandCode plan gating**: Go-plan accounts may receive `permission_error` on inference endpoints even with a valid API key. Upgrade to Provider/Max, or set `fallback_providers` to maintain availability.
+**6. Provider endpoint mismatch**: If a provider returns `unsupported_model` for `/chat/completions`, retry through its Anthropic-compatible `/messages` route and set `model.api_mode: messages` or provider-specific routing in config.
 
 ### Changes not taking effect
 - **Tools/skills:** `/reset` starts a new session with updated toolset

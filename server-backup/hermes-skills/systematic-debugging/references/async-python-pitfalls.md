@@ -165,6 +165,69 @@ A developer makes `generate_reply()` async (because it awaits async helpers like
 ### Real-world impact
 This was the root cause of the HAFJET WhatsApp bot's "silent 500 / no response" for free-text messages. Menu items (1/2/3/4) returned before STEP 5 and worked fine, but every free-text question triggered the TypeError and silently dropped the reply.
 
+## Pattern 6: Middleware Guard Not Scoped to Protected Routes
+
+### Symptom
+Every endpoint on the server returns 500 Internal Server Error: "Server misconfigured: API key not set" — including health checks, webhooks, dashboard, and public endpoints that should never need an API key.
+
+### Root Cause
+The middleware checks `if not API_KEY: return JSONResponse(500)` at the **top of the middleware function**, before checking whether the route is actually protected. Since the guard has no path/method scoping, it blocks ALL requests when the env var is missing.
+
+```python
+@app.middleware("http")
+async def auth_middleware(request, call_next):
+    if not DASHBOARD_API_KEY:              # ← CHECKED FOR EVERY ROUTE
+        return JSONResponse(status_code=500, content={"error": "..."})
+
+    path = request.url.path
+    method = request.method
+    _is_protected = False
+    for prefix in PROTECTED_PREFIXES:
+        if path.startswith(prefix):
+            if method in ("POST", "PUT", "PATCH", "DELETE"):
+                _is_protected = True
+
+    if _is_protected:
+        key = request.headers.get("X-API-Key", "")
+        if key != DASHBOARD_API_KEY:
+            return JSONResponse(status_code=401)
+    return await call_next(request)
+```
+
+### Detection
+
+```bash
+# Find middleware functions with early-return guards
+grep -nB5 "if not.*API_KEY:\|if not.*SECRET:\|if not.*TOKEN:" webhook_listener.py
+```
+
+### Fix
+Move the env-var check INSIDE the path-scoped block so it only applies to protected routes:
+
+```python
+@app.middleware("http")
+async def auth_middleware(request, call_next):
+    path = request.url.path
+    method = request.method
+
+    _is_protected = any(
+        (prefix == "/api/settings") or
+        (path.startswith(prefix) and method in ("POST", "PUT", "PATCH", "DELETE"))
+        for prefix in PROTECTED_PREFIXES
+    )
+
+    if _is_protected:
+        if not DASHBOARD_API_KEY:               # ← Only check when route is actually protected
+            return JSONResponse(status_code=500, ...)
+        key = request.headers.get("X-API-Key", "")
+        if key != DASHBOARD_API_KEY:
+            return JSONResponse(status_code=401)
+    return await call_next(request)
+```
+
+### Why it matters
+When deploying a new feature that requires an env var (e.g. `DASHBOARD_API_KEY`), it's tempting to add a top-level guard in middleware for "safety". But if the guard fires on every request, a misconfigured env var takes down webhooks, health probes, and the dashboard simultaneously — making diagnosis much harder. The health endpoint should always survive a missing API key.
+
 ## Quick Scan Command
 
 ```bash

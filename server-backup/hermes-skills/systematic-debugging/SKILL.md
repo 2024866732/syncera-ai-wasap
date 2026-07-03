@@ -226,6 +226,9 @@ If you catch yourself thinking:
 - Proposing solutions before tracing data flow
 - **"One more fix attempt" (when already tried 2+)**
 - **Each fix reveals new problem in different place**
++ - **"Let me speculate instead of capturing production evidence"** — when traceback/logs are available but you propose fixes without reading them. Capture real traceback FIRST, then hypothesize. Speculation wastes turns and erodes trust.
++ - **"Counter is zero but activity is clearly happening"** — Suspect constant/string mismatch between producer (e.g. `_detect_routing()` returning `"ai_query"`) and consumer (SQL query filtering `WHERE routing_path='ai'`). Verify the exact stored values before assuming no activity occurred.
++ - **"Middleware check fails — all routes down"** — When a `DASHBOARD_API_KEY` or similar guard is checked at the top of a middleware function (before path validation), an empty/misconfigured env var crashes ALL endpoints including webhook, health, and dashboard. Check: does the middleware check `if not SECRET: return 500` BEFORE scoping to protected routes? If yes, the guard is wrong — scope the check AFTER determining the route is protected.
 
 **ALL of these mean: STOP. Return to Phase 1.**
 
@@ -239,6 +242,7 @@ If you catch yourself thinking:
 - "Stop guessing" - You're proposing fixes without understanding
 - "Ultra-think this" - Question fundamentals, not just symptoms
 - "We're stuck?" (frustrated) - Your approach isn't working
+- **"'Semua dah ok' — ada bukti dashboard yang bercanggah"** — You claimed success without consulting the actual evidence (dashboard, logs, endpoint output). The human had to correct you mid-claim. Always verify with real tool output before declaring a fix done.
 
 **When you see these:** STOP. Return to Phase 1.
 
@@ -331,8 +335,9 @@ These techniques are part of systematic debugging and available in this director
 - **`python-cache-pitfalls.md`** - `__pycache__` stale bytecode causing 404s after deployment
 - **`github-push-protection.md`** — GitHub Push Protection blocking `git push` due to secrets in history (gh OAuth tokens, API keys). Diagnostic + `git filter-repo` fix.
 - **`azure-zip-deployment.md`** — Azure App Service zip deploy patterns, excludes, startup commands, env vars
-- **`ai-timeout-diagnosis.md`** - Diagnosing external AI API failures (OpenRouter, etc.) from Azure
+- **`config-origin-tracing.md`** — Trace a config value through all layers (env var → Python → API → DB → built JS → live dashboard) to determine runtime source of truth. 5-step investigation with exact commands, pitfall table, and quick-reference checklist.
 - **`ai-llm-logging-fallback.md`** - Detailed logging of LLM requests/responses, config validation, timeout handling, empty/None response fallback
+- **`frontend-backend-field-mapping.md`** — When frontend shows unexpected labels ("SYSTEM", blank text) or missing data, cross-reference field names between API JSON response keys and React component properties. Common mismatch: DB column `content` vs JavaScript `message.message`, DB column `direction` vs React `message.source`. SQL `SELECT *` returns raw DB columns, frontend may expect aliased or computed fields.
 
 **Related skills:**
 - **superpowers:test-driven-development** - For creating failing test case (Phase 4, Step 1)
