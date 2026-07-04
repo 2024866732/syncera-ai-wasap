@@ -526,9 +526,94 @@ ngrok http 8443 --config ~/.config/ngrok/ngrok.yml
 
 **⚠ ngrok free tier (`*.ngrok-free.dev`) is unreliable for Meta webhook delivery** — connections drop, webhook POST requests from Meta may silently not reach your server. Use only for initial testing. Migrate to Azure for production. See `references/ngrok-free-tier-issues.md`.
 
-## Hybrid Webhook Pattern (AI + Static Menu + DB)
+## Hybrid Webhook Pattern (AI + Static Menu + DB + Keyword Rules)
 
-For advanced chatbots that combine static menus, database lookups, and AI:
+For advanced chatbots that combine static menus, keyword rules, database lookups, and AI:
+
+```
+User Message
+    │
+    ├─ Keyword rule match? → DB lookup (priority order) → Auto-reply → RETURN
+    │
+    ├─ Job ID / Receipt number? → Database lookup → Status reply
+    │
+    ├─ Static menu / greeting?  → _static_menu_handler() → Instant reply
+    │
+    └─ Everything else          → ask_hermes() → AI reply → Fallback
+```
+
+**Critical:** Keyword rules are checked FIRST, before AI routing. This bypasses AI for known intents and reduces latency/cost.
+
+### Keyword Rule Check Implementation
+
+```python
+async def _check_keyword_rules(message: str) -> str | None:
+    """Check message against keyword rules. Return matching reply or None."""
+    loop = asyncio.get_event_loop()
+    rows = await loop.run_in_executor(None, get_all_keywords)
+    msg_lower = message.lower().strip()
+    for rule in rows:
+        if not rule["is_active"]:
+            continue
+        kw = rule["keyword"].lower().strip()
+        if rule["match_type"] == "exact":
+            if msg_lower == kw:
+                return rule["reply"]
+        else:
+            if kw and kw in msg_lower:
+                return rule["reply"]
+    return None
+```
+
+**Rules:**
+1. Use `run_in_executor` — `get_all_keywords()` is sync SQLite
+2. Rules are sorted by `priority ASC` in SQL — first match wins
+3. `is_active=0` rules are skipped (inactive)
+4. `match_type`: `"exact"` requires `msg_lower == kw`, `"contains"` requires `kw in msg_lower`
+5. Return type is `str | None` — caller decides whether to use AI or fallback
+
+### DB Schema
+
+```sql
+CREATE TABLE IF NOT EXISTS keyword_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    keyword TEXT NOT NULL,
+    reply TEXT NOT NULL,
+    priority INTEGER DEFAULT 10,
+    is_active INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    match_type TEXT DEFAULT 'contains'
+);
+```
+
+**Helper functions (sync, call via `run_in_executor`):**
+- `get_all_keywords()` → list, sorted by priority ASC
+- `create_keyword(keyword, reply, priority, match_type)` → rule_id
+- `update_keyword(rule_id, fields_dict)` → bool
+- `delete_keyword(rule_id)` → bool
+- `toggle_keyword(rule_id)` → `{"status": "ok", "is_active": bool}`
+- `reorder_keywords(id_list)` → bool (reassigns priority 1..N)
+
+### CRUD API Routes
+
+| Method | Path | Auth | Body |
+|--------|------|------|------|
+| GET | `/api/keywords` | X-API-Key | — |
+| POST | `/api/keywords` | X-API-Key | `{keyword, reply, priority, match_type}` |
+| PATCH | `/api/keywords/{id}` | X-API-Key | `{keyword?, reply?, priority?, is_active?, match_type?}` |
+| DELETE | `/api/keywords/{id}` | X-API-Key | — |
+| POST | `/api/keywords/test` | X-API-Key | `{message}` → `{matched, rule_id, keyword, reply, match_type}` |
+| POST | `/api/keywords/reorder` | X-API-Key | `{order: [id1, id2, ...]}` |
+
+**Pattern:** All routes use `await loop.run_in_executor(None, db_func, ...)` for sync DB ops.
+
+### Routing Logging
+
+When adding a new routing path, update `_detect_routing()` and ensure `log_outbound` stores the new `routing_path` value. Analytics SQL queries must filter on the SAME string — mismatch silently zeroes counters.
+
+## See Also
+
+- `references/keyword-bot-builder.md` — Full implementation details: integration flow, frontend Keywords.jsx component, API helpers in Dashboard, SPA route wiring, default HAFJET rules, and test patterns
 
 ```
 User Message

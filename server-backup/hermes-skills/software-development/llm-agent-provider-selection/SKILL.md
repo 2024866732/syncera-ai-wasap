@@ -49,6 +49,15 @@ Class-level guidance for picking the best LLM model/provider for autonomous agen
 - **Fallback:** `cerebras/gpt-oss-120b`
 - **Paid upgrade path:** OpenCode Go ($10/mo) before OpenRouter paid
 
+## Upgrade Path Strategy
+
+When evaluating paid options, follow this ladder:
+
+1. **Start free**: Big Pickle (OpenCode Zen free) → zero cost, ~100 req/day
+2. **Test consistently**: If free tier rate-limits hamper daily work → upgrade
+3. **Paid upgrade order**: OpenCode Go ($10/mo) first → then OpenRouter paid → Gemini API paid last
+4. **Try before commit**: "Cuba free dulu, baru decide" — let usage data drive the decision
+
 ## Hermes CLI Workflow
 
 Use CLI only — avoid hand-editing config for model + fallback:
@@ -65,7 +74,7 @@ hermes fallback add   # pick provider/model via interactive picker
 hermes fallback list
 ```
 
-Provider-specific examples are in `references/opencode-zen.md` and `references/gemini-api-access.md`.
+Provider-specific examples are in `references/opencode-zen.md`, `references/gemini-api-access.md`, and `references/upgrade-evaluation.md` (cost decision matrix).
 
 ## Additional Provider Proxies
 

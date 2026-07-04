@@ -1,7 +1,7 @@
 ---
 name: hafjet-deployment-plan
 description: "Use when discussing, planning, or executing deployment for the HAFJET WhatsApp Bot. Locked strategy with four environments (Azure, AWS, Heroku, Oracle), exact CLI steps, and decision matrices for upgrades, throttling recovery, and failovers."
-version: 1.7.0
+version: 1.10.0
 author: Hermes-HAFJET
 license: MIT
 metadata:
@@ -31,12 +31,21 @@ It covers four environments: Azure (primary production), AWS (staging), Heroku (
 | `references/azure-debug-503.md` | Debugging 503 errors after deploy (QuotaExceeded, import errors, logging, **resource-not-found/app-deleted**) |
 | `references/fallback-provider-setup.md` | Fallback provider config pattern (Cerebras as OpenRouter backup) |
 | `references/server-backup-restore.md` | Server config backup/restore from GitHub |
+| `references/forward-reference-depends.md` | Forward reference bug: `Depends(func)` defined below route decorator → NameError at import time |
 | `scripts/verify_endpoints.py` | Full endpoint verification script (health, dashboard, API, webhook GET/POST, WebSocket) |
+| `scripts/regression_v211.py` | Sprint v2.1.1 regression test: auth login/me, inbox filters (all/me/unassigned/escalated/resolved), PATCH conversation status (escalated/resolved/bot_active). 10 endpoint tests. Webhook escalation keyword test must be run separately using `test12.py` due to APP_SECRET handling. |
 | `references/b1-upgrade-troubleshooting.md` | F1→B1 upgrade steps + app unreachable after upgrade |
 | `references/azure-webapp-up-deploy.md` | `az webapp up` full deploy pattern (Oryx build, startup time budget, common failures) |
 | `references/oracle-cloud-free-tier.md` | Oracle Cloud Always Free tier: limits, regions, OCI CLI auth, A1.Flex deployment, capacity risks |
 | `references/pre-deploy-verification.md` | Pre-deploy verification workflow: show diff → test → wait for approval → deploy. Business data integrity rules. Routing debug pattern. |
 | `references/dashboard-feature-workflow.md` | DB→Backend→Frontend→Build→Deploy workflow + nav sidebar + UI constants + blast/contacts feature patterns |
+| `references/jwt-staff-auth.md` | JWT auth implementation for staff login, staff management, and multi-agent inbox (DB schema, token creation, dependency injection, route decorator pattern, endpoint table, Azure pitfalls) |
+| `references/server-resource-optimization.md` | Server memory optimization — identifying RAM-heavy processes, verifying safety before stopping (multipathd/snapd/PM2/ngrok), tunnel verification pattern, and memory math for 848Mi Hermes server |
+| `references/deploy-verification-audit.md` | Sprint verification protocol: source audit → ZIP content audit → deploy with approval → regression test → final report. Parameter name matching check, ZIP staleness detection, endpoint-by-endpoint verification table. |
+| `references/sprint-completion-workflow.md` | Sprint sign-off workflow: source audit → ZIP audit → deploy → regression test (all endpoints + filters + edge cases) → "✅ Sprint X.Y.Z fully stable, ready for X.Y.Z+1" statement. Covers filter differentiation, ORDER BY verification, and anti-patterns. |
+| `references/azure-antenv-startup-503.md` | 503 diagnosis after Oryx build: antenv discovery, `config-zip` vs `deploy --type zip` differences, appCommandLine precedence, and recovery steps from 2026-07-04 session. |
+| `references/escalation-loop-bug.md` | Silent escalation failure: `loop2` undefined in `_process_message()` causes webhook to return 200 but skip DB update, staff notification, and customer reply. Detection via status verification after webhook test. |
+| `references/regression-assertion-schema-matching.md` | **API response schema matching trap** — assertions can produce false negatives when test logic doesn't match actual response structure (`staff` wrapper, `action` field for PATCH status). Prevention pattern: inspect raw response before writing assertions. |
 
 ## Workflow Rules
 
@@ -84,6 +93,47 @@ It covers four environments: Azure (primary production), AWS (staging), Heroku (
 12. **Stop on throttle, do not retry** — 429 on plan create/delete = STOP. Wait 15+ min, reuse existing resources.
 
 13. **Prefer web app recreate over plan recreate** — Deleting last web app auto-deletes plan. Expect it and plan for throttle window.
+
+## Startup Command Precedence (Python/Linux, Critical)
+
+When Azure App Service starts the Python container, it picks the startup command in this order:
+
+| Precedence | Source | Set via | Example |
+|-----------|--------|---------|---------|
+| 1 (highest) | `appCommandLine` | `az webapp config set --startup-file "..."` | `antenv/bin/gunicorn -w 2 -k uvicorn.workers.UvicornWorker webhook_listener:app --bind 0.0.0.0:8000` |
+| 2 | `STARTUP_COMMAND` env var | `az webapp config appsettings set --settings STARTUP_COMMAND="..."` | Same format as above |
+| 3 (default) | Oryx-generated `startup.sh` | Automatic (no override) | Runs from `/home/site/wwwroot/startup.sh` with `antenv` activated |
+
+**Critical rules:**
+- **`appCommandLine` always wins** over `STARTUP_COMMAND` env var. If both are set, `appCommandLine` runs.
+- **Must use `antenv/bin/gunicorn`**, not system `gunicorn`. Oryx installs packages into `antenv` virtualenv. The system Python's `gunicorn` will crash with `ModuleNotFoundError` because dependencies (fastapi, uvicorn, httpx) are only in `antenv`.
+- **Shell chaining (`cd dir && cmd`)** in `appCommandLine` **ALWAYS FAILS** unless wrapped in `bash -c`. The container's entrypoint does NOT parse the string through a shell — it passes the entire string to `exec()` looking for an executable file named `cd /home/site/wwwroot && antenv/bin/gunicorn ...`. This produces **exit code 127** (command not found). Use absolute paths directly instead: `antenv/bin/gunicorn ...` (cwd defaults to `/home/site/wwwroot`). If shell chaining is required, use: `bash -c 'cd dir && cmd'`.
+- **After Oryx build**, confirm `antenv` exists at `/home/site/wwwroot/antenv/` in the deployment logs. If the build was skipped, `antenv` won't exist.
+- **`WEBSITES_PORT` must match** the gunicorn `--bind` port. Mismatch = 503/timeout.
+
+**Diagnosis when 503 persists after deploy with `appCommandLine` set:**
+1. Check `appCommandLine`: `az webapp config show -g <rg> -n <app> --query "appCommandLine"`
+2. Check `WEBSITES_PORT`: `az webapp config appsettings list -g <rg> -n <app> --query "[?name=='WEBSITES_PORT'].value"`
+3. Download logs: `az webapp log download -g <rg> -n <app> --log-file /tmp/logs.zip`
+4. Look for `ModuleNotFoundError`, `antenv/bin/python: not found`, or port mismatch in the container stream log
+5. If build took 0s, force rebuild (see Oryx stale cache section below)
+
+## Oryx Virtualenv: `antenv` (not `venv`)
+
+**Key fact:** Oryx always names the virtualenv `antenv` when building Python apps on Azure. The name is hardcoded in Oryx and cannot be changed via config.
+
+```bash
+# Oryx build output (from deployment log):
+# Python Virtual Environment: antenv
+# Creating virtual environment...
+# /tmp/oryx/platforms/python/3.11.15/bin/python3.11 -m venv antenv
+```
+
+This means:
+- Do NOT create a `venv/` directory locally and expect it to work on Azure (it won't be copied or activated)
+- Do NOT use `source venv/bin/activate` in `start.sh` — Azure's container already activates `antenv`
+- Always reference `antenv/bin/gunicorn` in `appCommandLine` or `STARTUP_COMMAND`
+- If using a custom `start.sh`: the script can activate antenv with `source /home/site/wwwroot/antenv/bin/activate`
 
 ## Runtime Config Precedence (Env > DB > Default)
 
@@ -161,7 +211,7 @@ stats["today_fallback_rate"] = round((today_fallback / today_total_calls) * 100)
    ```bash
    az webapp deployment source config-zip -g <rg> -n <app> --src deploy-hafjet-bot.zip --timeout 300
    ```
-   This older method triggers a full Oryx build even when the modern `az webapp deploy` would use cache. Note: this command is deprecated and will be removed in future CLI versions.
+   This older method triggers a full Oryx build even when the modern `az webapp deploy` would use cache. Note: this command is deprecated and will be removed in future CLI versions. **Known side-effect:** after `config-zip` deploys, the app may start with 503/timeout for 30-90s during warmup. Run `az webapp restart -g <rg> -n <app>` after deployment if the site stays stuck.
 
 3. **Delete cache + redeploy** (if options 1-2 fail):
    Stop the app → delete `oryx-manifest.toml` and `output.tar.zst` from `/home/site/wwwroot/` via Kudu VFS API → start app → deploy fresh ZIP with `--type zip`. Kudu VFS requires publishing credentials (always redacted by Azure CLI) — option 1 or 2 is preferred.
@@ -185,7 +235,189 @@ See `references/oryx-rebuild-force.md` for the full session transcript, exact CL
 
 ### Bug: `api_note` / `api_resolve` / `api_escalate` — Spinner Never Stops (Sync DB in Async Endpoint)
 
-### Bug: `api_note` / `api_resolve` / `api_escalate` — Spinner Never Stops (Sync DB in Async Endpoint)
+### Bug: FastAPI `Depends` — Decorator `dependencies=[]` Does NOT Inject
+
+**Symptom:** Endpoint returns HTTP 500 with `TypeError: 'NoneType' object is not subscriptable` at `current_staff["id"]`, even though the JWT token is valid. The auth check runs (rejects invalid tokens with 401), but the injected user data is never available in the handler.
+
+**Root cause:** FastAPI has TWO separate places for `Depends()`:
+
+1. **Decorator `dependencies=[]`** — `@app.get("/path", dependencies=[Depends(func)])` — runs the dependency (auth check, etc.) but does **NOT** inject the return value into the handler parameter.
+2. **Function signature default** — `async def handler(param: dict = Depends(func))` — runs the dependency **AND** injects the return value into `param`.
+
+When you use `dependencies=[Depends(get_current_staff)]` in the decorator + `current_staff: dict = None` in the function signature, the `current_staff` parameter stays `None` — the dependency ran but the result was silently dropped. Any code that accesses `current_staff["id"]` crashes with `'NoneType' object is not subscriptable`.
+
+```python
+# ❌ WRONG — auth runs, result is LOST, current_staff stays None
+@app.get("/api/staff", dependencies=[Depends(get_current_staff)])
+async def api_list_staff(current_staff: dict = None):
+    print(current_staff["id"])  # CRASHES: 'NoneType' object is not subscriptable
+
+# ✅ CORRECT — Depends in function signature both runs AND injects
+@app.get("/api/staff")
+async def api_list_staff(current_staff: dict = Depends(get_current_staff)):
+    return {"staff": current_staff}
+
+# ✅ ALSO VALID — use BOTH decorator AND function sig (decorator for auth-only middleware, sig for injection)
+@app.get("/api/staff", dependencies=[Depends(log_access)])
+async def api_list_staff(current_staff: dict = Depends(get_current_staff)):
+    ...
+```
+
+**When to use which:**
+
+| Pattern | Runs dependency? | Injects return value? | Use case |
+|---------|-----------------|----------------------|----------|
+| `dependencies=[Depends(func)]` in decorator | ✅ Yes | ❌ No | Auth check only (return 401, don't need user data) |
+| `param = Depends(func)` in function sig | ✅ Yes | ✅ Yes | Need the user object or any dependency return value |
+| Both simultaneously | ✅ Yes (both) | ✅ Yes (sig one) | Auth + logging + data injection |
+
+**Detection:** Search for `dependencies=\[Depends\(` in route decorators. If the same endpoint also has `current_staff: dict = None` in its signature, the pattern is broken — `current_staff` will always be `None`.
+
+**Fix:** Move `Depends(...)` from the decorator's `dependencies=[]` to the function parameter's default value:
+
+```python
+# BEFORE (broken):
+@app.get("/api/staff", dependencies=[Depends(get_current_staff)])
+async def api_list_staff(current_staff: dict = None):
+    ...
+
+# AFTER (fixed):
+@app.get("/api/staff")
+async def api_list_staff(current_staff: dict = Depends(get_current_staff)):
+    ...
+```
+
+### Bug: FastAPI `Depends` — Forward Reference (`NameError: name X is not defined`)
+
+**Symptom:** App crashes with exit code 3 during startup. `docker.log` shows `Container has finished running with exit code: 3.` Health returns 503 / timeout. The Python error `NameError: name 'get_current_staff' is not defined` appears at import time.
+
+**Root cause:** Python evaluates default parameter values at **function definition time**, not at call time. When a route decorator has `Depends(get_current_staff)` in its parameter list, Python resolves `get_current_staff` immediately when the `def` statement executes — it does NOT wait until the endpoint is called. If `get_current_staff` is defined LATER in the same file (below the route definitions), Python raises `NameError` at import time.
+
+```python
+# ❌ WRONG — Python evaluates Depends(get_current_staff) at definition time,
+#   but get_current_staff hasn't been defined yet
+@app.get("/api/resolve")
+async def api_resolve(phone: str, current_staff: dict = Depends(get_current_staff)):
+    ...
+
+# ... 600 lines of code ...
+
+async def get_current_staff(request: Request) -> dict:
+    ...
+
+# ✅ RIGHT — define get_current_staff BEFORE the routes that use it
+async def get_current_staff(request: Request) -> dict:
+    ...
+
+@app.get("/api/resolve")
+async def api_resolve(phone: str, current_staff: dict = Depends(get_current_staff)):
+    ...
+```
+
+**This is different from the `dependencies=[]` bug above.** The `dependencies=[]` bug causes `current_staff` to be `None` at runtime (auth runs but result is lost). The forward reference bug crashes the entire app at import time before any request is served. They require different fixes.
+
+**Detection:**
+- Exit code 3 in docker log + empty container stream log
+- Local import test: `python3 -c "from webhook_listener import app"` shows `NameError`
+- Search for `Depends(` in route decorators, then check if the referenced function is defined above or below the decorator line
+
+**Fix:** Move the dependency function definition ABOVE the first route that uses it. If the function relies on constants or helper functions defined below the routes, move those too:
+
+```python
+# Move this entire block before all route decorators
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRY_HOURS = 8
+
+def _create_access_token(...):
+    ...
+
+async def get_current_staff(request: Request) -> dict:
+    ...
+
+# NOW the routes can use Depends(get_current_staff)
+@app.get("/api/resolve")
+async def api_resolve(phone: str, current_staff: dict = Depends(get_current_staff)):
+    ...
+```
+
+**Affected endpoints in HAFJET codebase (all 6 fixed Jul 2026):**
+- `GET /api/auth/me` — was returning `{"staff": null}`
+- `GET /api/staff` — worked by luck (didn't use current_staff)
+- `POST /api/staff` — crashed on `current_staff["role"]`
+- `PATCH /api/staff/{id}/status` — crashed on `current_staff["id"]`
+- `GET /api/inbox` — crashed on `current_staff["id"]` (was HTTP 500, saw 0 conversations)
+- `PATCH /api/conversations/{phone}/assign` — worked by luck
+
+### Bug: FastAPI Param Name Mismatch — Query Parameter Name ≠ Function Parameter Name
+
+**Symptom:** Endpoint always uses its default value regardless of query string. E.g., `/api/inbox?filter=unassigned` returns ALL conversations, not just unassigned ones. The filter silently does nothing.
+
+**Root cause:** FastAPI matches query parameter names to **function parameter names** exactly. If the frontend sends `?filter=unassigned` but the backend function signature has `filter_type: str = "all"`, FastAPI cannot match `filter` to `filter_type` and falls back to the default value `"all"`. No error is raised — the wrong data is returned silently.
+
+```python
+# ❌ WRONG — frontend sends ?filter=, backend expects filter_type=
+async def api_inbox(filter_type: str = "all", current_staff: dict = Depends(...)):
+    # ?filter=unassigned is ignored, filter_type stays "all"
+
+# ✅ CORRECT — parameter name matches query param name
+async def api_inbox(filter: str = "all", current_staff: dict = Depends(...)):
+    # ?filter=unassigned maps to filter="unassigned"
+```
+
+**Detection:**
+1. Add a debug log: `log.info(f"api_inbox called: filter={filter}")` before processing
+2. Or inspect the deployed ZIP vs source: if the ZIP has `filter_type` but source has `filter`, the ZIP is stale
+3. Or verify via API: call `/api/inbox?filter=unassigned` when you know a conversation is assigned — if it still appears, the filter isn't being applied
+
+**Root cause chain (how it happens in practice):**
+1. Developer patches the FastAPI endpoint, changing the parameter name (e.g., `filter_type` → `filter`) to match the frontend
+2. Developer FORGETS to rebuild the deploy ZIP after the source change
+3. The old ZIP still has the old parameter name
+4. Deploy "succeeds" (build reports OK), but endpoint silently uses defaults
+5. Filters don't work — but it looks like a backend logic bug, not a stale-deploy issue
+
+**Fix:** Always rebuild the ZIP from current source BEFORE deploying. Verify ZIP content before deploy:
+
+```bash
+python3 -c "
+import zipfile
+z = zipfile.ZipFile('/tmp/deploy.zip')
+wl = z.read('webhook_listener.py').decode()
+# Check parameter names match frontend expectations
+import re
+match = re.search(r'async def api_inbox\((\w+):', wl)
+print(f'api_inbox param: {match.group(1)}')  # Should be 'filter', not 'filter_type'
+"
+```
+
+**Prevention:** Add a ZIP audit step to the deploy workflow — verify that the source code's parameter names match what the frontend sends before deploying. See `references/deploy-verification-audit.md`.
+
+### Bug: `hashlib` Missing When Seeding Default Admin in `init_db()`
+
+**Symptom:** App startup fails with `NameError: name 'hashlib' is not defined` when `init_db()` seeds the default admin. Container exits with code 3, health returns 503 / Application Error.
+
+**Root cause:** `db_logger.py` does not import `hashlib`, but `init_db()` calls `hashlib.sha256(...)` when seeding the default admin.
+
+**Fix:** Add `import hashlib` at the top of `db_logger.py`.
+
+**Default admin pattern for local dev + Azure:**
+```python
+# Seed default admin if no staff exists
+cur = conn.execute("SELECT COUNT(*) FROM staff")
+if cur.fetchone()[0] == 0:
+    default_pwd = hashlib.sha256("admin123".encode()).hexdigest()
+    conn.execute(
+        "INSERT INTO staff (name, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?)",
+        ("Tuan Hafizi (Admin)", "hafizi@hafjet.com", default_pwd, "admin", "online")
+    )
+    conn.commit()
+    log.info("✅ Default admin created: hafizi@hafjet.com / admin123")
+```
+
+**Pitfall — `bot_data.db` persistence across deploys:** The `staff` table is created in `init_db()` inside the persistent `bot_data.db`. If you create the first admin locally and then deploy, Azure's `bot_data.db` already exists and will NOT re-run `init_db()`. The local admin will not exist in production. Options:
+1. Create admin via `POST /api/auth/register` or direct SQL after deploy.
+2. Or use Azure Kudu console to delete `bot_data.db` and restart (data loss).
+3. Preferred: create the admin via the API after deploy.
 
 ### Bug: Deploying While App Is STOPPED Causes 502
 
@@ -277,6 +509,26 @@ print(data[idx:idx+70])  # Must show actual key, not *** or empty
 "
 ```
 
+### Bug: Cold Start `ModuleNotFoundError` After Fresh Deploy — Exit Code Diagnosis
+
+When the container exits during startup, the **exit code** in `docker.log` reveals the failure stage before you can see the actual Python traceback:
+
+| Exit Code | Meaning | Likely Cause | 
+|-----------|---------|-------------|
+| 1 | Generic Python process crash | Runtime error after import (e.g., binding failure, port conflict) |
+| 3 | Gunicorn APP IMPORT ERROR | Python module cannot be imported (NameError, ImportError, SyntaxError in app code) |
+| 127 | Command not found | `appCommandLine` uses shell operators (`&&`, `||`) without `bash -c` wrapper, or path is wrong |
+
+**Diagnosis flow:**
+1. Read exit code from `docker.log`: `grep "exit code:" LogFiles/2026_07_*_docker.log | tail -5`
+2. **Exit 127** → Fix `appCommandLine` format (remove shell operators or wrap in `bash -c '...'`)
+3. **Exit 3** → Fix Python import error (test locally: `python3 -c "from webhook_listener import app"`)
+4. **Exit 1** → Check for runtime errors (binding, port, file-not-found at runtime)
+
+**ContainerStream log is often 0 bytes for crash-looping containers.** When the container crashes within seconds (exit code 3 or 127), the Python traceback goes to stdout/stderr but may NOT be flushed to the container stream log file before the container terminates. Do NOT rely on `containerStream.log` having the error — use local import testing combined with the exit code.
+
+The exit code ALWAYS appears in `docker.log` because it's tracked by the container runtime, not by the app's log stream.
+
 ### Bug: Cold Start `ModuleNotFoundError` After Fresh Deploy
 
 **Symptom:** App fails to start after `az webapp deploy`. Container stream log shows:
@@ -285,9 +537,20 @@ ModuleNotFoundError: No module named 'httpx'
 ```
 even though `httpx` is in `requirements.txt`. Health endpoint returns 503 / Application Error page.
 
-**Root cause:** Oryx build system uses a cached build manifest (`oryx-manifest.toml`) and reuses `output.tar.zst` without rebuilding the virtualenv. The cached build may be missing installed packages, or the venv directory (`antenv`) is not present in `/home/site/wwwroot/`. This happens when `SCM_DO_BUILD_DURING_DEPLOYMENT=false` is set, or after Oryx cache invalidation issues.
+**Root cause:** Two possible causes:
 
-**Fix — Add auto-install fallback in `start.sh`:**
+1. **`appCommandLine` uses system Python gunicorn** (most common) — The Azure container's system `gunicorn` runs from the base Python install, which has NO project dependencies. The dependencies were installed into `antenv` by Oryx build, but `appCommandLine` points to the system path. Fix: use `antenv/bin/gunicorn` instead.
+
+2. **Oryx cached build** — Oryx build system reuses a cached build manifest (`oryx-manifest.toml`) and `output.tar.zst` without rebuilding the virtualenv. The cached build may be missing installed packages, or `antenv` directory is not present in `/home/site/wwwroot/`. This happens when `SCM_DO_BUILD_DURING_DEPLOYMENT=false` is set, or after Oryx cache invalidation issues.
+
+**Fix — Use `antenv` path (primary):**
+```bash
+# Set appCommandLine to use antenv's gunicorn
+az webapp config set -g <rg> -n <app> \
+  --startup-file "antenv/bin/gunicorn -w 2 -k uvicorn.workers.UvicornWorker webhook_listener:app --bind 0.0.0.0:8000 --timeout 120"
+```
+
+**Fix — Add auto-install fallback in `start.sh` (secondary/legacy):**
 ```bash
 echo "=== PYTHON DEPS CHECK ==="
 python3 - <<'PY'
@@ -353,7 +616,178 @@ with zipfile.ZipFile('/tmp/logs.zip') as zf:
 
 **Pitfall:** `unzip` CLI may not be installed on the VM. Use Python `zipfile` instead.
 
-## ZIP Build Discipline
+## Sprint Implementation Protocol (HAFJET User Preference)
+
+When the user gives a multi-tugas spec (Sprint vX.Y.Z → TUGAS 1 → 2 → 3 → 4), implement in this EXACT order:
+
+**Per-Tugas Workflow:**
+1. Show the diff (`patch` tool) for the file changes
+2. Test locally (run the Python code, verify syntax with lint)
+3. Log the result in a scannable format
+4. Get user acknowledgment before proceeding to next TUGAS
+5. After all TUGAS done: build clean ZIP → propose deploy with checklist → wait for approval → deploy → restart → regression test → final report
+
+**Anti-patterns:**
+- ❌ Do NOT batch multiple TUGAS changes into one massive diff without per-tugas testing
+- ❌ Do NOT deploy without showing the final ZIP verification checklist
+- ❌ Do NOT skip the "request approval" step for risky commands
+- ❌ Do NOT assume the user wants the same changes across files without explicit direction
+
+**Approval workflow for risky commands:**
+```markdown
+⚠️ Command Approval Required
+<command>
+Reason: <tujuan & risiko>
+```
+Wait for "✅ APPROVED" before executing.
+
+## APScheduler + FastAPI Lifecycle Pattern
+
+**Use when:** Adding periodic background tasks (escalation timeout, cleanup, health pings) to a FastAPI app.
+
+```python
+# 1. Import
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
+# 2. Module-level scheduler (not inside function or class)
+_scheduler = AsyncIOScheduler()
+
+# 3. Define job function (async)
+async def _check_escalation_timeout():
+    """Runs every 5 minutes. Check conversations escalated > 2h without reply."""
+    loop = asyncio.get_event_loop()
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+        conn = await loop.run_in_executor(None, _get_db)
+        rows = conn.execute(
+            "SELECT phone FROM customers WHERE status='escalated' AND bot_paused=1 "
+            "AND escalated_at IS NOT NULL AND escalated_at < ?",
+            (cutoff,)
+        ).fetchall()
+        conn.close()
+        for row in rows:
+            phone = row[0]
+            # Resume bot
+            conn2 = await loop.run_in_executor(None, _get_db)
+            conn2.execute("UPDATE customers SET bot_paused=0 WHERE phone=?", (phone,))
+            conn2.commit()
+            conn2.close()
+            await send_whatsapp_message(phone, "Staff sedang sibuk. Boleh saya bantu sementara ini?")
+    except Exception as e:
+        log.error(f"❌ Scheduler error: {e}", exc_info=True)
+
+# 4. Start in startup event
+@app.on_event("startup")
+async def startup_event():
+    _scheduler.add_job(
+        _check_escalation_timeout,
+        IntervalTrigger(minutes=5),  # Check interval
+        id="escalation_timeout_check",
+        replace_existing=True,
+    )
+    _scheduler.start()
+
+# 5. Stop in shutdown event (critical for clean restarts)
+@app.on_event("shutdown")
+async def shutdown_event():
+    if _scheduler.running:
+        _scheduler.shutdown(wait=False)
+```
+
+**Pitfalls:**
+- Module-level scheduler object (not inside a function) — APScheduler manages its own lifecycle
+- `replace_existing=True` prevents duplicate job on hot-reload
+- Wrap job body in try/except — scheduler does NOT surface exceptions by default
+- For FastAPI `lifespan` pattern (modern FastAPI), use `@asynccontextmanager` instead of `@app.on_event`
+
+## SQLite Migration Pattern (Idempotent ALTER TABLE)
+
+**Use when:** Adding new columns to production SQLite without risking `duplicate column name` errors.
+
+```python
+# Place this in init_db() or a dedicated migration function
+for col in ["escalation_notified INTEGER DEFAULT 0", "bot_paused INTEGER DEFAULT 0"]:
+    try:
+        conn.execute(f"ALTER TABLE customers ADD COLUMN {col}")
+    except sqlite3.OperationalError:
+        pass  # Column already exists — safe to ignore
+```
+
+**Pattern rules:**
+- Always wrap in try/except OperationalError — SQLite has no `IF NOT EXISTS` for ALTER TABLE
+- Use a list of column definitions for multiple columns
+- Run at startup (in `init_db()`) so migrations apply automatically on deploy
+- **Never add NOT NULL without DEFAULT** — existing rows will get NULL and break queries
+
+## Conversation Status Workflow (State Machine)
+
+**Status lifecycle:** `bot_active → assigned → escalated → resolved` (with auto re-open)
+
+**bot_paused relationship (Guardrail 4):**
+| Status | bot_paused | Bot behavior | Staff takeover |
+|--------|-----------|-------------|----------------|
+| `bot_active` | 0 | Normal AI replies | None |
+| `assigned` | 1 | Paused — skip auto-reply | Staff is handling |
+| `escalated` | 1 | Paused — skip auto-reply | Pending staff action |
+| `resolved` | 0 | Ready to re-open | Completed |
+
+**Implementation pattern:**
+```python
+def update_conversation_status(phone: str, new_status: str) -> dict:
+    paused = 1 if new_status in ("escalated", "assigned") else 0
+    conn = _get_db()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    if new_status == "escalated":
+        conn.execute("UPDATE customers SET status=?, escalated_at=?, bot_paused=? WHERE phone=?",
+            (new_status, now, paused, phone))
+    elif new_status == "resolved":
+        conn.execute("UPDATE customers SET status=?, resolved_at=?, bot_paused=? WHERE phone=?",
+            (new_status, now, paused, phone))
+    else:
+        conn.execute("UPDATE customers SET status=?, bot_paused=? WHERE phone=?",
+            (new_status, paused, phone))
+    conn.commit()
+    ...
+```
+
+**Re-open rule:** When customer sends a message to a `resolved` + `bot_paused=0` conversation, reset to `bot_active` in `_process_message()`:
+```python
+if cust.get("status") == "resolved":
+    await update_conversation_status(from_number, "bot_active")
+    log.info(f"Re-opened resolved conversation for {from_number}")
+```
+
+## Staff Notification Workflow
+
+**Pattern for notifying staff about escalations (WhatsApp + WebSocket fallback):**
+
+```python
+async def _notify_staff(customer_phone, message_preview, staff_id=None):
+    # 1. Determine target (admin fallback if no staff_id)
+    target_id = staff_id or 1  # admin
+    
+    # 2. Look up staff's WhatsApp number
+    staff_number = await loop.run_in_executor(None, get_staff_whatsapp, target_id)
+    if not staff_number:
+        # Fallback: WebSocket notification to dashboard
+        broadcast_ws("notification", {"type": "escalation", "phone": customer_phone, ...})
+        return False
+    
+    # 3. Send WhatsApp (24-hour window enforced by Meta server-side)
+    msg = f"🔔 Escalation from {customer_phone}: \"{message_preview[:80]}\" Dashboard: https://..."
+    sent = await send_whatsapp_message(staff_number, msg)
+    if not sent:
+        # Fallback: WebSocket notification
+        broadcast_ws("notification", {"type": "escalation", "phone": customer_phone, ...})
+    return sent
+```
+
+**Rules:**
+- Never block the escalation flow if notification fails — log and proceed
+- Use `asyncio.create_task(_notify_staff(...))` for fire-and-forget (don't await in the webhook)
+- WebSocket fallback ensures dashboard operators see the notification even if WhatsApp delivery fails
+
 ## ZIP Build Discipline
 
 **Always build deploy ZIP with explicit Python script, NOT `zip -r`.** Bash recursive zip is brittle: includes `node_modules`, `.git`, `__pycache__`, `.env`, `bot_data.db`, and silently misses files depending on cwd.
@@ -464,7 +898,7 @@ curl -s http://hafjet-whatsapp-bot.azurewebsites.net/dashboard/assets/index-*.js
 | **Resource group** | `hafjet-bot-rg` |
 | **App Service Plan** | `hafjet-bot-plan` (B1, Southeast Asia) — **DELETED** (auto-deleted when last web app removed) |
 | **Entry point** | `webhook_listener:app` |
-| **Startup command** | `bash /home/site/wwwroot/start.sh` → `python3 -m gunicorn -w 1 -k uvicorn.workers.UvicornWorker webhook_listener:app --bind 0.0.0.0:8000 --timeout 120 --ws wsproto` |
+| **Startup command** | `antenv/bin/gunicorn -w 2 -k uvicorn.workers.UvicornWorker webhook_listener:app --bind 0.0.0.0:8000 --timeout 120` via `--startup-file`/`appCommandLine` |
 | **DB** | SQLite (`bot_data.db`) |
 | **Dashboard** | React SPA served via FastAPI at `/dashboard` |
 | **WebSocket** | `/ws` with wsproto backend |
