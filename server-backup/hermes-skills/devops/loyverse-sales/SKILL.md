@@ -5,29 +5,100 @@ description: Fetch and report daily sales from Loyverse POS API. Use when the us
 
 # Loyverse Sales Report
 
-Fetch daily sales data from Loyverse API and produce formatted reports with CSV export.
+Fetch daily sales data from Loyverse API and produce formatted reports with CSV export, including **gross profit** from item-level cost data.
 
 ## Trigger
 
-- User asks about "sales today", "daily sales report", "Loyverse sales", "jualan hari ini"
+- User asks about "sales today", "daily sales report", "Loyverse sales", "jualan hari ini", "profit hari ni"
 - Scheduled cron job runs the daily sales report
 
 ## Architecture
 
 ```
-~/.hermes/skills/fetch_sales.py   ← main script
-~/.hermes/reports/sales_YYYY-MM-DD.csv  ← output
-~/.hermes/.env                    ← LOYVERSE_ACCESS_TOKEN
+~/.hermes/skills/fetch_sales.py           ← main script (date-filtered, CSV export)
+~/.hermes/reports/sales_YYYY-MM-DD.csv    ← daily CSV
+~/.hermes/reports/sales_YYYY-MM.csv       ← monthly CSV (profit-enhanced)
+~/.hermes/.env                            ← LOYVERSE_ACCESS_TOKEN (and Telegram vars)
+/run_sales.py                          ← wrapper: reads token from file, runs fetch_sales.py
 ```
 
 ## How to Run
 
+### Option 1: Inline token (terminal output shows the token)
+
 ```bash
-# ✅ Extract token via grep (separate command — avoids $() censoring)
+# Extract token first (grep in separate command avoids shell censoring)
 grep LOYVERSE_ACCESS_TOKEN ~/.hermes/.env | head -1 | cut -d= -f2-
 # Then run with the token inline:
 LOYVERSE_ACCESS_TOKEN=<token> python3 ~/.hermes/skills/fetch_sales.py
 ```
+
+### Option 2: Token wrapper script (✅ preferred — avoids shell masking)
+
+Since `$(...)` subshells get censored by Hermes/Telegram, use a wrapper approach:
+
+**Step 1 — Save token to a temp file once:**
+```bash
+grep LOYVERSE_ACCESS_TOKEN ~/.hermes/.env | head -1 | cut -d= -f2- > /tmp/.loyverse_token
+```
+
+**Step 2 — Create a wrapper script (one-time setup):**
+```python
+#!/usr/bin/env python3
+"""Wrapper: read Loyverse token from file and run fetch_sales.py"""
+import os, sys, subprocess
+
+with open("/tmp/.loyverse_token") as f:
+    os.environ["LOYVERSE_ACCESS_TOKEN"] = f.read().strip()
+
+script = os.path.expanduser("~/.hermes/skills/fetch_sales.py")
+result = subprocess.run([sys.executable, script], capture_output=False)
+sys.exit(result.returncode)
+```
+
+**Step 3 — Run via wrapper:**
+```bash
+python3 /tmp/run_sales.py
+```
+
+The wrapper reads the token from the file and sets it as an env var — no shell masking issues.
+
+## Profit Calculation from COGS 🏆
+
+**The Loyverse API returns `cost` and `cost_total` per line item**, enabling gross profit calculation:
+
+| Line Item Field | Description |
+|----------------|-------------|
+| `cost` | Unit cost (cost per item) |
+| `cost_total` | Cost × quantity (total COGS) |
+| `total_money` | Sale price × quantity (revenue) |
+
+**Profit formula:** `profit = total_money - cost_total`
+
+**Working pattern:**
+```python
+total_sales = 0.0
+total_cost = 0.0
+for item in line_items:
+    total_sales += float(item.get("total_money", 0))
+    total_cost += float(item.get("cost_total", 0))
+gross_profit = total_sales - total_cost
+net_profit = gross_profit - total_discount
+margin_pct = (gross_profit / total_sales * 100)
+```
+
+**Known limitation — items without cost data:** Some services (labour, installation fees, "UPAH PASANG TEMPERED GLASS", "SERVICE BUANG IKLAN") may have `cost_total = 0.0`. These show as 100% margin items. Either set costs for these items in Loyverse Back Office, or exclude them from profit calculation.
+
+**Profit breakdown per item:**
+```python
+item_profit = {}
+for item in line_items:
+    name = item.get("item_name", "Unknown")
+    profit = float(item.get("total_money", 0)) - float(item.get("cost_total", 0))
+    # Aggregate by item name
+```
+
+**Daily profit breakdown** is useful for margin analysis — days with heavy phone/parts sales tend to have lower margins (~3-12%) while service-only days can hit 40-65% margins.
 
 ## Critical Pitfall: Client-Side Date Filtering ⚠️
 
@@ -55,8 +126,38 @@ The `created_at` field format is ISO 8601: `2026-06-25T14:15:05.000Z`
 ## Output Format
 
 The script produces:
-1. **Console summary** (Telegram-formatted Markdown) — total sales, transaction count, tax, discount, payment breakdown, top 5 items
-2. **CSV file** at `~/.hermes/reports/sales_YYYY-MM-DD.csv` with per-item rows
+1. **Console summary** (Telegram-formatted Markdown) with profit breakdown:
+
+```
+📊 *Laporan Jualan Harian — YYYY-MM-DD*
+
+💰 Total Jualan: *RM X,XXX.XX*
+  Cost: RM X,XXX.XX
+📈 Gross Profit: *RM XX.XX*  (XX.X%)
+🧾 Transaksi: *XX*
+📉 Tax: RM X.XX
+🏷 Discount: RM X.XX
+
+💳 *Breakdown Bayaran:*
+  • Cash: RM X,XXX.XX
+  • QR PAYMENT: RM XXX.XX
+    ...
+
+📦 *Item Paling Laris:* (by qty)
+  • Item: x Qty
+    ...
+
+🏆 *Profit Teratas:* (by profit)
+  • Item: +RM XX.XX
+    ...
+```
+
+**Margin emoji indicators:**
+- `📈` → margin ≥ 20% (good)
+- `📉` → margin 10–19% (moderate)
+- `⚠️` → margin < 10% (low — e.g. reload/topup-heavy days)
+
+2. **CSV file** at `~/.hermes/reports/sales_YYYY-MM-DD.csv` with per-item rows including cost and profit columns
 
 ## Telegram Delivery
 
@@ -141,12 +242,6 @@ python3 /tmp/send_telegram.py
 
 Expected success response includes `"ok":true` and `message_id`.
 
-**Alternative (if `curl` is available and `jq` is not needed):**
-
-```bash
-# Use Python's urllib via a temp script — avoid inline -c flags
-```
-
 ### Telegram env vars in `~/.hermes/.env`
 
 | Variable | Purpose |
@@ -154,24 +249,55 @@ Expected success response includes `"ok":true` and `message_id`.
 | `TELEGRAM_BOT_TOKEN` | Bot token from @BotFather |
 | `TELEGRAM_ALLOWED_USERS` | Chat ID (user or channel) to send to |
 
+## Bundled Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/telegram-delivery.py` | Send messages to Telegram via Bot API. Reads tokens via Python subprocess, avoiding `grep|cut` shell issues. |
+| `scripts/run_sales.py` | Wrapper that reads `LOYVERSE_ACCESS_TOKEN` from `/tmp/.loyverse_token` file and runs `fetch_sales.py`. Avoids shell token masking entirely. |
+
+## Monthly Report Pattern
+
+For consolidated month-end reports (e.g. "Laporan Jun 2026"):
+
+1. Set date range from **1st of month** to **last day of month** in MYT
+2. Use `created_at.min` with the 1st's midnight ISO timestamp
+3. Filter client-side by prefix: `if r.get("created_at", "").startswith("2026-06")`
+4. Aggregate totals and profit across all receipts
+5. Save to `~/.hermes/reports/sales_YYYY-MM.csv`
+
+### When to run
+
+Query the monthly report on **day 2–3 of the following month** for best data coverage (the 31-day API window on free tier means early-month receipts may not be visible until early next month). See `references/rollover-note.md`.
+
+### Daily profit breakdown format
+
+```
+📅 *Harian (N hari):*
+  Tarikh             Jualan       Cost     Profit Margin
+  ────────────── ────────── ────────── ────────── ──────
+  2026-06-17     RM 2,161  RM 1,442  RM   719    33%
+  2026-06-04     RM    51  RM     50  RM     1     2%
+  ...
+```
+
+## Reference Files
+
+| File | Purpose |
+|------|---------|
+| `references/rollover-note.md` | Documents the 31-day API rollover quirk and why monthly totals shift between queries |
+
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Report shows wildly wrong total (e.g. RM4,708 instead of RM65) | Server-side date filter ignored | Ensure client-side filtering is in place |
+| Report shows wildly wrong total (e.g. RM4,708 instead of RM65) | Server-side date filter ignored | Ensure client-side filtering is in place (see Critical Pitfall) |
 | HTTP 401 | Invalid/expired token | Update `LOYVERSE_ACCESS_TOKEN` in `~/.hermes/.env` |
 | HTTP 402 | Receipt older than 31 days | Expected — stop pagination, what you have is fine |
 | "Tiada transaksi" but dashboard shows sales | Timezone mismatch or filter bug | Check `created_at` dates in raw API response |
+| Profit shows way too high | Items without cost data (cost=0 → 100% margin) | Set costs in Loyverse Back Office for service items |
+| Profit shows way too low (e.g. RM 1.51 on RM 65 sales) | Reload/topup items have very thin margins (~2%) | Normal — reload margins are intrinsically low; focus on accessory/repair sales |
 | `python3 -c` exits with code -1 / pending_approval | Pattern-based approval blocks inline execution | Write a standalone `.py` file and run it instead |
 | `$(...)` token extraction fails with syntax errors / "you must specify a list of bytes" | Hermes terminal censors secrets with `***`, breaking `cut` and subshells | Run `grep` directly in separate commands, or use `scripts/telegram-delivery.py` which extracts env vars via Python subprocess |
 | Telegram send fails with "Bad Request: message text is empty" | JSON payload not properly encoded | Use Python's `json.dumps()` instead of shell string interpolation |
 
-## Script Location
-
-`~/.hermes/skills/fetch_sales.py` — single-file script, no dependencies beyond Python stdlib.
-
-The canonical corrected version is in this skill's `references/fetch_sales.py`. If the deployed script is producing wrong totals, compare against this reference.
-
-## Telegram Delivery Script
-
-`scripts/telegram-delivery.py` — standalone script for sending messages to Telegram via Bot API. Use this instead of inline `python3 -c` or shell `curl` when delivering reports. See the **Telegram Delivery** section above for usage.

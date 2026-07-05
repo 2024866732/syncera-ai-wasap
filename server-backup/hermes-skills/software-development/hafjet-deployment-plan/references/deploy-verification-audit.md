@@ -47,6 +47,43 @@ decorator_depends = wl.count('dependencies=[Depends(')
 sig_depends = wl.count('Depends(get_current_staff)')
 print(f'Depends in decorator: {decorator_depends} (expect 0)')
 print(f'Depends in function sig: {sig_depends} (expect 6)')
+```
+
+### ZIP-vs-Git Content Verification (SHA256)
+
+Before deploy, confirm the ZIP matches the working tree (or git HEAD) exactly for all key files. This catches stale ZIPs built before source was patched:
+
+```bash
+python3 -c "
+import zipfile, hashlib
+
+key_files = [
+    'webhook_listener.py',
+    'db_logger.py',
+    'start.sh',
+    'requirements.txt',
+    'dashboard/src/api/api.js',
+    'dashboard/src/components/Analytics.jsx',
+    'dashboard/dist/index.html',
+]
+
+with zipfile.ZipFile('/tmp/deploy-prod.zip', 'r') as zf:
+    zipped = set(zf.namelist())
+    all_match = True
+    for kf in key_files:
+        with open(kf, 'rb') as f:
+            wh = hashlib.sha256(f.read()).hexdigest()[:16]
+        if kf in zipped:
+            zh = hashlib.sha256(zf.read(kf)).hexdigest()[:16]
+            ok = '✅' if wh == zh else '❌'
+            print(f'  {ok} {kf}: work={wh} zip={zh}')
+            if wh != zh:
+                all_match = False
+        else:
+            print(f'  ❌ {kf}: MISSING FROM ZIP!')
+            all_match = False
+    print('')
+    print('✅ ALL MATCH' if all_match else '❌ REBUILD ZIP — files differ')
 "
 ```
 

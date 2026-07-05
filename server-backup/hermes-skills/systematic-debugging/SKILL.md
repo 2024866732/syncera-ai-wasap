@@ -338,6 +338,7 @@ These techniques are part of systematic debugging and available in this director
 - **`config-origin-tracing.md`** — Trace a config value through all layers (env var → Python → API → DB → built JS → live dashboard) to determine runtime source of truth. 5-step investigation with exact commands, pitfall table, and quick-reference checklist.
 - **`ai-llm-logging-fallback.md`** - Detailed logging of LLM requests/responses, config validation, timeout handling, empty/None response fallback
 - **`frontend-backend-field-mapping.md`** — When frontend shows unexpected labels ("SYSTEM", blank text) or missing data, cross-reference field names between API JSON response keys and React component properties. Common mismatch: DB column `content` vs JavaScript `message.message`, DB column `direction` vs React `message.source`. SQL `SELECT *` returns raw DB columns, frontend may expect aliased or computed fields.
+- **`fastapi-openapi-route-verification.md`** — OpenAPI schema as definitive FastAPI route registration diagnostic. Detects stale bytecode, Oryx cache, and silent import errors by comparing registered routes against expected endpoints.
 
 **Related skills:**
 - **superpowers:test-driven-development** - For creating failing test case (Phase 4, Step 1)

@@ -1,7 +1,7 @@
 model:
-  provider: opencode-zen
-  base_url: https://opencode.ai/zen/v1
-  default: deepseek-v4-flash-free
+  provider: nous
+  base_url: https://inference-api.nousresearch.com/v1
+  default: stepfun/step-3.7-flash:free
   api_key: user_3j26u9xomcftzkdU61r2hb9x8xAJcSaBKvZmAXB65CRLkpLSbh92TaU6eT1sPCrkUdKZb2JwKoHacSYLAnAeCkEq
   api_mode: chat_completions
 providers:
@@ -602,10 +602,34 @@ platform_toolsets:
   - vision
   - web
   - x_search
+  discord:
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - context_engine
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - memory
+  - moa
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - tts
+  - video
+  - video_gen
+  - vision
+  - web
+  - x_search
 known_plugin_toolsets:
   telegram:
   - spotify
   cli:
+  - spotify
+  discord:
   - spotify
 image_gen:
   provider: openai-codex

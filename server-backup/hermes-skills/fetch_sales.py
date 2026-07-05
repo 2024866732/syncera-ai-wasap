@@ -121,12 +121,14 @@ def save_csv(receipts, date_str):
     return filepath
 
 def summarize(receipts):
-    """Calculate summary stats from receipts."""
+    """Calculate summary stats + profit from receipts."""
     total_sales = 0.0
+    total_cost = 0.0
     total_tax = 0.0
     total_discount = 0.0
     payment_totals = {}
     item_totals = {}
+    item_profit = {}
 
     for r in receipts:
         total_sales += float(r.get("total_money", 0))
@@ -142,24 +144,46 @@ def summarize(receipts):
             qty = float(item.get("quantity", 0))
             item_totals[name] = item_totals.get(name, 0) + qty
 
-    # Top 5 items
+            sales = float(item.get("total_money", 0))
+            cost = float(item.get("cost_total", 0))
+            total_cost += cost
+            if name not in item_profit:
+                item_profit[name] = {"sales": 0.0, "cost": 0.0}
+            item_profit[name]["sales"] += sales
+            item_profit[name]["cost"] += cost
+
+    gross_profit = total_sales - total_cost
+    margin = (gross_profit / total_sales * 100) if total_sales > 0 else 0
+
+    # Top 5 items by quantity
     top_items = sorted(item_totals.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    # Top 3 items by profit
+    top_profit_items = sorted(item_profit.items(), key=lambda x: x[1]["sales"] - x[1]["cost"], reverse=True)[:3]
 
     return {
         "total_sales": total_sales,
+        "total_cost": total_cost,
+        "gross_profit": gross_profit,
+        "profit_margin": margin,
         "total_tax": total_tax,
         "total_discount": total_discount,
         "transaction_count": len(receipts),
         "payment_totals": payment_totals,
         "top_items": top_items,
+        "top_profit_items": top_profit_items,
     }
 
 def format_summary(summary, date_str):
     """Format a Telegram-friendly summary message."""
+    margin_emoji = "📈" if summary["profit_margin"] >= 20 else "📉" if summary["profit_margin"] >= 10 else "⚠️"
+    
     lines = [
         f"📊 *Laporan Jualan Harian — {date_str}*",
         "",
         f"💰 Total Jualan: *RM {summary['total_sales']:,.2f}*",
+        f"  Cost: RM {summary['total_cost']:,.2f}",
+        f"{margin_emoji} Gross Profit: *RM {summary['gross_profit']:,.2f}*  ({summary['profit_margin']:.1f}%)",
         f"🧾 Transaksi: *{summary['transaction_count']}*",
         f"📉 Tax: RM {summary['total_tax']:,.2f}",
         f"🏷 Discount: RM {summary['total_discount']:,.2f}",
@@ -176,6 +200,13 @@ def format_summary(summary, date_str):
         lines.append("📦 *Item Paling Laris:*")
         for name, qty in summary["top_items"]:
             lines.append(f"  • {name}: x {int(qty)}")
+        lines.append("")
+
+    if summary["top_profit_items"]:
+        lines.append("🏆 *Profit Teratas:*")
+        for name, d in summary["top_profit_items"]:
+            p = d["sales"] - d["cost"]
+            lines.append(f"  • {name}: +RM {p:,.2f}")
         lines.append("")
 
     return "\n".join(lines)

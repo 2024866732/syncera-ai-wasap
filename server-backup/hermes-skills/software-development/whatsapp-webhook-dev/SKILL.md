@@ -614,6 +614,7 @@ When adding a new routing path, update `_detect_routing()` and ensure `log_outbo
 ## See Also
 
 - `references/keyword-bot-builder.md` — Full implementation details: integration flow, frontend Keywords.jsx component, API helpers in Dashboard, SPA route wiring, default HAFJET rules, and test patterns
+- `references/reminder-automation-pattern.md` — Dry-run scheduler, dual-layer state machine, 24-hour template vs freeform routing, external CSV import with upsert, template send helper, and the critical "verify data source first" workflow for reminder automation integrations (SPX, POS, delivery, etc.)
 
 ```
 User Message

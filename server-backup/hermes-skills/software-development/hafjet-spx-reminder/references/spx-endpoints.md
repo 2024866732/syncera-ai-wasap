@@ -1,0 +1,65 @@
+# SPX Integration Reference — Session Notes
+
+## Endpoints
+- `GET https://sp.spx.shopee.com.my/sp-api/point/order/collection/list?inbound_time_start=<unix>&inbound_time_end=<unix>&pageno=<int>&count=<int>`
+- `POST https://sp.spx.shopee.com.my/sp-api/order/show_secret`
+  Body: `{"entity_id":"<str>","entity_type":2,"info_type":2,"query_id":"<shipment_id>","view_channel":2}`
+
+## Field Mapping (JSON → DB)
+| JSON field | DB column | Notes |
+|---|---|---|
+| `id` | `entity_id` | **TEXT**, not `co_num` |
+| `shipment_id` | `spx_tracking_number` | UNIQUE |
+| `scan_tracking_number` | `scan_tracking_number` | optional |
+| `recipient_name` | `recipient_name` | full, unmasked |
+| `recipient_phone` | — | **MASKED** (`********757`), must call `show_secret` |
+| `inbound_time` | `inbound_time` | unix ts → datetime |
+| `collect_time` | `collect_by_date` | unix ts → datetime |
+| `outbound_time` | `outbound_time` | 0 = NULL |
+| `status` | `spx_status` | int 1-9 mapped via `normalize_spx_status()` |
+| `storage_id` | `storage_id` | e.g. `Z-02` |
+
+## Threshold Math
+```text
+t1 = inbound_time + 1 day @ 08:00
+t2 = collect_by_date - 3 days @ 08:00
+t3 = collect_by_date - 1 day @ 08:00
+t4 = collect_by_date @ 08:00
+t5 = collect_by_date + 1 day @ 09:00  (CollectionFailed)
+```
+
+State machine: `Pending → Remind1_Sent → Remind2_Sent → Remind3_Sent → Remind4_Sent → CollectionFailed`.
+
+## Rate Limits
+- List API: `asyncio.sleep(0.3)` between pages
+- Phone reveal: `asyncio.sleep(0.5)` between calls
+- Handle 401: raise `Exception("SPX_SESSION_EXPIRED")`, return 401 JSON to client
+
+## Pilot Data (2026-07-05)
+- Total orders in portal: 2,346
+- Confirmed endpoint structures and response codes.
+- Masked phone format: `XXXXXXXX757` (last 3 digits shown)
+
+## DB Cookie Storage Pattern
+- `spx_session` table: single constrained row (`id INTEGER PRIMARY KEY CHECK (id = 1)`)
+- Never log full cookies to stdout or error logs.
+- Health check: `GET /api/spx/session-status` calls list API with `count=1`, returns `{"active":true,"total":N}` or 401 `{"active":false,"error":"SPX_SESSION_EXPIRED"}`.
+
+## Frontend Wrapper Pattern
+Dashboard components should call existing FastAPI endpoints without changing backend contracts:
+```javascript
+// api.js
+export async function saveSPXSession(cookies) { ... }
+export async function fetchSPXSessionStatus() { ... }
+export async function fetchSPXSync() { ... }
+```
+Session UI must never expose full cookies outside the textarea input. Error state should show `SPX_SESSION_EXPIRED` to prompt re-auth.
+
+## Timezone Pattern
+Server stays in UTC. Business rules for send windows and customer-facing times use `ZoneInfo("Asia/Kuala_Lumpur")`. Convert via:
+```python
+from zoneinfo import ZoneInfo
+now_utc = datetime.now(timezone.utc)
+now_my = now_utc.astimezone(ZoneInfo("Asia/Kuala_Lumpur"))
+```
+Do not change server timezone or store ambiguous local times. DB timestamps remain UTC. Log outside-window events as `[SPX] Outside Malaysia send window: HH:MM MYT (server UTC HH:MM)`.

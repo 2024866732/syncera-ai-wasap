@@ -13,9 +13,6 @@ Integration with business SaaS APIs (POS, accounting, CRM) has recurring pitfall
 
 1. **Decline politely** — explain that chat history persists and credentials in plain text are a security risk
 2. **Prefer the `.env` file pattern** — ask the user to add the token to `~/.hermes/.env` themselves:
-   ```bash
-   echo 'SERVICE_API_TOKEN=abc123...' >> ~/.hermes/.env
-   ```
 3. **If the user insists** — accept it, but mask it in all responses (show only first/last 4 chars), and remind them to rotate the token after use
 4. **Never log credentials** in tool output, debug prints, or error messages
 
@@ -98,6 +95,106 @@ When cursor pagination fails with filters, use date-range chunking instead:
 
 **Loyverse-specific:** HTTP 402 with message *"Unable to retrieve receipts created earlier than 31 days ago"* means the free tier only allows retrieving receipts within the last 31 days. This is a subscription feature gate, not a rate limit. For data within 31 days, use date filters to bound the range.
 
+## Rate Limits
+
+| API | Limit | Window |
+|-----|-------|--------|
+| Loyverse | 300 requests | 300 seconds |
+| GitHub | 5,000 requests | 1 hour |
+| Stripe | 100 requests | 1 second |
+
+Always implement polite delays between requests when doing paginated syncs. Add per-provider rate-limit tuning in the implementation rather than guessing generics.
+
+## Session-Based API Sync
+
+For APIs that use cookie-based sessions (not bearer tokens):
+
+**Storage pattern**
+- Store the session cookies in a dedicated DB table with a single constrained row (e.g., `id INTEGER PRIMARY KEY CHECK (id = 1)`)
+- Never store passwords or tokens in code, `.env`, or logs
+- Query the DB at sync start; cache in memory for the duration of the sync only
+
+**Test pattern**
+- Always ship a lightweight health-check endpoint that calls the external API with `count=1`
+- Return `{"active": true, "total": N}` on success
+- Return `{"active": false, "error": "SESSION_EXPIRED"}` with HTTP 401 on auth failure
+
+**Sync pattern (two-phase)**
+1. **Phase 1 — List sync:** Paginate the list endpoint, upsert each record into local DB. Batch upserts are idempotent by natural key (tracking number / entity_id).
+2. **Phase 2 — Enrichment:** Query local rows missing enriched fields (e.g., masked phone), call the detail/reveal endpoint per record with a fixed delay, then update the local row.
+
+```python
+# Phase 1: list
+pageno = 1
+while True:
+    result = await api_list(cookies, pageno=pageno)
+    for item in result["data"]["list"]:
+        upsert_local(item)
+    if pageno * COUNT >= result["data"]["total"]:
+        break
+    pageno += 1
+    await asyncio.sleep(0.3)
+
+# Phase 2: enrichment
+for row in get_rows_missing_enriched_field():
+    value = await api_reveal(cookies, row["entity_id"])
+    if value:
+        update_local(row["id"], value)
+    await asyncio.sleep(0.5)
+```
+
+**401 handling contracts**
+- Any 401 during Phase 1: abort whole sync, return `{"error": "SESSION_EXPIRED"}` so the UI can prompt re-auth
+- Any 401 during Phase 2: abort Phase 2, leave enriched data partial; still return the partial stats to the caller
+- Do not retry on 401 — there is no backoff that fixes an expired session
+
+## SQLite Schema Drift Migration
+
+SQLite does not support `DROP COLUMN` in older versions and `ALTER TABLE ... ADD COLUMN` is additive only. When you need to change a column type, add `NOT NULL` constraints, or add primary keys:
+
+**Detect-and-rebuild pattern**
+```python
+def ensure_schema(conn):
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(table_name)").fetchall()]
+    if "new_required_col" not in cols:
+        conn.execute("DROP TABLE IF EXISTS table_name")
+        conn.execute("""
+            CREATE TABLE table_name (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                new_required_col VARCHAR(50) NOT NULL,
+                ...
+            )
+        """)
+        conn.executescript("""
+            CREATE INDEX IF NOT EXISTS idx_col ON table_name(col);
+        """)
+        conn.commit()
+```
+
+**When to use full rebuild vs ALTER TABLE**
+- Use `ALTER TABLE ... ADD COLUMN` when adding optional columns to an existing table
+- Use full table rebuild when: changing column nullability, changing types, adding primary keys, or adding `UNIQUE` constraints that may fail on existing data
+- Always recreate indexes after rebuild
+- Wrap rebuild in try/except; production DBs may have concurrent readers
+
+## 24-Hour WhatsApp Policy
+
+WhatsApp Cloud API enforces a 24-hour customer-service window after the last inbound message:
+- **Within 24h:** free-form text messages allowed
+- **After 24h:** must use pre-approved templates
+
+Lookup the last inbound timestamp from the `messages` table per customer and branch send logic accordingly.
+
+```python
+last_inbound = conn.execute(
+    "SELECT max(timestamp) FROM messages WHERE customer_phone=? AND direction='inbound'",
+    (phone,),
+).fetchone()[0]
+within_24h = last_inbound and (datetime.now() - datetime.fromisoformat(last_inbound)).total_seconds() < 86400
+```
+
+**Gotcha:** Inbound timestamps may be stored as naive local time (SQLite default). When comparing to `datetime.now(timezone.utc)`, normalize both sides to naive local or both to UTC. The HAFJET schema uses naive local `timestamp TIMESTAMP DEFAULT (datetime('now'))`, so compare with naive `datetime.now()`.
+
 ## Telegram Bot Setup (for report delivery)
 
 When setting up Telegram delivery for reports:
@@ -106,7 +203,7 @@ When setting up Telegram delivery for reports:
 2. Get a chat ID by messaging the bot and visiting `https://api.telegram.org/bot<TOKEN>/getUpdates`
 3. Add both to `~/.hermes/.env`:
    ```env
-   TELEGRAM_BOT_TOKEN=<token>
+   TELEGRAM_BOT_TOKEN=***
    TELEGRAM_HOME_CHANNEL=<chat_id>
    TELEGRAM_ALLOWED_USERS=<user_id1>,<user_id2>
    ```
@@ -162,40 +259,7 @@ os.environ["LOYVERSE_ACCESS_TOKEN"] = token
 result = subprocess.run([sys.executable, os.path.expanduser("~/.hermes/skills/script.py")])
 ```
 
-## Rate Limit Patterns
-
-| API | Limit | Window |
-|-----|-------|--------|
-| Loyverse | 300 requests | 300 seconds |
-| GitHub | 5,000 requests | 1 hour |
-| Stripe | 100 requests | 1 second |
-
-Always implement polite delays between requests when doing pagination.
-
-## Report Delivery via Telegram
-
-After generating a report (sales, inventory, etc.), deliver the summary to Telegram:
-
-1. Run the script, capture stdout (the formatted summary)
-2. Send the captured text to the Telegram chat using the Bot API
-3. CSV is auto-saved to `~/.hermes/reports/` for archival
-
-See `references/telegram-delivery-pattern.md` for the full pattern including:
-- Reading `TELEGRAM_BOT_TOKEN` and `TELEGRAM_HOME_CHANNEL` from `.env`
-- Token redaction gotcha (terminal masks tokens with `...`)
-- Python wrapper for sending messages
-- Cron job orchestration pattern
-
-## See Also
-
-- `references/loyverse-api-notes.md` — Loyverse-specific API quirks and working patterns (includes client-side date filtering, cost/profit fields)
-- `references/cron-timezone-guide.md` — Server UTC vs MYT timezone conversion for cron jobs
-- `references/shell-token-extraction.md` — Why shell grep|cut fails for token extraction
-- `references/telegram-delivery-pattern.md` — Telegram bot delivery pattern for report summaries
-- `scripts/fetch_sales.py` — Working example: Loyverse daily sales report with client-side date filtering, profit calculation, and CSV export
-- `whatsapp-webhook-dev` — WhatsApp Cloud API webhook development (FastAPI, Meta Graph API)
-
-## Skill Authoring Note
+## Skill Authorship Note
 
 When using `skill_manage(action='write_file')` to add reference/template/script files to a skill, the content parameter must be named **`file_content`** (not `content`). Using `content` will fail with "file_content is required".
 
@@ -212,3 +276,13 @@ On systems with PEP 668 (externally-managed-environment):
 - `pip3 install` may hang or fail — use `pip3 install --break-system-packages` or better, use a venv
 - `uv` package manager works without issues: `uv pip install <package>`
 - Background `pip3 install` without `notify_on_complete=true` runs silently — use `process(action='poll')` to check
+
+## See Also
+
+- `references/loyverse-api-notes.md` — Loyverse-specific API quirks and working patterns (includes client-side date filtering, cost/profit fields)
+- `references/cron-timezone-guide.md` — Server UTC vs MYT timezone conversion for cron jobs
+- `references/shell-token-extraction.md` — Why shell grep|cut fails for token extraction
+- `references/spx-shopee-integration.md` — SPX Shopee endpoint mapping, status codes, reveal pattern
+- `references/telegram-delivery-pattern.md` — Telegram bot delivery pattern for report summaries
+- `scripts/fetch_sales.py` — Working example: Loyverse daily sales report with client-side date filtering, profit calculation, and CSV import
+- `whatsapp-webhook-dev` — WhatsApp Cloud API webhook development (FastAPI, Meta Graph API)

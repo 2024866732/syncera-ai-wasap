@@ -33,11 +33,18 @@ Sprint v2.1.1 deploy for HAFJET WhatsApp Bot. Deployed via `az webapp deploy --t
 az webapp deployment source config-zip -g hafjet-bot-rg -n hafjet-whatsapp-bot --src /tmp/hafjet-prod.zip --timeout 300
 ```
 
-### Set startup to use antenv gunicorn
+### Set startup to use python -m gunicorn
 ```bash
 az webapp config set -g hafjet-bot-rg -n hafjet-whatsapp-bot \
-  --startup-file "antenv/bin/gunicorn -w 2 -k uvicorn.workers.UvicornWorker webhook_listener:app --bind 0.0.0.0:8000 --timeout 120"
+  --startup-file "bash /home/site/wwwroot/start.sh"
 ```
+With `start.sh` containing:
+```bash
+#!/bin/bash
+cd /home/site/wwwroot
+python -m gunicorn -w 2 -k uvicorn.workers.UvicornWorker webhook_listener:app --bind 0.0.0.0:8000 --timeout 120
+```
+This uses the Oryx-provided Python with `PYTHONPATH` pointing to `antenv`, avoiding the missing-file crash when `/home/site/wwwroot/antenv/` is not present after ZIP deploy.
 
 ### Check current appCommandLine
 ```bash
