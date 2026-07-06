@@ -57,6 +57,117 @@ description: Class-level skill for building and operating the SPX self-collectio
 - Orders table with phone-status badges.
 - Nav item in `Layout.jsx` (`id='spx-orders'`).
 
+## SPX API Code Patterns (Jul 2026 learnings)
+
+### Safe string conversion — `_safe_str`
+
+**Problem:** `upsert_spx_order()` calls `.strip()` on fields from SPX API response. SPX API returns mixed types: `storage_id`, `payment_method`, `transaction_method` can be integers (not strings). Calling `.strip()` on an integer raises `AttributeError: 'int' object has no attribute 'strip'`.
+
+**Solution:** Create a helper function that handles all types:
+```python
+def _safe_str(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, bytes):
+        return value.decode().strip()
+    return str(value)
+```
+Use `_safe_str(data.get("field", ""))` instead of `data.get("field", "").strip()` everywhere in `upsert_spx_order`.
+
+### Datetime handling — `_parse_sqlite_dt`
+
+**Problem:** `batch_sync_spx_orders()` converts SPX Unix timestamps to `datetime.datetime` objects via `datetime.fromtimestamp()`, then passes them to `_parse_sqlite_dt()` which calls `.strip()` on them — `datetime` has no `.strip()`.
+
+**Solution — dual-type handling in `_parse_sqlite_dt`:**
+```python
+def _parse_sqlite_dt(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):           # datetime object from API
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(value, str):                 # string from CSV import
+        s = value.strip()
+        if not s:
+            return None
+        for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(s, fmt).strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                continue
+        return s
+    return None
+```
+
+**Alternative approach — convert to string early:**
+In `batch_sync_spx_orders()`, convert timestamps to strings immediately instead of datetime objects:
+```python
+inbound = datetime.fromtimestamp(order["inbound_time"]).strftime("%Y-%m-%d %H:%M:%S") if order.get("inbound_time") else None
+```
+This bypasses the need for `_parse_sqlite_dt` to handle datetime objects, but the dual-type fix in `_parse_sqlite_dt` is more defensive.
+
+## Frontend Auth Pattern (Critical — Fix Before First Use)
+
+**Bug discovered Jul 2026:** All SPX API functions in `api.js` (lines 391-475) hardcode `X-API-Key` header:
+```js
+headers: { 'X-API-Key': import.meta.env.VITE_API_KEY || '' },
+```
+
+But backend SPX endpoints use `Depends(get_current_staff)` which requires `Authorization: Bearer <token>`. A function `getAuthHeaders()` already exists at line 148 that correctly handles both:
+```js
+function getAuthHeaders() {
+  const token = localStorage.getItem('staff_token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else {
+    headers['X-API-Key'] = import.meta.env.VITE_API_KEY || '';
+  }
+  return headers;
+}
+```
+
+**Fix:** Every SPX function in `api.js` must use `getAuthHeaders()` instead of hardcoded `X-API-Key`:
+```js
+// BEFORE (broken — always 401):
+headers: { 'X-API-Key': import.meta.env.VITE_API_KEY || '' }
+
+// AFTER (uses Bearer token when logged in):
+headers: getAuthHeaders()
+```
+
+**Affected functions (8 total):** `fetchSPXOrders`, `importSPXCSV`, `updateSPXOrder`, `markSPXCollected`, `fetchSPXStats`, `saveSPXSession`, `fetchSPXSessionStatus`, `fetchSPXSync`.
+
+**Note for `importSPXCSV`:** Uses `FormData` — do NOT set `Content-Type` (browser sets it with boundary). `getAuthHeaders()` returns `Content-Type: application/json` which must be omitted for FormData. Either strip it:
+```js
+const h = getAuthHeaders();
+delete h['Content-Type'];
+const res = await fetch(url, { method: 'POST', headers: h, body: form });
+```
+
+**Note for `updateSPXOrder` and `saveSPXSession`:** Use `Content-Type: application/json` — `getAuthHeaders()` already includes it, so it works directly.
+
+**Cookies format & debugging:** The backend stores whatever string is sent as `{"cookies": "<string>"}` in `spx_session` and uses it directly as the `Cookie:` header when calling SPX API. Users must paste the **full Cookie header from DevTools → Network tab → Request Headers** (NOT from Application tab which may miss HttpOnly cookies like CSRF tokens).  
+
+For a complete session debugging protocol including CSRF hypothesis and step-by-step 401 diagnosis, see `references/spx-session-debug.md`.
+
+**Error messaging pitfall:** When the backend returns HTTP 401, the response body uses the `detail` key (`{"detail": "Missing or invalid Authorization header"}`). But `saveSPXSession` only reads `data.error`:
+```js
+if (!res.ok) throw new Error(data.error || data.detail || 'Failed to save session');
+//                                                        ^^^^^^^^^^^^^^^^^^^^^^^^ fallback shown to user
+```
+Since `data.error` is `undefined` (the key is `detail`), the user sees a generic "Failed to save session" instead of the actual auth error. Fix: also check `data.detail`.
+```js
+if (!res.ok) throw new Error(data.error || data.detail || 'Failed to save session');
+```
+
+**After fixing api.js, rebuild dashboard:**
+```bash
+cd dashboard && npm run build
+```
+Then rebuild ZIP and redeploy. No backend changes needed.
+
 ## Subagent Patch Discipline
 When multiple subagents or parallel tool calls may edit the same file:
 - **Never overwrite a file with `write_file`** if another agent/session also patched it in the same context. Use `patch(action='replace'` with unique `old_string` instead.
@@ -65,4 +176,4 @@ When multiple subagents or parallel tool calls may edit the same file:
 
 ## Reference
 - `references/spx-endpoints.md` — confirmed endpoint details, field mappings, thresholds.
-- `references/spx-shopee-integration.md` is superseded; detailed notes moved here.
+- `references/spx-session-debug.md` — SPX session debugging protocol: diagnosis steps, CSRF hypothesis, cookie capture guide.

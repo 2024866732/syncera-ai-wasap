@@ -104,11 +104,46 @@ It also covers self-hosted Linux + Tailscale for internal HAFJET tools (Hermes W
 
 12. **Stop on throttle, do not retry** — 429 on plan create/delete = STOP. Wait 15+ min, reuse existing resources.
 
-13. **Prefer web app recreate over plan recreate** — Deleting last web app auto-deletes plan. Expect it and plan for throttle window.
+## Loop Engineering for Production Incidents — When recovering from a production incident (app down, stale artifact, dependency crash), follow this structured format:
+
+### Engineering Mode Protocol (User Preference, Jul 2026)
+
+The user may interrupt a recovery sequence and demand **strict loop engineering mode**. When this happens:
+
+1. **STOP** all ongoing recovery actions immediately — no more stop/start/redeploy/restart.
+2. **Checkpoint** — produce a single concise report:
+   - Current state (health, app state, relevant config)
+   - Evidence (logs, API response codes, timestamps)
+   - Most likely cause (ONE paragraph maximum)
+3. **One action only** — propose exactly ONE corrective action with full confidence it addresses the cause.
+4. **Verify** — after action, re-check health + one API endpoint.
+5. **Verdict** — one of: `APP RECOVERED`, `APP STILL IN STARTUP LOOP`, `BAD DEPLOY SUSPECTED`, `CONFIG MISMATCH SUSPECTED`.
+
+**Do NOT** chain multiple changes (stop + deploy + restart + config edit) in the same loop. Each loop changes exactly one variable.
+
+**Use this format when the user says "stop", "engineering mode", "checkpoint", or expresses frustration at repeated recovery attempts.**
+
+    a. **Incident Assessment** — Direct verdict on whether this is a dependency/build failure vs content/code failure. One sentence, no filler.
+
+    b. **Commands to Run** — Exact Azure CLI commands in safe execution order. One change at a time. Use real app identity.
+
+    c. **Verification Checklist** — Compact ordered list (deployment logs → startup logs → /health → specific endpoint → OpenAPI schema). Each item defines what success looks like and what failure implies.
+
+    d. **Failure Branching** — Decision tree with branches (e.g., Oryx build didn't run / build ran but install failed / build succeeded but startup failed / startup succeeded but endpoint still fails). Each branch: most likely cause → next smallest corrective action.
+
+    e. **Exit Criteria** — Clear stop conditions: recovered / needs second loop with different variable / must escalate to different deployment strategy.
+
+    **Rules:**
+    - Change ONE variable at a time (not build + start + code all at once).
+    - Measure after each change before making the next.
+    - If build succeeds but app still fails, inspect startup logs for import errors — do not redeploy blindly.
+    - If Oryx build recreates old manifest artifacts, do not panic — verify the deployed code and dependencies are correct, not the file names.
+    - Do NOT escalate to a different deployment strategy until two loops with different variables have failed.
+    - If a loop succeeds, exit immediately — do not keep iterating.
 
 ## Startup Command Precedence (Python/Linux, Critical)
 
-**SETTLED STANDARD (Jul 2026):** Use `start.sh` (version-controlled in repo) via `appCommandLine`. Do NOT hardcode `antenv/bin/gunicorn` in `appCommandLine`. The `antenv` path is only reliable during Oryx build temp dir; after ZIP deploy it may not exist at `/home/site/wwwroot/antenv/`. Use `python -m gunicorn` inside `start.sh` so it follows the Python PATH that Azure/Oryx sets at runtime. Set via:
+**SETTLED STANDARD (Jul 2026):** Use `start.sh` (version-controlled in repo) via `appCommandLine`. Do NOT hardcode `antenv/bin/gunicorn` in `appCommandLine`. The `antenv` path is only reliable during Oryx build temp dir; after ZIP deploy it may not exist at `/home/site/wwwroot/antenv/`. Use a **resilient `start.sh`** that prefers `antenv/bin/gunicorn` (Oryx-built) and falls back to `python -m gunicorn` (system Python with auto-install). Set via:
 
 ```bash
 az webapp config set \
@@ -117,13 +152,24 @@ az webapp config set \
   --startup-file "bash /home/site/wwwroot/start.sh"
 ```
 
-The `start.sh` content:
+The `start.sh` content (resilient pattern — handles both Oryx-build and no-build scenarios):
 ```bash
 #!/bin/bash
 cd /home/site/wwwroot
-python -m gunicorn -w 2 -k uvicorn.workers.UvicornWorker \
-  webhook_listener:app --bind 0.0.0.0:8000 --timeout 120
+
+# Prefer Oryx virtualenv, fallback to system Python
+if [ -f antenv/bin/gunicorn ]; then
+    exec antenv/bin/gunicorn -w 2 -k uvicorn.workers.UvicornWorker \
+      webhook_listener:app --bind 0.0.0.0:8000 --timeout 120
+else
+    echo "[start.sh] antenv not found, trying pip install..."
+    pip install -q gunicorn uvicorn 2>/dev/null
+    exec python -m gunicorn -w 2 -k uvicorn.workers.UvicornWorker \
+      webhook_listener:app --bind 0.0.0.0:8000 --timeout 120
+fi
 ```
+
+**Why resilience matters:** After a WEBSITE_RUN_FROM_PACKAGE cycle or container recycle, the Oryx-built `antenv/` may no longer exist at `/home/site/wwwroot/antenv/`. A plain `python -m gunicorn` will fail with `ModuleNotFoundError` if gunicorn/uvicorn are not in the system Python. The fallback pip install covers this gap.
 
 **Why `start.sh` over direct `appCommandLine`:**
 | Factor | `start.sh` (chosen) | Direct `appCommandLine` |
@@ -600,6 +646,61 @@ When the container exits during startup, the **exit code** in `docker.log` revea
 
 The exit code ALWAYS appears in `docker.log` because it's tracked by the container runtime, not by the app's log stream.
 
+### Bug: `az webapp deploy --async false` returns "Deployment status endpoint returned error" but deploy may still succeed
+
+**Symptom:** The deploy command output includes:
+```
+WARNING: Deployment status endpoint https://management.azure.com/... returned error: Not Found(...)
+WARNING: Failed to track the runtime status for this deployment. Resuming without tracking status.
+```
+Followed by `"complete": true, "status": 4` in the JSON. The app may or may not have received the new files.
+
+**Root cause:** The Azure Management API version used by `az webapp deploy` for runtime status polling may not match the API version expected by the deployment service. This is a **tracking issue only** — the deployment itself (ZIP extraction, build) ran successfully on Kudu. The `"status": 4` indicates successful completion.
+
+**Diagnosis:** After seeing this error, verify by checking the app directly:
+```bash
+# If backend changed, test a specific endpoint
+curl -s https://<app>.azurewebsites.net/api/spx/session-status
+
+# If frontend changed, check the JS bundle hash
+curl -s https://<app>.azurewebsites.net/dashboard | grep -o 'index-[^.]*\.js'
+
+# Compare with local dist/index.html
+grep -o 'index-[^.]*\.js' dashboard/dist/index.html
+```
+
+**If files ARE updated:** The error was non-fatal — just polling broke, deploy worked.
+**If files are NOT updated:** The deploy actually failed despite the "success" message. Redeploy with a force mechanism.
+
+### Bug: Dashboard Static Assets (index.html, JS bundle) Not Updated Despite Successful Deploy
+
+**Symptom:** Backend routes work (new SPX endpoints registered, authentication works), but the dashboard still serves the OLD `index.html` referencing the OLD JS bundle hash. New JS bundle returns 404. The ZIP contains the correct new files (verified by extracting and checking hashes).
+
+**Root cause (likely):** This is the same stale Oryx cache issue affecting the `dashboard/dist/` directory. The Oryx build artifact (`output.tar.zst`) was built before the dashboard was rebuilt, so it contains old JS/CSS/HTML. Even though the ZIP has the new files, the deployment system serves the cached artifact instead. Backend `.py` files may update because they are not cached in the artifact (they're extracted fresh).
+
+**Detection:**
+```bash
+# 1. Verify ZIP has new content
+python3 -c "
+import zipfile
+z = zipfile.ZipFile('hafjet-prod.zip')
+html = z.read('dashboard/dist/index.html').decode()
+print('NEW hash in ZIP:', 'C2adAMRn' in html)  # replace with actual hash
+"
+
+# 2. Check what production serves
+curl -s https://<app>.azurewebsites.net/dashboard | grep -o 'index-[^.]*\.js'
+curl -s -o /dev/null -w '%{http_code}' https://<app>.azurewebsites.net/dashboard/assets/index-NEWHASH.js
+
+# 3. If new JS returns 404 but ZIP has it → stale Oryx cache
+```
+
+**Fix:** Force Oryx rebuild via `ORYX_BUILD_TIMESTAMP` (see below), or deploy with `--clean true` while app is RUNNING.
+
+**Prevention:** After `npm run build`, verify the JS hash in `dist/index.html` changed. Then either:
+- Set a new `ORYX_BUILD_TIMESTAMP` before deploying to invalidate cache
+- Or deploy with `--clean true` syntax
+
 ### Bug: Route Exists in ZIP but Returns 404 in Production — Stale Oryx Artifact
 
 **Symptom:** A route/function is present in the local source and in the deployed ZIP (verified by extracting the ZIP), but `curl` against the production endpoint returns `404`. Health endpoint returns `200`, app starts cleanly, and logs show no import errors. Other older endpoints still work.
@@ -693,6 +794,55 @@ python -m gunicorn -w 2 -k uvicorn.workers.UvicornWorker webhook_listener:app --
 ```
 
 The `python` in PATH is the Oryx-provided interpreter with `PYTHONPATH` already pointing to the built `antenv` site-packages, so `python -m gunicorn` resolves correctly without the absolute path.
+
+### Bug: Container Crash After WEBSITE_RUN_FROM_PACKAGE Removal (302ms)
+
+**Symptom:** After setting `WEBSITE_RUN_FROM_PACKAGE=1`, deploying, then removing the setting and restarting, the container crashes in <1s. Container log shows:
+```
+Container is terminated. Total time elapsed: 302 ms.
+Site container: hafjet-whatsapp-bot terminated during site startup.
+```
+App state says "Running" but `/health` returns `503` (Application Error) or TCP connection times out (`000`). The app process died before any health check could run.
+
+**Root cause:** When `WEBSITE_RUN_FROM_PACKAGE=1` is active, Azure mounts the ZIP directly as a read-only filesystem at `/home/site/wwwroot`. Files are managed by the package mount daemon, not by the standard extraction pipeline. When `WEBSITE_RUN_FROM_PACKAGE` is **removed** and the container restarts:
+1. The mount point is released
+2. A fresh container is provisioned
+3. The fresh container's `/home/site/wwwroot` may be in an **inconsistent state** — old Oryx build artifacts (`antenv/`, `output.tar.zst`, `oryx-manifest.toml`) are missing or corrupted
+4. If `start.sh` references `antenv/bin/gunicorn` (or even `python -m gunicorn` without pip fallback), the command fails and the container exits
+
+**This is exactly the same root cause as the Oryx stale cache bug** — the environment that `start.sh` depends on (antenv + deps) does not exist after the container recycles. The run-from-package cycle merely accelerates the symptom.
+
+**Fix (try in order):**
+
+1. **Deploy with resilient start.sh** (see "Settled Standard" section above) — the fallback pip install covers the dependency gap. Deploy while app is RUNNING:
+   ```bash
+   az webapp deploy -n <app> -g <rg> --src-path hafjet-prod.zip --type zip
+   ```
+
+2. **Ensure Oryx builds** by setting both `ENABLE_ORYX_BUILD=true` AND `SCM_DO_BUILD_DURING_DEPLOYMENT=true` BEFORE deploying. A real Oryx build takes 30-90s (not 1s). Verify with:
+   ```bash
+   # Deploy output should NOT show "Build successful. Time: 0(s)"
+   ```
+
+3. **WARNING — Do NOT set WEBSITE_RUN_FROM_PACKAGE experimentally.** The read-only mount mode is incompatible with apps that:
+   - Write to wwwroot (logs, DB files, temp uploads)
+   - Depend on Oryx's dynamic `antenv` virtualenv in wwwroot
+   - Use `start.sh` that expects a writable filesystem
+   
+   Once WEBSITE_RUN_FROM_PACKAGE is set and a deploy goes through, **removing it may break the app**. Plan for a full recovery cycle before adding this setting.
+
+**Recovery sequence from container crash after WEBSITE_RUN_FROM_PACKAGE removal:**
+
+```
+1. ✅ Fix start.sh with resilient fallback (see Settled Standard)
+2. ✅ Rebuild clean ZIP (python3 inline, not bash zip)
+3. ✅ Set ENABLE_ORYX_BUILD=true + SCM_DO_BUILD_DURING_DEPLOYMENT=true
+4. ✅ az webapp deploy --type zip (while app is RUNNING)
+5. Wait 60-90s for Oryx build + container warmup
+6. Verify: curl /health → 200
+7. Verify: curl /dashboard/index.html → grep for new JS bundle hash
+8. If still 503 after 120s: az webapp log tail for container startup errors
+```
 
 ### Bug: Cold Start `ModuleNotFoundError` After Fresh Deploy
 
@@ -1258,6 +1408,60 @@ Discovery command when app name is unknown:
 az webapp list --query "[].{name:name, rg:resourceGroup, state:state}" -o table
 ```
 Returns all web apps in the subscription with their resource groups and states.
+
+## Post-Deploy Verification (Critical Deploy-File Gap)
+
+**Jul 2026 discovery:** `az webapp deploy` and `az webapp deployment source config-zip` may report `"complete": true`, `"status": 4`, `"RuntimeSuccessful"` — but the files on disk at `/home/site/wwwroot/` are STILL the OLD version. This happened with `_safe_str` fix where deployed `db_logger.py` lacked the new function despite the deploy reporting success.
+
+**Root cause:** Unclear — possibly Azure Files NFS caching, stale Oryx artifact, or container serving from a cached layer. The deploy pipeline completes (ZIP extracted to persistent storage), but the running container loads from a stale copy.
+
+**Verification — do NOT trust deploy status alone:**
+```bash
+# 1. After deploy, verify file content on disk via SSH tunnel
+az webapp create-remote-connection -n <app> -g <rg> --timeout 120
+# In another shell or after tunnel establishes:
+ssh -o StrictHostKeyChecking=no root@127.0.0.1 -p <port> \
+  "grep -c 'def _safe_str' /home/site/wwwroot/db_logger.py"
+# If 0, the deployed code is NOT the code in your ZIP
+
+# 2. Verify route registration via OpenAPI
+curl -s https://<app>.azurewebsites.net/openapi.json | \
+  python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d.get('paths',{})))"
+
+# 3. Compare JS bundle hash
+curl -s https://<app>.azurewebsites.net/dashboard | \
+  grep -o 'index-[^.]*\\.js'
+grep -o 'index-[^.]*\\.js' dashboard/dist/index.html
+```
+
+**If files are stale despite "complete: true":**
+- Try deploying WHILE app is running (not stopped)
+- Add a forced workaround: `ORYX_BUILD_TIMESTAMP=$(date +%s)` as app setting
+- Use the SSH tunnel workaround to directly `scp` files if possible
+- As a LAST resort, scale to 0 → 1 instances after deploy to force new container creation
+
+**Pitfall — Hotfix ZIP with `--clean true` destroys essential files:**
+```bash
+# ❌ DANGEROUS — creates a minimal ZIP with only 3 files
+python3 -c "
+import zipfile
+with zipfile.ZipFile('hotfix.zip','w') as z:
+    z.write('db_logger.py','db_logger.py')
+    z.write('webhook_listener.py','webhook_listener.py')
+    z.write('start.sh','start.sh')
+"
+az webapp deploy --src-path hotfix.zip --type zip --clean true
+# → --clean true DELETES everything including dashboard/dist/, requirements.txt,
+#   antenv/, and all non-code files. App crashes with 503 on next restart.
+```
+**Fix:** Never use `--clean true` with a partial ZIP. Always deploy the FULL production ZIP with `--clean true`, or deploy partial fixes WITHOUT `--clean`. The full ZIP contains everything the app needs (dashboard dist, requirements.txt, backend files).
+
+**Recovery from hotfix disaster:**
+```bash
+# Deploy full ZIP immediately (while app is stopped or running)
+az webapp deploy -n <app> -g <rg> --src-path hafjet-prod.zip --type zip
+az webapp start -n <app> -g <rg>  # if stopped
+```
 
 ### Pitfall — `az webapp deploy --async true` may timeout silently
 The `--async true` flag polls deployment status with a default timeout of ~120s. If the build takes longer (Oryx rebuild, dependency install), the command times out at `Status: Building the app... Time: X(s)` — but the deployment **continues on Azure** and may still complete successfully.

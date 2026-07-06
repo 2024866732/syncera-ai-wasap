@@ -292,6 +292,45 @@ for col_def in [
 | **3. Hypothesis** | Form theory, test minimally | Confirmed or new hypothesis |
 | **4. Implementation** | Create test, fix, verify | Bug resolved, tests pass |
 
+## Engineering Mode Protocol (Production Incidents)
+
+**Use when:** User says "stop", "engineering mode", "checkpoint", or expresses frustration at repeated recovery attempts during a production incident.
+
+Based on explicit user directive (Jul 2026): When recovering from a production incident (app down, stale artifact, dependency crash), and the user interrupts to demand structured recovery:
+
+### Protocol (one loop = one variable)
+
+1. **STOP** immediately — no more stop/start/redeploy/restart until checkpoint
+2. **Checkpoint report** — produce ONE concise report:
+   - **Current state** — health endpoint status, app state from Azure, relevant config
+   - **Evidence** — log excerpts, API response codes, timestamps, SSH file verification
+   - **Most likely cause** — ONE paragraph maximum, no speculation
+3. **One action only** — propose exactly ONE corrective action you are confident addresses the cause
+4. **Verify** — re-check health + one relevant API endpoint
+5. **Verdict** — one of: `APP RECOVERED`, `APP STILL IN STARTUP LOOP`, `BAD DEPLOY SUSPECTED`, `CONFIG MISMATCH SUSPECTED`
+
+### Rules
+- **Do NOT chain multiple changes** (stop + deploy + restart + config edit) in the same loop
+- **Do NOT repeat an action that failed** without new evidence
+- **If deploy says "complete: true" but symptoms persist**, verify actual file content on disk (SSH tunnel or Kudu VFS) before deploying again — do not redeploy blindly
+- **If 3+ loops failed**, escalate — do not keep iterating
+
+### Red flags that trigger Engineering Mode
+- User says: "jangan teruskan recovery secara terbuka tanpa checkpoint"
+- User says: "jangan buat stop/start/redeploy berulang"
+- User demands a single report with evidence before next action
+- User provides a specific report format (tables, evidence, cause, action, verdict)
+
+### Example checkpoint table format
+| Property | Value |
+|---|---|
+| App state | `Running` or `Stopped` |
+| `/health` | `200`, `503`, or `000` (TCP timeout) |
+| Deploy status | `RuntimeSuccessful` or last error |
+| Config mismatch? | `STARTUP_COMMAND`, `ENABLE_ORYX_BUILD`, `SCM_DO_BUILD_DURING_DEPLOYMENT` |
+
+When the status says "Running" but `/health` returns `000` (TCP connection timeout), the container process died immediately. This is NOT a slow-start issue — the startup command or dependencies are broken. Investigate `appCommandLine`, `start.sh`, and Python imports, not deployment infrastructure.
+
 ## When Process Reveals "No Root Cause"
 
 If systematic investigation reveals issue is truly environmental, timing-dependent, or external:
