@@ -16,6 +16,102 @@ metadata:
 ## Overview
 
 This skill documents the locked deployment strategy for HAFJET WhatsApp Bot v2.1.
+
+## ⚠️ Deployment Method Pitfall (Jul 2026)
+
+**`az webapp deploy --type zip` is unreliable on Linux App Service.** It reports `RuntimeSuccessful` but frequently **does not update the actual files** in `/home/site/wwwroot/`. The platform returns success even when files on disk are unchanged.
+
+### Quick reference for common Azure-SQLite-FastAPI issues
+
+See `references/azure-python-fastapi-patterns.md` for:
+- SQLite `RETURNING` incompatibility workaround
+- FastAPI `run_in_executor` requirements
+- Silent bot repair checklist
+- ZIP packaging and verification patterns
+
+### Working alternative: Kudu VFS API PUT
+
+Use the Kudu Virtual File System API with an Azure AD Bearer token to push individual files directly:
+
+```bash
+# Get AAD token for management scope
+TOKEN=$(az account get-access-token \
+  --resource https://management.azure.com \
+  --query accessToken -o tsv)
+
+# Upload a file — must first GET to obtain ETag, then PUT with If-Match
+# 1. GET to obtain ETag
+ETAG=$(curl -s -D - "https://<app-name>.scm.azurewebsites.net/api/vfs/site/wwwroot/<file>.py" \
+  -H "Authorization: Bearer $TOKEN" -o /dev/null 2>&1 \
+  | grep -i etag | awk '{print $2}' | tr -d '\r')
+
+# 2. PUT with If-Match
+curl -X PUT "https://<app-name>.scm.azurewebsites.net/api/vfs/site/wwwroot/<file>.py" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/octet-stream" \
+  -H "If-Match: $ETAG" \
+  --data-binary @local-file.py
+```
+
+**Python equivalent (more robust):**
+```python
+import subprocess, urllib.request, ssl
+
+token = subprocess.run(["az", "account", "get-access-token",
+    "--resource", "https://management.azure.com",
+    "--query", "accessToken", "-o", "tsv"],
+    capture_output=True, text=True, timeout=15).stdout.strip()
+
+ctx = ssl.create_default_context()
+url = f"https://{app}.scm.azurewebsites.net/api/vfs/site/wwwroot/{file}"
+
+# GET → ETag
+req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+resp = urllib.request.urlopen(req, timeout=15, context=ctx)
+etag = resp.headers.get("ETag")
+
+# PUT with If-Match
+local = open(local_path, "rb").read()
+req2 = urllib.request.Request(url, data=local, headers={
+    "Authorization": f"Bearer {token}",
+    "Content-Type": "application/octet-stream",
+    "If-Match": etag
+})
+req2.get_method = lambda: "PUT"
+urllib.request.urlopen(req2, timeout=30, context=ctx)
+```
+
+Publishing credentials (`az webapp deployment list-publishing-credentials`) do NOT work for the SCM VFS API on this app — they return 401. AAD tokens scoped to `https://management.azure.com` DO work.
+
+### Lifecycle: Stop → Upload → Start (not restart)
+
+After uploading files, a plain `az webapp restart` may not pick up the new code because old Python processes cache modules in memory. Use the full stop/start cycle:
+
+```bash
+az webapp stop -n <app> -g <rg>
+# Upload files via Kudu VFS API while stopped
+az webapp start -n <app> -g <rg>
+```
+
+### Deploy verification via debug markers
+
+When `az webapp deploy` is suspected of silently failing, inject a response marker to prove the running code is your version:
+
+```python
+# In the handler:
+return {"status": "ok", "stats": stats, "_version": "deploy-<date>-<build>"}
+```
+
+Then call the endpoint from production — if the marker is missing, the server is still serving old code. This saved hours of debugging in Jul 2026.
+
+### Force Oryx rebuild
+
+If you must use `az webapp deploy` (e.g. for first-time setup), set these to force Oryx to rebuild and not cache:
+- `SCM_DO_BUILD_DURING_DEPLOYMENT=true`
+- `ENABLE_ORYX_BUILD=true`
+- `ORYX_BUILD_TIMESTAMP=$(date +%s)` — changes every deploy
+
+Even with these, the Kudu VFS path is more reliable for incremental updates.
 It covers four environments: Azure (primary production), AWS (staging), Heroku (fallback), and Oracle Cloud Always Free (fallback/throttle-recovery).
 It also covers self-hosted Linux + Tailscale for internal HAFJET tools (Hermes WebUI, admin panels, dev dashboards).
 **Do not execute migrations without explicit user confirmation.** This is a reference playbook only.

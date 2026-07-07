@@ -76,6 +76,99 @@ def _safe_str(value) -> str:
 ```
 Use `_safe_str(data.get("field", ""))` instead of `data.get("field", "").strip()` everywhere in `upsert_spx_order`.
 
+### JSON prefix handling — `_safe_json`
+
+**Problem:** The Shopee SPX API (`sp.spx.shopee.com.my`) wraps JSON responses with an anti-hijacking prefix: `)]}'\n` followed by the actual JSON body. Calling `resp.json()` (httpx) or `json.loads(resp.text)` fails because the first character `)` is not valid JSON. The error surface varies:
+- `json.JSONDecodeError: Unexpected character ')' at position 0` — if the prefix is the first text
+- `json.JSONDecodeError: Extra data: line 1 column 7` — if the parse happens to partially succeed
+
+**Solution — `_safe_json` function that locates brackets and extracts clean JSON:**
+```python
+def _safe_json(text: str) -> dict:
+    """Parse JSON from SPX API response, stripping non-JSON prefix/suffix."""
+    # Find first '{' or '['
+    start = -1
+    for ch in ("{", "["):
+        idx = text.find(ch)
+        if idx != -1 and (start == -1 or idx < start):
+            start = idx
+    if start == -1:
+        raise json.JSONDecodeError(f"No JSON object/array found", text, 0)
+    text = text[start:]
+    # Track bracket depth to find matching close
+    depth = 0
+    in_str = False
+    esc = False
+    for i, ch in enumerate(text):
+        if esc: esc = False; continue
+        if ch == "\\" and in_str: esc = True; continue
+        if ch == '"' and not esc: in_str = not in_str; continue
+        if in_str: continue
+        if ch == text[0]: depth += 1
+        elif (text[0] == "{" and ch == "}") or (text[0] == "[" and ch == "]"):
+            depth -= 1
+            if depth == 0:
+                return json.loads(text[:i+1])
+    raise json.JSONDecodeError(f"Unmatched bracket", text, 0)
+```
+
+**Usage pattern in fetch functions:**
+```python
+async with httpx.AsyncClient(timeout=30) as client:
+    resp = await client.get(url, params=params, headers=headers)
+    resp.raise_for_status()
+    try:
+        return resp.json()        # Fast path — works when no prefix
+    except json.JSONDecodeError:
+        return _safe_json(resp.text)  # Fallback — strips prefix
+```
+
+Apply this to both `fetch_spx_order_list()` and `fetch_spx_phone()`.
+
+### Universal str() safety for API fields
+
+**Problem (deep):** Even with `_safe_str` and `_parse_sqlite_dt`, a datetime or non-string could still reach `.strip()` if a code path is missed. The UPSERT function in SPX sync had bugs where `datetime.datetime` objects from API timestamps triggered `AttributeError: 'datetime.datetime' object has no attribute 'strip'`.
+
+**Solution — pre-convert all non-primitive values before processing:**
+```python
+def upsert_spx_order(data: dict) -> dict:
+    # SAFETY: convert ALL values to strings upfront
+    for _k in list(data.keys()):
+        _v = data[_k]
+        if _v is not None and not isinstance(_v, (str, int, float)):
+            data[_k] = str(_v)
+    # ... rest of function
+```
+This guarantees no `.strip()` call ever receives a non-string regardless of how many helper functions are involved.
+
+### SQLite `RETURNING` clause — not supported on Azure Linux
+
+**Problem:** Azure Linux Web Apps run an older SQLite version (pre-3.35.0) that does not support the `RETURNING` clause (added in SQLite 3.35.0, March 2021). Using `INSERT ... RETURNING *` causes `sqlite3.OperationalError: near "RETURNING": syntax error`.
+
+**Fix — use separate INSERT then SELECT:**
+```python
+# BROKEN on Azure:
+row = conn.execute("INSERT INTO ... VALUES (...) RETURNING *", params).fetchone()
+
+# WORKS on all versions:
+conn.execute("INSERT INTO ... VALUES (...)", params)
+row = conn.execute("SELECT * FROM ... WHERE id=last_insert_rowid()").fetchone()
+# OR by tracking number:
+row = conn.execute(
+    "SELECT * FROM spx_self_collection_orders WHERE spx_tracking_number = ?",
+    (tracking,)
+).fetchone()
+```
+
+**Test before deploying:**
+```python
+import sqlite3; print(sqlite3.sqlite_version)
+```
+If `< 3.35.0`, do not use `RETURNING`.
+
+### SPX endpoint status mapping (reference)
+`1=ReadyForCollection|2=Remind1|3=Remind2|4=Remind3|5=Remind4|6=Collected|7=CollectionFailed|8=Return_Outbound|9=Return_Packing`
+
 ### Datetime handling — `_parse_sqlite_dt`
 
 **Problem:** `batch_sync_spx_orders()` converts SPX Unix timestamps to `datetime.datetime` objects via `datetime.fromtimestamp()`, then passes them to `_parse_sqlite_dt()` which calls `.strip()` on them — `datetime` has no `.strip()`.
