@@ -371,7 +371,8 @@ These techniques are part of systematic debugging and available in this director
 - **`defense-in-depth.md`** - Add validation at multiple layers after finding root cause
 - **`condition-based-waiting.md`** - Replace arbitrary timeouts with condition polling
 - **`async-python-pitfalls.md`** - FastAPI/async-specific bugs (sync blocking, signature bypass, keyword routing)
-- **`python-cache-pitfalls.md`** - `__pycache__` stale bytecode causing 404s after deployment
+- **`python-cache-pitfalls.md`** — `__pycache__` stale bytecode causing 404s after deployment
+- **`azure-cache-pitfalls.md`** — Azure-specific: `.pyc` surviving full file replacement, cache clearing in start.sh, Oryx build triggers, startup probe timeout, credential redaction
 - **`github-push-protection.md`** — GitHub Push Protection blocking `git push` due to secrets in history (gh OAuth tokens, API keys). Diagnostic + `git filter-repo` fix.
 - **`azure-zip-deployment.md`** — Azure App Service zip deploy patterns, excludes, startup commands, env vars
 - **`config-origin-tracing.md`** — Trace a config value through all layers (env var → Python → API → DB → built JS → live dashboard) to determine runtime source of truth. 5-step investigation with exact commands, pitfall table, and quick-reference checklist.

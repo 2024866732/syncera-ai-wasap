@@ -21,13 +21,11 @@ This skill documents the locked deployment strategy for HAFJET WhatsApp Bot v2.1
 
 **`az webapp deploy --type zip` is unreliable on Linux App Service.** It reports `RuntimeSuccessful` but frequently **does not update the actual files** in `/home/site/wwwroot/`. The platform returns success even when files on disk are unchanged.
 
-### Quick reference for common Azure-SQLite-FastAPI issues
+### Quick reference
 
-See `references/azure-python-fastapi-patterns.md` for:
-- SQLite `RETURNING` incompatibility workaround
-- FastAPI `run_in_executor` requirements
-- Silent bot repair checklist
-- ZIP packaging and verification patterns
+See `references/azure-python-fastapi-patterns.md` — SQLite, FastAPI, bytecode, JSON parsing.
+See `references/azure-oryx-worker-pitfalls.md` — Oryx, start.sh, gunicorn workers.
+See `references/deploy-validation-checklist.md` — ZIP checklist, deploy verification.
 
 ### Working alternative: Kudu VFS API PUT
 
@@ -127,6 +125,8 @@ It also covers self-hosted Linux + Tailscale for internal HAFJET tools (Hermes W
 | `references/vite-env-injection.md` | Build-time env var injection for Vite + Azure ZIP deploy |
 | `references/azure-debug-503.md` | Debugging 503 errors after deploy (QuotaExceeded, import errors, logging, **resource-not-found/app-deleted**) |
 | `references/fallback-provider-setup.md` | Fallback provider config pattern (Cerebras as OpenRouter backup) |
+| `references/kudu-vfs-deployment-pattern.md` | Direct file upload via Kudu VFS API (workaround for `az webapp deploy` not updating files); dashboard rebuild + upload |
+| `references/sqlite-returning-compat.md` | SQLite RETURNING clause not supported on Azure container |
 | `references/server-backup-restore.md` | Server config backup/restore from GitHub |
 | `references/forward-reference-depends.md` | Forward reference bug: `Depends(func)` defined below route decorator → NameError at import time |
 | `scripts/verify_endpoints.py` | Full endpoint verification script (health, dashboard, API, webhook GET/POST, WebSocket) |
