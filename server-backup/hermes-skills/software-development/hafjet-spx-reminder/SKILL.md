@@ -19,6 +19,12 @@ description: Class-level skill for building and operating the SPX self-collectio
 - `spx_session` — single row (`id=1 CHECK`) storing portal cookies.
 - Migrate by PRAGMA detection: if `entity_id` missing, DROP+RECREATE table + indexes.
 
+### ⚠️ Local dev instance ≠ Azure production (operational — Jul 2026)
+
+The `webhook_listener` process on the Hermes server (`127.0.0.1:8000`, dir `~/.hermes/whatsapp-bot/`) is a **DEV instance** with **placeholder cookies** (`test_cookie=123; session=abc`) and only a handful of test orders in `bot_data.db`. **Do NOT trust its `spx_session` / order counts as production state** — querying the local DB will show misleading data (e.g. 7 phones vs the real ~2,300+).
+
+**Production = Azure** (`hafjet-whatsapp-bot.azurewebsites.net`, resource group `hafjet-bot-rg`): holds the real orders, real SPX session cookies, and the 25-ish missing phones. ALL fixes that affect real data (SAP headers, session, sync) MUST be applied to Azure, not the local dev instance. Note the DB is **ephemeral — lost on zip redeploy**; use Kudu VFS PUT (file-only) to preserve `bot_data.db` (see Deployment Pattern below).
+
 ## Status Mapping
 `1=ReadyForCollection|2=Remind1|3=Remind2|4=Remind3|5=Remind4|6=Collected|7=CollectionFailed|8=Return_Outbound|9=Return_Packing`
 
@@ -39,6 +45,9 @@ description: Class-level skill for building and operating the SPX self-collectio
 | `/api/spx/session-status` | GET | Test session (lightweight list call, count=1) | Active |
 | `/api/spx/sync` | **POST** | **Trigger incremental background sync → returns 202** | ✅ NEW |
 | `/api/spx/sync-progress` | **GET** | **Poll current sync state** | ✅ NEW |
+| `/api/spx/phones/bulk` | **POST** | Bulk map tracking→phone from text (JWT auth) | Active |
+| `/api/spx/phones/from-agent` | **POST** | **Receive phone data from browser agent (X-API-Key auth)** | ✅ NEW |
+| `/api/spx/sync-reset` | **POST** | Force-reset stuck sync state (JWT auth) | Active |
 | `/api/spx/stats` | GET | Dashboard stats | Active |
 | `/api/spx/mark-collected` | POST | Mark order collected | Active |
 
@@ -205,10 +214,28 @@ For 2315 orders at 50/page = 47 pages × 30s = **~23.5 min** order sync + phone 
 - Daily cap `>= 60` → STOP with `[SPX-LIMIT] daily cap 60 reached at <timestamp utc>`
 - Send window: 08:00–21:00 MYT via `ZoneInfo("Asia/Kuala_Lumpur")`; outside → log and return
 
+### Pausing Orders via Raw DB (Kudu VFS)
+
+When you need to pause specific orders to prevent reminder sends (e.g., testing with placeholder phones):
+1. Download remote DB: `curl -H "Authorization: Bearer <token>" .../api/vfs/data/bot_data.db -o /tmp/db.db`
+2. Patch locally: `sqlite3 /tmp/db.db "UPDATE spx_self_collection_orders SET is_paused=1 WHERE spx_tracking_number='SPXMY...'"`
+3. Upload back with `If-Match: *`: `curl -X PUT -H "If-Match: *" .../api/vfs/data/bot_data.db --data-binary @/tmp/db.db`
+4. Verify with fresh download
+5. Unpause by repeating with `is_paused=0`
+6. **Always verify raw DB values after mapping** — `hex(substr(recipient_phone, -4))` to confirm real digits, not masked asterisks
+
+⚠️ **ETag conflicts:** If sync process modifies DB between download and upload, Kudu returns HTTP 412. Use `If-Match: *` to force overwrite. Retry with exponential backoff if needed (download → patch → upload cycle).
+
 ## Frontend (`dashboard/src/components/SPXOrders.jsx`)
 - Session banner + save/test.
 - Sync button triggering `/api/spx/sync` → returns **202 Accepted** (no longer blocking).
 - Polls `GET /api/spx/sync-progress` every **3 seconds** until `phase=completed|failed`.
+- **Timeout guard:** 5-min absolute timeout — polling auto-stops even if backend still `running`.
+- **Stale detection:** If `phones_fetched` hasn't changed for 10 consecutive polls (30s), polling stops with a "⚠️ Phone fetch stuck" message prompting user to check SAP headers.
+- Stale warning shown inline after 3 failed polls (orange text next to progress bar).
+- **Scroll fix:** Wrapper div must have `overflowY: 'auto'` + `maxHeight: 'calc(100vh - 120px)'`. Without this, the parent `overflow-hidden` on Layout.jsx blocks table scrolling when the sync progress section adds extra height. (`overflowX: 'auto'` alone is insufficient.)
+- **Pagination loading state:** `pageLoading` boolean set `true` during `loadOrders()` — buttons dim (gray text) and show `⏳ Loading...` text. Prevents double-clicks and gives visual feedback on slow API calls.
+- **Error banner:** When polling catches an exception, `syncTimeout` state is set and a banner renders below the Session section — orange background, yellow text, no full-screen block.
 - Progress bar: blue for order-fetching, yellow for phone-fetching.
 - Sync results displayed as progress bar + counts; on completion shows ✅ Sync complete.
 - Orders table with phone-status badges.
@@ -271,28 +298,106 @@ export async function fetchSPXSyncProgress() {
   return data;
 }
 
-// SPXOrders.jsx — handleSync with polling
+// ============================================================
+// SPXOrders.jsx — state additions for polling safety
+// ============================================================
+const [syncStaleCount, setSyncStaleCount] = useState(0); // ticks without progress
+const [pageLoading, setPageLoading] = useState(false);    // pagination feedback
+const [syncTimeout, setSyncTimeout] = useState(null);     // polling error banner
+
+// ============================================================
+// handleSync — with timeout + stale detection
+// ============================================================
 async function handleSync() {
   setSyncLoading(true);
   setSyncResult(null);
   setSyncProgress(null);
+  setSyncStaleCount(0);
+  setSyncTimeout(null);
+
+  // Clear any existing poll timer
+  if (syncPollTimer) { clearInterval(syncPollTimer); setSyncPollTimer(null); }
 
   const data = await fetchSPXSync();  // returns 202 immediately
   setSyncResult(data);
 
-  // Poll progress every 3s
+  let prevPhones = -1;
+  let staleTicks = 0;
+  const startedAt = Date.now();
+  const MAX_STALE_TICKS = 10;     // 10 polls × 3s = 30s without progress
+  const MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes absolute timeout
+
   const timer = setInterval(async () => {
-    const prog = await fetchSPXSyncProgress();
-    setSyncProgress(prog);
-    if (prog.phase === 'completed' || prog.phase === 'failed') {
-      clearInterval(timer);
+    try {
+      const prog = await fetchSPXSyncProgress();
+
+      // Absolute timeout — prevents infinite polling on stuck backend
+      if (Date.now() - startedAt > MAX_TIMEOUT_MS) {
+        clearInterval(timer); setSyncPollTimer(null);
+        setSyncLoading(false);
+        setSyncProgress({ ...prog, phase: 'failed',
+          last_error: '⏱️ Sync timed out after 5 min. Reset and try again.' });
+        loadOrders(); loadStats();
+        return;
+      }
+
+      setSyncProgress(prog);
+
+      // Terminal phases (backend-side completion)
+      if (prog.phase === 'completed' || prog.phase === 'failed' || prog.phase === 'idle') {
+        clearInterval(timer); setSyncPollTimer(null);
+        setSyncLoading(false);
+        loadOrders(); loadStats();
+        return;
+      }
+
+      // Stale detection: phones_fetched stuck at 0 for N ticks
+      if (prog.phase === 'fetching_phones') {
+        if (prog.phones_fetched === prevPhones) {
+          staleTicks++;
+          setSyncStaleCount(staleTicks);
+          if (staleTicks >= MAX_STALE_TICKS && prog.phones_fetched === 0) {
+            clearInterval(timer); setSyncPollTimer(null);
+            setSyncLoading(false);
+            setSyncProgress({
+              ...prog, phase: 'failed',
+              last_error: `⚠️ Phone fetch stuck — 0 fetched after ${MAX_STALE_TICKS * 3}s. Paste SAP headers in cookies and sync again.`,
+            });
+            loadOrders(); loadStats();
+            return;
+          }
+        } else {
+          prevPhones = prog.phones_fetched;
+          staleTicks = 0;
+          setSyncStaleCount(0);
+        }
+      }
+    } catch (err) {
+      // Polling API unreachable — show banner, don't block UI
+      clearInterval(timer); setSyncPollTimer(null);
       setSyncLoading(false);
-      loadOrders();
-      loadStats();
+      setSyncTimeout('Polling failed — server may be busy. Refresh page and try again.');
     }
   }, 3000);
   setSyncPollTimer(timer);
 }
+
+// loadOrders() — with page loading state
+function loadOrders() {
+  setLoading(true);
+  setPageLoading(true);
+  fetchSPXOrders({ status, storage_id, search, page, limit })
+    .then(res => { setOrders(res.orders || []); setTotal(res.total || 0); })
+    .finally(() => { setLoading(false); setPageLoading(false); });
+}
+
+// In the JSX — pagination with pageLoading guard + loading text
+<div style={{ ... }}>
+  Page {page} / {totalPages} — {total} orders
+  {pageLoading && <span>⏳ Loading...</span>}
+</div>
+<button disabled={page <= 1 || pageLoading} onClick={...}>- Prev</button>
+<button disabled={page >= totalPages || pageLoading} onClick={...}>Next +</button>
 ```
 
 ### Progress UI Pattern
@@ -602,12 +707,34 @@ When multiple subagents or parallel tool calls may edit the same file:
 - If `patch` reports "modified by sibling subagent", re-read the file first to capture the current state, then apply your change as a fresh patch.
 - This prevents clobbering concurrent edits to `webhook_listener.py`, `db_logger.py`, or dashboard files.
 
+### ⚠️ `patch` tool backslash-escaping pitfall
+
+**Problem:** When using `patch` (find-and-replace) on Python raw strings (`r'...'`) that contain `\s`, `\d`, `\w`, or other regex escape sequences, the `old_string` parameter's backslashes are interpreted by the patch tool itself — not passed through literally. This causes `\s` (intended as regex whitespace) to be stored as `\\s` in the file, which in a Python raw string becomes `\\s` → regex sees literal backslash + `s`.
+
+**Example:** Patching `r'[^;\s]+'` → `r'[^;\s]+'` with:
+```python
+old_string = "r'[^;\\s]+'"    # WRONG — patch sees \\s, stores \\\\s in file
+old_string = "r'[^;\s]+'"     # WRONG — patch sees \s, stores \\s in file  
+```
+**Both produce `r'[^;\\s]+'` in the file** (double backslash in the raw string).
+
+**The actual fix:** Read the file after each `patch` call to verify regex integrity. The symptom is unmistakable: the regex `\s` (whitespace) silently becomes literal `\s` (backslash-s), which fails to match whitespace boundaries. Phone numbers or values that end with a newline/carriage return won't be extracted correctly.
+
+**Prevention:**
+1. After patching any raw string containing `\s`, `\d`, `\w`, re-read the file and check the actual bytes with `python3 -c "open('file','rb').read().hex()"`
+2. If the file shows `5c 5c 73` (`\\s` = double backslash + s) instead of `5c 73` (`\s` = single backslash + s), revert and re-apply the patch with different escaping
+3. Prefer `write_file` for files under ~50KB to avoid the escaping ambiguity entirely
+
 ## Reference
 - `references/spx-endpoints.md` — confirmed endpoint details, field mappings, thresholds, show_secret behaviours.
 - `references/spx-session-debug.md` — SPX session debugging protocol: diagnosis steps, cookie capture guide.
-- `references/spx-show-secret-sap-headers.md` — **NEW (Jul 2026):** SAP headers discovery, show_secret payload format, entity_id mapping, troubleshooting.
+- `references/spx-show-secret-sap-headers.md` — SAP headers discovery, show_secret payload format, entity_id mapping, troubleshooting.
+- `references/spx-stuck-sync-recovery.md` — stuck-sync empty-cookies diagnosis, prod-DB download + SQL recipe, reset+re-trigger vs fetch-phones recovery.
+- `references/spx-antibot-discovery.md` — **NEW (Jul 2026):** Anti-bot system discovery (`@shopee/secure-fetch-utils` chunk 3421), per-request SAP headers analysis, testing results, decision to abandon show_secret for production.
+- `references/spx-browser-helper.md` — **NEW (Jul 2026):** Tampermonkey userscript for phone capture from SPX portal. Full source, installation guide, and maintenance instructions.
 - `references/status-filter-mismatch.md` — SPX status display-name vs DB value mismatch fix.
 - `references/websocket-pong-format.md` — WS heartbeat format fix.
+- `references/write-file-escape-pitfall.md` — **NEW (Jul 2026):** `write_file()` double-quote escaping breaks Python scripts. Always use single quotes. Kudu scripts, DB verifiers, any Python written via `write_file()`.
 
 ## Deployment Pattern (Jul 2026)
 
@@ -623,6 +750,28 @@ When multiple subagents or parallel tool calls may edit the same file:
 4. **Start:** `az webapp start -n hafjet-whatsapp-bot -g hafjet-bot-rg`
 
 Do NOT use `az webapp restart` — it may not clear in-memory bytecode cache.
+
+### Production DB download (Kudu VFS — Jul 2026)
+
+**Path:** `/home/data/bot_data.db` (NOT `/site/wwwroot/bot_data.db`). The DB lives in Azure's persistent storage at `/home/data/`, separate from the application files at `/site/wwwroot/`. Download for diagnostics:
+
+```bash
+TOKEN=*** account get-access-token --resource https://management.azure.com -o tsv)
+curl -s "https://hafjet-whatsapp-bot.scm.azurewebsites.net/api/vfs/data/bot_data.db" \
+  -H "Authorization: Bearer $TOKEN" -o prod_bot_data.db
+```
+
+**Useful diagnostic queries:**
+```sql
+-- Phone status
+SELECT COUNT(*) FROM spx_self_collection_orders;
+SELECT COUNT(*) FROM spx_self_collection_orders WHERE recipient_phone IS NOT NULL AND recipient_phone != '';
+-- Check cookies in session vs sync state
+SELECT length(cookies), substr(cookies, -200) FROM spx_session;
+SELECT state_json FROM spx_sync_state;
+```
+
+**IMPORTANT:** The local `~/.hermes/whatsapp-bot/bot_data.db` is a DEV copy with placeholder data. Always download from production for diagnostics. Production uses SQLite WAL mode — read operations during writes are safe.
 
 ### Dashboard rebuild + upload sequence
 
@@ -767,21 +916,109 @@ if (prog.phase === 'completed' || prog.phase === 'failed' || prog.phase === 'idl
 
 Azure SQLite gets `database is locked` when sync `upsert_spx_order()` writes at the same time as login `update_staff_status()` or other writes. WAL mode helps reads but writes still contend. **Mitigations:** retry loop on locked (3 attempts, 0.5s backoff), separate read vs write connections, acceptable on Free tier (upgrade if constant).
 
-### Phone fetch failures — possible causes (Jul 2026)
+### Phone fetch failures — possible causes (Jul 2026 — UPDATED: show_secret NOT VIABLE)
 
 Phone fetch via `show_secret` can fail for several reasons:
 
 | Symptom | Likely Cause | Action |
 |---------|-------------|--------|
 | HTTP 401 (session expired) | SPX session cookies expired | Re-login to SPX portal, re-paste cookies |
-| HTTP 401 + valid session | Missing SAP headers (`x-sap-ri`, `x-sap-sec`) | These are JS-generated, NOT in cookies. Try Pilihan A (cookies-only) or C (manual paste). See `references/spx-show-secret-sap-headers.md`. |
-| `retcode=0, real_message=null` | SPX limitation — phone not revealable via API | This affects ~80-90% of orders. CSV import is the only reliable way to populate phones for these. |
-| `retcode != 0` | Invalid entity_id, expired tracking, or payload format | Verify entity_id is stored as string, check payload matches confirmed format |
-| Connection timeout | SPX API slow or rate-limited | Check `_SYNC_PHONE_BATCH` (reduce to 10), verify rate limiting (0.5s between calls), check server logs for SPX response times |
+| `retcode=500` "The service error" | x-sap-ri/x-sap-sec are per-request anti-bot tokens (NOT per-session) | **Cannot be captured and reused.** Pivot to CSV/bulk phone mapping (see Phone Population Strategy below). |
+| `retcode=0, real_message=null` | SPX limitation — phone not revealable via API | CSV import is the only reliable way to populate phones. |
+| Connection timeout | SPX API slow or rate-limited | Reduce batch, verify rate limiting (0.5s between calls) |
 
-### SAP Security Headers for `show_secret` (Jul 2026 — Cookie Hypothesis WRONG)
+**show_secret is NOT a production-viable path.** Confirmed Jul 2026 after extensive testing: SPX's `@shopee/secure-fetch-utils` (webpack chunk 3421) generates x-sap-ri/x-sap-sec per-request using browser-side data + embedded secret key. Reverse-engineering was rejected by Tuan Hafizi. All phone population should use CSV import or the bulk phone mapping endpoint.
 
-**Critical finding (Jul 2026):** The SPX `show_secret` endpoint does NOT use `X-CSRF-Token`. Network tab analysis from the SPX portal revealed it uses **custom SAP security headers**. However, **these headers are NOT stored in cookies** (initial assumption was wrong) — they are **dynamically generated by JavaScript** in the portal's client-side code.
+## Phone Population Strategy (Jul 2026 — Browser Agent is PRIMARY)
+
+### PRIMARY PATH: Tampermonkey Browser Agent (zero manual work)
+
+**`spx_phone_agent.user.js`** — Runs in Tuan Hafizi's Chrome/Edge via Tampermonkey during 9am-9pm MYT. Monitors SPX Self-Collection portal DOM, clicks eye icons to reveal masked phones, extracts tracking+phone+name+status, and POSTs to `/api/spx/phones/from-agent` (X-API-Key auth). Full implementation: see `references/spx-browser-helper.md` and source at `~/.hermes/whatsapp-bot/spx_phone_agent.user.js`.
+
+**Backend:** `POST /api/spx/phones/from-agent` — accepts single `{tracking, phone, name, status}` or batch `{orders: [...]}`. Uses `_process_agent_phones()` helper:
+- Validates tracking exists in DB
+- Normalizes phone via `_normalize_phone()`
+- Updates `recipient_phone` (and `recipient_name` if provided)
+- Returns `{updated, skipped, not_found, errors}`
+- Idempotent — safe to re-send same data
+
+Auth via `X-API-Key` header (DASHBOARD_API_KEY). Protected by middleware — endpoint added to `_PROTECTED_PREFIXES` list.
+
+### SECONDARY PATH: Bulk Phone Mapping (manual paste)
+
+**`POST /api/spx/phones/bulk`** — Accepts `{"text": "SPXMY... 0123456789\\nSPXMY... 0123456790"}` — one `tracking_number phone` pair per line. Returns `{mapped, skipped, not_found, errors}`. Idempotent (safe to re-submit). Extracts phone from last whitespace-delimited token using `_normalize_phone()`. Matches by `spx_tracking_number` (UNIQUE). Only UPDATEs `recipient_phone` when new value differs from existing.
+
+**Implementation (deployed Jul 2026):**
+- `db_logger.py::bulk_map_phones(text)` — parses text, matches tracking numbers, updates phones
+- `webhook_listener.py` — `POST /api/spx/phones/bulk` endpoint (JWT auth via `get_current_staff`)
+- `dashboard/src/api/api.js` — `bulkMapPhones(text)` API function
+- `dashboard/src/components/SPXOrders.jsx` — textarea UI: gold border, line count on button, result display (mapped/skipped/not_found + error per line)
+
+**Existing CSV import** (`POST /api/spx/import-csv`) also supports phone at column index 3. `upsert_spx_order()` updates `recipient_phone` when provided and NEVER overwrites an existing phone (`phone_to_set = phone if phone else existing["recipient_phone"]` at L788).
+
+**WhatsApp reminders fire automatically** — `_check_spx_reminders()` at L553 checks `if not phone: continue`. No manual trigger needed after phone population.
+
+### ⚠️ SPX API returns MASKED phone numbers — literal asterisks in DB (Jul 2026)
+
+**Problem:** When `upsert_spx_order()` creates new orders from SPX sync, the `recipient_phone` field from SPX order list API contains **masked phone numbers** with **literal asterisk characters**: `+601****6789` (12 chars, asterisks are real `*` bytes, not UI rendering).
+
+This means after initial sync, `COUNT(*) WHERE recipient_phone != ''` can be HIGH (e.g., 400+ "phones") but all of them are masked junk — `_check_spx_reminders()` will skip them anyway (masked phones fail WhatsApp validation), but they look populated in the dashboard.
+
+**Detection:** Query raw DB with `hex(substr(recipient_phone, -4))` and `length(recipient_phone)`. Masked `+601****6789` is 12 chars — same length as real `+601133114781` — so length alone won't catch it. Only `hex()` reveals truth:
+- Stored hex = `36373839` → ASCII `6789` → real digits, but must match expected last-4 (e.g., `4781` → hex `34373831`). **If hex differs from expected, the WRONG phone was stored — the endpoint returned success but the DB commit never happened (see Deploy-both-files pitfall above).**
+- Stored hex = `2a2a2a2a` → ASCII `****` → literal asterisks, masked phone from SPX sync.
+
+**Prevention:** `bulk_map_phones()` always overwrites existing phone values — it uses `if cur["recipient_phone"] != phone` to compare and UPDATE. So re-running bulk map with real numbers WILL replace masked values. But always verify by downloading the remote DB and querying raw values — never trust the endpoint response alone.
+
+### ⚠️ Deploy both `db_logger.py` + `webhook_listener.py` when adding DB functions (Jul 2026)
+
+**Pitfall:** When adding a new endpoint that calls a new function in `db_logger.py` (e.g., `bulk_map_phones()`), deploying ONLY `webhook_listener.py` will make the endpoint return success (it can import the old `db_logger` just fine) but the new function code doesn't exist on the remote — the endpoint silently uses the OLD behavior, returns success, but the DB is never updated.
+
+**Symptom:** `POST /api/spx/phones/bulk` returns `{"mapped":2, "not_found":0}` but querying the remote DB shows unchanged masked values.
+
+**Fix:** Always deploy BOTH files together when a new function is added to `db_logger.py` and called from `webhook_listener.py`. Verify with:
+```bash
+# Download remote DB and check raw values
+python3 /tmp/verify_db.py
+```
+
+### NICE-TO-HAVE: Tampermonkey Browser Helper
+
+Userscript at `sp.spx.shopee.com.my`:
+1. `MutationObserver` watches eye-icon clicks → captures revealed phone from DOM
+2. Extracts tracking number from page context
+3. `POST`s to `/api/spx/phones/bulk` with the tracking→phone pair
+4. Toast: "✅ Sent to HAFJET"
+
+Runs in user's real browser (bypasses anti-bot entirely). See `references/spx-browser-helper.md` for full source.
+
+### Explored but REJECTED:
+- `show_secret` API integration — blocked by Shopee per-request anti-bot tokens (`@shopee/secure-fetch-utils` chunk 3421). SAP headers CANNOT be captured once and reused. **Decision: Jul 2026 — PERMANENTLY ABANDONED.**
+- Reverse-engineering anti-bot JS — rejected by Tuan as impractical
+- Headless Playwright — too heavy for 1GB Azure container, too slow, no display on Linux App Service
+- SAP header regex fix — deployed and functional but useless because underlying values are per-request tokens that expire immediately upon capture
+
+## User Workflow Preferences (Jul 2026)
+
+When presenting analysis and recommendations to Tuan Hafizi:
+- **Single recommendation** — "Pilih SATU laluan utama sahaja. Jangan cadang 3 solution sekali jalan."
+- **Audit first, propose second** — "Jelaskan punca paling mungkin... Tunjukkan plan ringkas... Lepas itu baru propose patch code untuk saya semak sebelum deploy."
+- **Additive changes preferred** — new endpoints/functions that don't modify existing behavior are safer for production deploys.
+- **Prefer practicality over technical perfection** — "Saya tak mahu jalan reverse-engineer... Saya nak kita pivot kepada jalan yang lebih practical dan maintainable." When the user rejects a complex technical approach, pivot to simpler alternatives immediately.
+
+### ⚠️ Stuck sync with EMPTY cookies — `spx_sync_state.cookies` is the real culprit (Jul 2026)
+
+**Symptom:** `phase=fetching_phones`, `running=True`, `phones_fetched=0`, offset climbs to 900+, errors empty. Dashboard shows "⚠️ Phone fetch stuck".
+
+**Root cause:** `spx_session.cookies` has `x-sap-ri`/`x-sap-sec` ✅ BUT the RUNNING sync's `_sync_progress["cookies"]` (persisted in `spx_sync_state.state_json`) is **EMPTY (length 0)**. The sync copies `get_spx_cookies()` into its state at trigger time. If the user pasted SAP headers AFTER the sync started, the in-flight sync keeps stale/empty cookies → `fetch_spx_phone()` gets 401 → returns `None` silently → `phones_fetched` never moves.
+
+**Diagnosis:** Check BOTH tables — `spx_session` being correct is NOT sufficient. See `references/spx-stuck-sync-recovery.md` for the download-prod-DB + SQL recipe and the recovery procedures (reset+re-trigger vs `POST /api/spx/fetch-phones`).
+
+**Prevention:** Paste `x-sap-ri`/`x-sap-sec` BEFORE clicking Sync. If pasted mid-sync, the running sync won't see them — reset + re-trigger. Production DB is at `/home/data/bot_data.db` (download via Kudu VFS `GET /api/vfs/data/bot_data.db`); do NOT trust the local `~/.hermes/whatsapp-bot/bot_data.db` (placeholder cookies).
+
+### SAP Security Headers for `show_secret` — PER-REQUEST (Jul 2026 — UPDATED)
+
+**Critical finding (Jul 2026, updated Jul 2026):** The SPX `show_secret` endpoint is protected by Shopee's anti-bot system (`@shopee/secure-fetch-utils` v1.12.39, webpack chunk 3421, ~60KB). The `x-sap-ri` and `x-sap-sec` headers are **generated client-side by JavaScript for EACH request** — NOT per-session, NOT per-login. They incorporate request-specific data (URL, timestamp, payload) signed with a secret key embedded in the JS bundle. **They CANNOT be captured once and reused.** Re-paste attempts with any value will fail with `retcode: 500` "The service error, please contact admin!" (confirmed Jul 2026 — tested with both captured values and without SAP headers).
 
 | Header | Value | Source |
 |--------|-------|--------|
@@ -798,6 +1035,40 @@ Phone fetch via `show_secret` can fail for several reasons:
 
 **What actually works:** The main SPX order list API (`fetch_spx_order_list()`) works with **cookies only** (no SAP headers at all). The `show_secret` endpoint is more restrictive. Current code tries SAP headers if manually embedded in the cookie string by the user, but otherwise falls back to cookies-only. See `references/spx-show-secret-sap-headers.md` for the Pilihan A/B/C approach and full discovery protocol.
 
+> ⚠️ **REGEX PITFALL:** Users paste the EXACT DevTools names `x-sap-ri=` / `x-sap-sec=`. The extractor regex MUST use `(?:x-)?sap_ri=` (optional `x-` prefix) or it silently fails → `show_secret` 401 → ALL phone fetches fail. Root cause of the 25-missing-phones incident (Jul 2026). Always verify the regex after editing `_extract_sap_headers()`.
+
+### ⚠️ CRITICAL: `_extract_sap_headers()` regex MUST match `x-sap-ri` (Jul 2026 — CONFIRMED BUG + FIX)
+
+**Symptom:** User pastes `x-sap-ri=...; x-sap-sec=...` into the SPX session cookie box (per the dashboard runbook / "Status Semasa" instructions), but phone fetch (`show_secret`) STILL returns HTTP 401 even with a valid session + the headers present in the string.
+
+**Root cause:** The regex in `_extract_sap_headers()` was `sap_ri=([^;\s]+)` / `sap_sec=([^;\s]+)` — it looks for `sap_ri=` with **NO `x-` prefix**. The user pastes `x-sap-ri=` (the actual DevTools request-header name). The regex does NOT match `x-sap-ri=`, so `sap_headers` comes back empty → the headers are never attached to the `show_secret` request → 401. This is the #1 reason pasted SAP headers "don't work".
+
+**Fix (applied to local `webhook_listener.py`, must also reach Azure prod):** make the `x-` prefix optional AND handle both hyphen/underscore separators:
+```python
+for name, pattern in [
+    ("x-sap-ri", r'(?:x-)?sap[-_]ri=([^;\s]+)'),
+    ("x-sap-sec", r'(?:x-)?sap[-_]sec=([^;\s]+)'),
+]:
+```
+
+**Why `[-_]` and not just `_`?** The actual HTTP header name is `x-sap-ri` (with hyphens: `x-sap-ri`), but the original extraction code assumed the cookie name would use underscores (`sap_ri`). The `(?:x-)?` prefix handles optional `x-`, but `sap_ri` still won't match `sap-ri` — the `[-_]` character class bridges both conventions. Tested patterns:
+
+| Pasted string | `sap_ri=` (old) | `(?:x-)?sap_ri=` (v1) | `(?:x-)?sap[-_]ri=` (v2) |
+|---|---|---|---|
+| `sap_ri=value` | ✅ | ✅ | ✅ |
+| `x-sap-ri=value` | ❌ | ❌ | ✅ |
+| `x-sap_ri=value` | ❌ | ✅ | ✅ |
+
+After v2 fix, pasted `x-sap-ri`/`x-sap-sec` are correctly extracted and attached as request headers → `show_secret` succeeds.
+
+**Verify before deploy:**
+```bash
+python3 -m py_compile webhook_listener.py   # syntax
+python3 -c "import re; print(bool(re.search(r'(?:x-)?sap_ri=([^;\s]+)', 'x-sap-ri=dd294f6a; x-sap-sec=abc', re.I)))"   # => True
+```
+
+**Deploy target:** The fix MUST land on **Azure production** (see Environment note below), not the local dev server. Deploy via Kudu VFS PUT of `webhook_listener.py` (preserves `bot_data.db`), then stop/start. After deploy, user re-pastes `x-sap-ri=...; x-sap-sec=...` into the dashboard SPX session and clicks "Sync from SPX Now" → the 25-ish pending phones resolve.
+
 **Confirmed parameters for `show_secret`:**
 - `entity_id`: Internal SPX ID (long integer, e.g. `2607444116193438`) — from `order["id"]` in SPX order list API
 - `query_id`: SPX tracking number (e.g. `SPXMY061509414257`)
@@ -806,6 +1077,30 @@ Phone fetch via `show_secret` can fail for several reasons:
 - `view_channel: 2` — channel ("web portal")
 - Response: `data.real_message` — full unmasked phone number (e.g. `601133114781`)
 - Without SAP headers → may return HTTP 401 even with valid session cookies
+
+### ⚠️ SAP Header Regex Bug + Application Path (Jul 2026)
+
+**Bug:** `_extract_sap_headers(cookies)` searched for `sap_ri=([^;\s]+)` / `sap_sec=([^;\s]+)` (NO `x-` prefix). But users paste `x-sap-ri=...; x-sap-sec=...` from the SPX portal DevTools. The regex did NOT match → headers silently dropped → `show_secret` returned 401 → phone fetch failed for all 25+ pending orders.
+
+**Fix (regex):** make the `x-` prefix optional so BOTH forms are captured:
+```python
+for name, pattern in [
+    ("x-sap-ri", r'(?:x-)?sap_ri=([^;\s]+)'),
+    ("x-sap-sec", r'(?:x-)?sap_sec=([^;\s]+)'),
+]:
+```
+Output keys stay `x-sap-ri` / `x-sap-sec` (the `fetch_spx_phone()` header-setting code is unchanged). After fix, verify with a quick regex test against a string containing `x-sap-ri=...; x-sap-sec=...`.
+
+**Local-vs-Azure confusion:** The running `webhook_listener` on this host (port 8000) is a DEV instance — its `spx_session` table holds placeholder cookies (`test_cookie=123; session=abc`) and only a handful of orders. The REAL production system (2,300+ orders) is **Azure** (`hafjet-whatsapp-bot.azurewebsites.net`). Fixes to `_extract_sap_headers` must be deployed to Azure (Kudu VFS PUT + stop/start) to affect production. Editing the local file alone does nothing for the 25 pending phones.
+
+**Resolution path when user supplies `x-sap-ri` / `x-sap-sec` values:**
+1. Patch the regex (above) in `webhook_listener.py`.
+2. Deploy to Azure via Kudu VFS PUT + `az webapp stop`/`start` (DB preserved, do NOT zip-deploy).
+3. User pastes `x-sap-ri=...; x-sap-sec=...` into the HAFJET dashboard → SPX Reminder → "Paste SPX cookies here" (appends to existing cookie string; backend extracts via the fixed regex).
+4. User clicks "Save & Test Connection" → "Sync from SPX Now" (or "Fetch Phones").
+5. Verify: `SELECT COUNT(*) FROM spx_self_collection_orders WHERE recipient_phone IS NOT NULL` increases.
+
+Note: SAP values are session-scoped; if timestamp-signed per request (not static per session), a single pasted value may only work briefly — re-paste if phones stay at 0.
 
 ### Phone-fetch-only endpoint (Jul 2026)
 

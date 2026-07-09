@@ -115,15 +115,16 @@ Have the user paste the `x-sap-ri` and `x-sap-sec` values from the network tab i
 ```python
 def _extract_sap_headers(cookies: str) -> dict:
     """Returns sap_ri/sap_sec from cookie string if user manually pasted
-    them as sap_ri=<value>; sap_sec=<value> in the session cookies field.
+    them as sap_ri=<value>; sap_sec=<value> OR x-sap-ri=<value>; x-sap-sec=<value>
+    in the session cookies field.
     Returns empty dict if not found (expected — these are JS-generated headers,
-    not cookies)."""
+    not cookies, but users can paste from DevTools network tab)."""
     result = {}
     if not cookies:
         return result
     for name, pattern in [
-        ("x-sap-ri", r'sap_ri=([^;\s]+)'),
-        ("x-sap-sec", r'sap_sec=([^;\s]+)'),
+        ("x-sap-ri", r'(?:x-)?sap_ri=([^;\s]+)'),
+        ("x-sap-sec", r'(?:x-)?sap_sec=([^;\s]+)'),
     ]:
         m = re.search(pattern, cookies, re.I)
         if m:
@@ -131,10 +132,31 @@ def _extract_sap_headers(cookies: str) -> dict:
     return result
 ```
 
+**Regex note:** Uses `[-_]` to match both `sap_ri` (underscore, old cookie format) AND `sap-ri` (hyphen, actual HTTP header name `x-sap-ri`). The `(?:x-)?` makes the `x-` prefix optional. Without `[-_]`, pasting `x-sap-ri=VALUE` (hyphen from DevTools) silently fails.
+
 In `fetch_spx_phone()`:
 - SAP headers are OPTIONAL — only added if found
 - No warnings logged if missing (expected behavior)
 - The primary `headers` dict always includes `Cookie`, `device-id`, `app`, `version`, `Content-Type`, `Referer`, `Origin`, `User-Agent`, `Accept`
+
+## ⚠️ CRITICAL REGEX PITFALL (Jul 2026) — `x-` prefix MUST be optional
+
+**Root cause of 25 missing phones (Jul 2026):** Users paste the EXACT DevTools header
+names `x-sap-ri=VALUE; x-sap-sec=VALUE` into the SPX session cookie field. The OLD regex
+`sap_ri=([^;\s]+)` did NOT match `x-sap-ri=` (the `x-` prefix broke it) → extraction returned
+`{}` → `show_secret` called cookies-only → HTTP 401 → phone fetch failed silently for ALL orders.
+
+**Fix — regex MUST include optional `x-` prefix:**
+```python
+("x-sap-ri", r'(?:x-)?sap_ri=([^;\s]+)'),
+("x-sap-sec", r'(?:x-)?sap_sec=([^;\s]+)'),
+```
+This matches BOTH `sap_ri=` (legacy) and `x-sap-ri=` (DevTools copy-paste). The output key
+stays `x-sap-ri` / `x-sap-sec`, so the `fetch_spx_phone()` header-injection code is unchanged.
+
+**Verify after any deploy:** `_extract_sap_headers("session=x; x-sap-ri=ABC; x-sap-sec=DEF")`
+must return `{"x-sap-ri": "ABC", "x-sap-sec": "DEF"}`. If it returns `{}`, the regex is wrong
+and phone fetch will 401.
 
 ## Troubleshooting
 

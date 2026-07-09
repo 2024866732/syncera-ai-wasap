@@ -16,6 +16,21 @@ Integration with business SaaS APIs (POS, accounting, CRM) has recurring pitfall
 3. **If the user insists** — accept it, but mask it in all responses (show only first/last 4 chars), and remind them to rotate the token after use
 4. **Never log credentials** in tool output, debug prints, or error messages
 
+### ⛔ NEVER pipe curl to interpreter (CRITICAL — HAFJET policy)
+
+**Pattern:** `curl <url> | python3` — piping downloaded content directly to an interpreter.
+
+**This is ALWAYS rejected.** Tuan Hafizi explicitly prohibits this:
+- Downloaded code executed without inspection = arbitrary code execution
+- Credentials exposed in command line, process list, and shell history
+- Even for trusted URLs, the pattern is inherently unsafe
+
+**Approved alternatives:**
+1. **Save to file, then execute:** `curl -o /tmp/resp.json <url>` → then `python3 -c "..."` reading the file
+2. **Use grep/jq for extraction:** `curl <url> | grep -o '"key":"[^"]*"'` (no interpreter pipe)
+3. **Use Python with urllib:** Write a proper Python script that fetches and processes — no shell pipes
+4. **Direct DB read:** When verifying data, query the DB directly instead of making HTTP API calls
+
 ## Reading Tokens from .env
 
 When reading tokens from `~/.hermes/.env` in Python:

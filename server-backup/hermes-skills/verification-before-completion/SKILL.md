@@ -47,6 +47,8 @@ Skip any step = lying, not verifying
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
 | Regression test works | Red-green cycle verified | Test passes once |
 | Agent completed | VCS diff shows changes | Agent reports "success" |
+| DB write via API | Raw DB query via Kudu download | API response "mapped: 2" |
+| Kudu VFS upload (HTTP 204) | Re-download + sqlite3 query | Upload status code alone |
 | Requirements met | Line-by-line checklist | Tests passing |
 
 ## Red Flags - STOP

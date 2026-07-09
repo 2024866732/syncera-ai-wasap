@@ -16,6 +16,7 @@ Any of these triggers:
 - User needs an auto-starting systemd service for a user-mode daemon
 - User mentions `systemctl start` being blocked or "cannot restart gateway"
 - User asks to install and configure Tailscale for service access
+- User wants to self-host a **Next.js / Prisma / PostgreSQL** web app (e.g. prompts.chat, or any DB-backed Node app)
 
 ## Basic setup flow
 
@@ -119,6 +120,71 @@ tailscale serve --bg http://127.0.0.1:<port>
 ```
 
 > ⚠️ **Security**: Never set `HOST=0.0.0.0` without password auth active. Verify the `.env` has `PASSWORD` set before switching from loopback.
+
+## Node.js / Next.js + Prisma + PostgreSQL apps
+
+Many modern self-hosted web apps (e.g. **prompts.chat**) are Next.js + Prisma ORM +
+PostgreSQL. They differ from the simple Python/Node-script pattern above: they need a **real
+PostgreSQL database** (Prisma `datasource.provider` is usually `postgresql` only — SQLite is NOT
+supported unless the repo explicitly allows it), a build step, and env vars for DB + auth.
+
+Full worked recipe (prompts.chat on a 1 GB RAM box): `references/nextjs-prisma-postgres.md`
+
+### Build vs dev mode on constrained RAM
+- **`npm run build` + `npm run start`** = production path, but Next.js 16 build can OOM on a
+  1 GB RAM box (swap is slow; build peaks >1 GB).
+- **`npm run dev`** skips the heavy build and runs directly — use for personal/low-traffic
+  self-hosting on small VPS. Trade-off: slower per-request compile, no prod hardening.
+- If you must build on ≤1 GB: `export NODE_OPTIONS=--max-old-space-size=512` and keep ≥2 GB swap free.
+
+### PostgreSQL setup (when not pre-installed)
+```bash
+sudo apt-get update && sudo apt-get install -y postgresql postgresql-contrib
+sudo service postgresql start
+cd /tmp   # postgres user can't cd into /home — run psql from here
+PGPASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c16)
+sudo -u postgres psql -v ON_ERROR_STOP=1 <<EOF
+CREATE USER <appuser> WITH PASSWORD '$PGPASS';
+CREATE DATABASE <appdb> OWNER <appuser>;
+GRANT ALL PRIVILEGES ON DATABASE <appdb> TO <appuser>;
+EOF
+```
+
+### Low-RAM PostgreSQL tuning
+Append to `/etc/postgresql/<ver>/main/postgresql.conf` (last value wins), then restart:
+```
+shared_buffers = 128MB
+effective_cache_size = 256MB
+work_mem = 16MB
+maintenance_work_mem = 32MB
+max_connections = 20
+wal_buffers = 4MB
+checkpoint_completion_target = 0.9
+```
+> ⚠️ **Consent gate**: appending to a system service config AND restarting the service
+> (`sudo service postgresql restart`) triggers the terminal **consent block** — the command is
+> held until the user approves. **Announce the exact change and ask for consent BEFORE running it**,
+> or the run stalls. This applies to ANY edit of `/etc/` service configs + service restart.
+
+### .env for DB-backed Next.js apps
+```bash
+DATABASE_URL="postgresql://<appuser>:<pgpass>@localhost:5432/<appdb>?schema=public"
+AUTH_SECRET="$(openssl rand -base64 32)"   # NextAuth / session signing
+# Optional OAuth (only if enabled in app config):
+# AUTH_GITHUB_ID= / AUTH_GITHUB_SECRET= / AUTH_GOOGLE_ID= / AUTH_GOOGLE_SECRET=
+```
+
+### Prisma + run sequence
+```bash
+npm install
+cp .env.example .env            # fill DATABASE_URL + AUTH_SECRET
+npx prisma generate
+npx prisma db push              # creates tables from schema (no migration history needed)
+# npm run build && npm run start   # production (needs RAM)
+npm run dev                     # lighter — use on small VPS, port 3000
+```
+Verify: `curl -s http://127.0.0.1:3000 | head -c 200` (Next.js default port 3000;
+some apps map `4444:3000` or read `PORT`).
 
 ## 🚨 Critical pitfalls
 

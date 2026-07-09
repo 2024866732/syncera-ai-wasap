@@ -229,6 +229,7 @@ If you catch yourself thinking:
 + - **"Let me speculate instead of capturing production evidence"** — when traceback/logs are available but you propose fixes without reading them. Capture real traceback FIRST, then hypothesize. Speculation wastes turns and erodes trust.
 + - **"Counter is zero but activity is clearly happening"** — Suspect constant/string mismatch between producer (e.g. `_detect_routing()` returning `"ai_query"`) and consumer (SQL query filtering `WHERE routing_path='ai'`). Verify the exact stored values before assuming no activity occurred.
 + - **"Middleware check fails — all routes down"** — When a `DASHBOARD_API_KEY` or similar guard is checked at the top of a middleware function (before path validation), an empty/misconfigured env var crashes ALL endpoints including webhook, health, and dashboard. Check: does the middleware check `if not SECRET: return 500` BEFORE scoping to protected routes? If yes, the guard is wrong — scope the check AFTER determining the route is protected.
+- **"API says mapped: 2 but DB shows old values"** — Endpoint returns success, but remote DB still has pre-update data. Do NOT trust API responses for DB writes. Download the remote DB via Kudu VFS and query raw values (see `hafjet-deployment-plan/references/kudu-db-patching.md`). Common causes: stale module (file wasn't deployed), DB path mismatch, write conflict from concurrent sync.
 
 **ALL of these mean: STOP. Return to Phase 1.**
 
