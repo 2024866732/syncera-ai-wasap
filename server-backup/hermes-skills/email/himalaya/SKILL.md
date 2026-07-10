@@ -54,10 +54,21 @@ Run the interactive wizard to set up an account:
 himalaya account configure
 ```
 
-Or create `~/.config/himalaya/config.toml` manually:
+## Gmail Prerequisites
+
+Before configuring Gmail with Himalaya, you need an **App Password**:
+
+1. Ensure **2-Step Verification** is ON at [myaccount.google.com/security](https://myaccount.google.com/security)
+2. Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+3. Select app type **"Mail"** and create
+4. Copy the 16-character password
+
+> ⚠️ **PITFALL: App Password spaces.** Gmail displays App Passwords with spaces (e.g., `abcd efgh ijkl mnop`) for readability, but the actual password is the 16 characters **without spaces** (`abcdefghijklmnop`). If you paste it with spaces into your credential file or config, IMAP auth will fail with `AUTHENTICATIONFAILED`. Always strip spaces before saving.
+
+## Gmail Configuration
 
 ```toml
-[accounts.personal]
+[accounts.gmail]
 email = "you@example.com"
 display-name = "Your Name"
 default = true
