@@ -20,17 +20,17 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 23
+        "completed": 24
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-07-11T07:00:00+00:00",
-      "last_run_at": "2026-07-10T07:02:20.327454+00:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: HTTP 400: messages.2.assistant.reasoning_content: property 'messages.2.assistant.reasoning_content' is unsupported\nmessages.6.assistant.reasoning_content: property 'messages.6.assistant.reasoning_content' is unsupported\nmessages.8.assistant.reasoning_content: property 'messages.8.assistant.reasoning_content' ",
+      "next_run_at": "2026-07-12T07:00:00+00:00",
+      "last_run_at": "2026-07-11T07:39:49.981867+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -40,7 +40,8 @@
         "thread_id": null
       },
       "enabled_toolsets": null,
-      "workdir": null
+      "workdir": null,
+      "fire_claim": null
     },
     {
       "id": "9408be4cd593",
@@ -62,15 +63,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 18
+        "completed": 19
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-07-11T14:00:00+00:00",
-      "last_run_at": "2026-07-09T14:00:59.011448+00:00",
+      "next_run_at": "2026-07-12T14:00:00+00:00",
+      "last_run_at": "2026-07-10T14:01:29.025957+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -104,15 +105,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 14
+        "completed": 15
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-07-11T14:00:00+00:00",
-      "last_run_at": "2026-07-09T14:00:32.592686+00:00",
+      "next_run_at": "2026-07-12T14:00:00+00:00",
+      "last_run_at": "2026-07-10T14:00:35.912624+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -146,15 +147,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 14
+        "completed": 15
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-07-11T09:00:00+00:00",
-      "last_run_at": "2026-07-10T09:00:36.941970+00:00",
+      "next_run_at": "2026-07-12T09:00:00+00:00",
+      "last_run_at": "2026-07-11T09:01:06.903159+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -166,7 +167,8 @@
         "thread_id": "20618"
       },
       "enabled_toolsets": null,
-      "workdir": null
+      "workdir": null,
+      "fire_claim": null
     },
     {
       "id": "9a0b34159a84",
@@ -188,15 +190,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 8
+        "completed": 9
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-07-11T09:00:00+00:00",
-      "last_run_at": "2026-07-10T09:00:40.967484+00:00",
+      "next_run_at": "2026-07-12T09:00:00+00:00",
+      "last_run_at": "2026-07-11T09:00:48.431212+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -208,8 +210,9 @@
         "thread_id": "20618"
       },
       "enabled_toolsets": null,
-      "workdir": null
+      "workdir": null,
+      "fire_claim": null
     }
   ],
-  "updated_at": "2026-07-10T14:00:18.635265+00:00"
+  "updated_at": "2026-07-11T14:00:46.692839+00:00"
 }

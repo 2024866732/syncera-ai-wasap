@@ -121,6 +121,9 @@ tailscale serve --bg http://127.0.0.1:<port>
 
 > ⚠️ **Security**: Never set `HOST=0.0.0.0` without password auth active. Verify the `.env` has `PASSWORD` set before switching from loopback.
 
+## Heavy npm installs (ENOSPC, timeouts, cleanup)
+For large npm packages (1000+ deps), see `references/heavy-npm-installs.md` — covers disk requirements, ENOSPC recovery, background install patterns, and OmniRoute specifics.
+
 ## Node.js / Next.js + Prisma + PostgreSQL apps
 
 Many modern self-hosted web apps (e.g. **prompts.chat**) are Next.js + Prisma ORM +
@@ -187,6 +190,32 @@ Verify: `curl -s http://127.0.0.1:3000 | head -c 200` (Next.js default port 3000
 some apps map `4444:3000` or read `PORT`).
 
 ## 🚨 Critical pitfalls
+
+### ENOSPC during `npm install -g` (heavy packages)
+**Symptom**: `npm error ... ENOSPC: no space left on device, write` — partial `node_modules/` left behind eating disk.
+**Root cause**: Global npm installs with 1000+ deps (e.g. OmniRoute v3.8.46 = 1177 packages, ~600 MB) exhaust disk on constrained servers.
+**Recovery pattern**:
+```bash
+# 1. Remove partial install + npm cache
+rm -rf ~/.nvm/versions/node/v*/lib/node_modules/<package>
+npm cache clean --force
+df -h /                     # verify free space
+
+# 2. Retry install with longer timeout
+npm install -g <package>    # in background, 5+ min expected
+```
+**Prevention**: Check `df -h /` before installing heavy packages. If <5 GB free, clean first:
+- `npm cache clean --force` (reclaims ~500 MB-2 GB)
+- Remove unused global packages: `npm ls -g --depth=0`
+- Check `/tmp` for stale npm build dirs: `rm -rf /tmp/npm-*`
+**Background installs**: Use `terminal(background=true, notify_on_complete=true)` for npm installs >2 min. Do NOT use foreground with 120s timeout — it will time out and leave zombie processes.
+
+### OmniRoute specifically
+- Version: v3.8.46 (as of 2026-07-10)
+- Dashboard: `http://localhost:20128`, API: `http://localhost:20128/v1`
+- Config dir: `~/.omniroute/.env` (auto-generated `STORAGE_ENCRYPTION_KEY`)
+- No Docker alternative available on this server (Docker not installed)
+- **RAM-sensitive at runtime**: Process starts fine but may silently fail to serve HTTP if available RAM <200 MB. Port shows LISTEN in `ss` but curl times out. See `references/heavy-npm-installs.md` for detection pattern.
 
 ### `systemctl start` blocked by gateway
 **Symptom**: `sudo systemctl start <service>` fails with:

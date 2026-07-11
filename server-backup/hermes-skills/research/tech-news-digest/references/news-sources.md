@@ -1,6 +1,6 @@
 # News Sources Ranked by Extractability
 
-Updated: 2026-07-04 | Source: Live testing during weekly digests (incl. July 4 cron run)
+Updated: 2026-07-11 | Source: Live testing during weekly digests (incl. July 11 cron run — added Axios to blocked sites)
 
 ## Site Rendering Type Detection (Critical First Step)
 
@@ -54,6 +54,7 @@ Before choosing an extraction method, determine the site type:
 | NYT | `nytimes.com/...` | DataDome bot detection block |
 | WSJ | `wsj.com/...` | Paywall |
 | openai.com | `openai.com/index/...` | Cloudflare bot detection — shows "Just a moment..." page |
+| Axios | `axios.com/...` | Cloudflare bot detection — shows "Just a moment..." + security verification iframe |
 | Some Substacks | Various | Bot detection on heavy traffic articles |
 
 ## Extraction Method Quick Reference
