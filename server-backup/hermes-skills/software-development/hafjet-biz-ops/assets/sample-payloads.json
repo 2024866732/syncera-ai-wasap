@@ -1,0 +1,87 @@
+{
+  "sample_payloads": [
+    {
+      "event_type": "sale.completed",
+      "source_system": "loyverse",
+      "store_id": "hafjet-raub",
+      "order_id": "LV-20260712-00123",
+      "ticket_id": null,
+      "customer": {
+        "name": "Ahmad Razak",
+        "phone": "+60123456789",
+        "email": "ahmad.razak@email.com"
+      },
+      "items": [
+        {
+          "sku": "IP11-BAT",
+          "name": "iPhone 11 Battery Replacement",
+          "qty": 1,
+          "unit_price": 129.00
+        }
+      ],
+      "amount_total": 129.00,
+      "payment_status": "paid",
+      "repair_status": null,
+      "pickup_due_date": null,
+      "invoice_url": "https://example.com/invoice/LV-20260712-00123",
+      "notes_internal": "walk-in customer",
+      "created_at": "2026-07-12T18:30:00+08:00"
+    },
+    {
+      "event_type": "repair.status_changed",
+      "source_system": "repair-system",
+      "store_id": "hafjet-raub",
+      "order_id": null,
+      "ticket_id": "RPR-20260710-00045",
+      "customer": {
+        "name": "Siti Nurhaliza",
+        "phone": "+60198765432",
+        "email": "siti.nur@email.com"
+      },
+      "items": [
+        {
+          "sku": "SAM-S24-SCR",
+          "name": "Samsung S24 Screen Replacement",
+          "qty": 1,
+          "unit_price": 450.00
+        }
+      ],
+      "amount_total": 450.00,
+      "payment_status": "pending",
+      "repair_status": "ready-pickup",
+      "pickup_due_date": "2026-07-15",
+      "invoice_url": null,
+      "notes_internal": "customer informed via WhatsApp",
+      "created_at": "2026-07-12T14:20:00+08:00"
+    },
+    {
+      "event_type": "low.stock.alert",
+      "source_system": "inventory",
+      "store_id": "hafjet-raub",
+      "order_id": null,
+      "ticket_id": null,
+      "customer": null,
+      "items": [
+        {
+          "sku": "IP11-BAT",
+          "name": "iPhone 11 Battery",
+          "qty": 2,
+          "unit_price": 45.00
+        },
+        {
+          "sku": "SAM-A13-SCR",
+          "name": "Samsung A13 Screen",
+          "qty": 1,
+          "unit_price": 85.00
+        }
+      ],
+      "amount_total": null,
+      "payment_status": null,
+      "repair_status": null,
+      "pickup_due_date": null,
+      "invoice_url": null,
+      "notes_internal": "Low stock threshold: 5 units",
+      "created_at": "2026-07-12T08:00:00+08:00"
+    }
+  ]
+}

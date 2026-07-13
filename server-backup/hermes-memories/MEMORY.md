@@ -1,17 +1,13 @@
-Tuan Hafizi — MD of HAFJET, UiTM study leave. Malay+Kelantan dialect, tech English for code. Prefers concise tables/bullets, hates overexplaining without evidence. Rules: show diff+logs before deploy, deploy only on explicit command, 1 task/run max 20 calls STOP. Never guess secrets.
+Tuan Hafizi — MD of HAFJET (M) SDN BHD. UiTM study leave. Malay+Kelantan dialect. Prefers concise tables/bullets, hates overexplaining. Rules: show diff+logs before deploy, deploy only on explicit command, 1 task/run max 20 calls. Never guess secrets. Business: logistics, phone shop, Loyverse POS (2 stores), AI-powered ops. Website: hafjet.my. Wants practical tools, prefers batch setup all-at-once.
 §
 Git repo: https://github.com/2024866732/hafjet-whatsapp-bot.git (confirmed active — NOT syncera-ai-wasap)
 §
 External API defense: never trust resp.json() alone — use _safe_json() that returns {} instead of raising. Guard empty body, prefix (Shopee: )]}\'\n), unmatched brackets, parse failures. Log raw body(500) for debugging.
 §
-Azure: RG=hafjet-bot-rg. Front-door proxy HTTP timeout=240s (gunicorn 600s) — synchronous bulk endpoints 504; background api_spx_sync (APScheduler, returns 202) safe. startup.txt>start.sh; clear __pycache__; Kudu VFS PUT+AAD. zip deploy skips Oryx; WEBSITES_CONTAINER_START_TIME_LIMIT=300.
+Azure: RG=hafjet-bot-rg. Webapp: `hafjet-whatsapp-bot`. HTTP timeout=240s (gunicorn 600s). startup.txt>start.sh; clear __pycache__; Kudu VFS PUT+AAD. zip deploy skips Oryx. `az webapp stop`+`start` (not restart). Health: GET /health → JSON. Dashboard: /dashboard/ (SPA), API: /api/stats.
 §
-SPX: show_secret ABANDONED (Jul 2026). Phones via POST /api/spx/phones/bulk (bulk text mapping) or CSV col 3. Background sync L1002 uses fresh get_spx_cookies() each tick — no stale cookie bug. Rate 0.5s, cap 60/day, 08-21 MYT via ZoneInfo. spx_sync_state.cookies unused.
+BANNED terminal (Tuan DENIES all 3 — agent must not run unreviewed code): pipe net output into interpreter, python3 heredoc, append/redirect into config dotfiles. Safe form: write .py to /tmp then run; curl -o then parse; suggest config lines for Tuan to edit manually. Pickup reminder RESOLVED via Google Sheets (Azure bot has NO repair API). Cron 0 3 * * * = 11AM MYT, script reads Sheet 1T0FzNhk..., filters STATUS_REPAIR=='SIAP DIAMBIL', WhatsApp to CUSTOMER (NO_PHONE), owner +60198021500 summary only. Daily sales cron 9408be4cd593 now 0 13 * * * (9PM MYT). Cron MYT=UTC+8.
 §
-Azure deploy: use `az webapp stop` then `az webapp start` (not `restart`) for clean reload. Old gunicorn workers may cache .pyc.
+Superpowers: Email, GitHub, X, Google Workspace, Notion, PowerPoint, Tech News Digest, Loyverse POS (2 stores). Loyverse Store: HAFIZI GADJET ENTERRPISE, Raub Pahang (ID: 7ff40a33-f30b-4680-a2e0-a6b644f05988). Architecture: Loyverse (data/mata) FIRST, then WhatsApp (mulut) — stable data layer before customer messaging.
 §
-BANNED terminal: curl|python3 (Tuan — high-risk injection). Password in curl -d exposed in ps/history — use @file payload. Kudu DB PUT requires If-Match:* header to beat ETag 412. Use file-based 2-step: curl -o then python3 script.py.
-§
-§
-Hermes superpowers: Email (Himalaya hafjetai@gmail.com), GitHub CLI (gh v2.95.0 as 2024866732). xurl v1.2.2 installed, X Dev App setup pending. Google Workspace deps ready, OAuth not done. §
-SECURITY: Never echo API keys/secrets in chat. User runs credential registration (xurl auth, gh auth) in own terminal.
+TTS voice: ElevenLabs Rachel (pNInz6obpgDQGcFmaJgB, eleven_multilingual_v2) preferred. Edge TTS ms-MY-YasminNeural fallback.

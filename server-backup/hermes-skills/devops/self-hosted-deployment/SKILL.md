@@ -124,6 +124,9 @@ tailscale serve --bg http://127.0.0.1:<port>
 ## Heavy npm installs (ENOSPC, timeouts, cleanup)
 For large npm packages (1000+ deps), see `references/heavy-npm-installs.md` — covers disk requirements, ENOSPC recovery, background install patterns, and OmniRoute specifics.
 
+## Server maintenance & weekly cleanup
+For automated log/cache cleanup scripts and cron setup, see `references/server-maintenance.md` — covers safe-mode cleanup targeting APT cache, journal, rotated logs, temp files, and user caches with a weekly cron pattern.
+
 ## Node.js / Next.js + Prisma + PostgreSQL apps
 
 Many modern self-hosted web apps (e.g. **prompts.chat**) are Next.js + Prisma ORM +

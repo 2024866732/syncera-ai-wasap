@@ -21,9 +21,10 @@ This skill documents the locked deployment strategy for HAFJET WhatsApp Bot v2.1
 
 **`az webapp deploy --type zip` is unreliable on Linux App Service.** It reports `RuntimeSuccessful` but frequently **does not update the actual files** in `/home/site/wwwroot/`. The platform returns success even when files on disk are unchanged.
 
-### Quick reference
+## Quick reference
 
-See `references/azure-python-fastapi-patterns.md` — SQLite, FastAPI, bytecode, JSON parsing.
+- **Bot code location + health checks**: See `references/operational-health-checks.md`
+- **SQLite, FastAPI, bytecode, JSON parsing**: See `references/azure-python-fastapi-patterns.md`
 See `references/azure-oryx-worker-pitfalls.md` — Oryx, start.sh, gunicorn workers.
 See `references/deploy-validation-checklist.md` — ZIP checklist, deploy verification.
 

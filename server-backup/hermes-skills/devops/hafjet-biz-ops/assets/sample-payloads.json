@@ -1,0 +1,123 @@
+{
+  "sale_completed": {
+    "event_type": "sale.completed",
+    "source_system": "loyverse",
+    "store_id": "hafjet-kulai",
+    "order_id": "LV-20260712-00123",
+    "ticket_id": null,
+    "customer": {
+      "name": "Ahmad Razak",
+      "phone": "+60123456789",
+      "email": "ahmad@email.com"
+    },
+    "items": [
+      {
+        "sku": "IP11-BAT",
+        "name": "iPhone 11 Battery Replacement",
+        "qty": 1,
+        "unit_price": 129.00
+      },
+      {
+        "sku": "TG-TEMP",
+        "name": "Tempered Glass",
+        "qty": 1,
+        "unit_price": 15.00
+      }
+    ],
+    "amount_total": 144.00,
+    "payment_status": "paid",
+    "repair_status": null,
+    "pickup_due_date": null,
+    "invoice_url": "https://loyverse.com/receipt/LV-20260712-00123",
+    "notes_internal": "walk-in customer, rapid service",
+    "created_at": "2026-07-12T18:30:00+08:00"
+  },
+
+  "repair_status_changed": {
+    "event_type": "repair.status_changed",
+    "source_system": "repair-system",
+    "store_id": "hafjet-kulai",
+    "order_id": null,
+    "ticket_id": "TK-20260710-00045",
+    "customer": {
+      "name": "Siti Nurhaliza",
+      "phone": "+60198765432",
+      "email": "siti.nur@gmail.com"
+    },
+    "items": [
+      {
+        "sku": "SS-A23",
+        "name": "Samsung A23 Screen Replacement",
+        "qty": 1,
+        "unit_price": 189.00
+      }
+    ],
+    "amount_total": 189.00,
+    "payment_status": "pending",
+    "repair_status": "ready-pickup",
+    "pickup_due_date": null,
+    "invoice_url": null,
+    "notes_internal": "part arrived, completed repair",
+    "created_at": "2026-07-12T14:15:00+08:00"
+  },
+
+  "pickup_reminder": {
+    "event_type": "cron.pickup_reminder",
+    "source_system": "cron",
+    "store_id": "hafjet-kulai",
+    "order_id": null,
+    "ticket_id": "TK-20260708-00032",
+    "customer": {
+      "name": "Muhammad Amir",
+      "phone": "+60176543210",
+      "email": "amir@gmail.com"
+    },
+    "items": [
+      {
+        "sku": "IPX-BAT",
+        "name": "iPhone X Battery",
+        "qty": 1,
+        "unit_price": 99.00
+      }
+    ],
+    "amount_total": 99.00,
+    "payment_status": "paid",
+    "repair_status": "ready-pickup",
+    "pickup_due_date": "2026-07-11",
+    "invoice_url": null,
+    "notes_internal": "ready since 2026-07-08, 4 days ago",
+    "created_at": "2026-07-08T11:30:00+08:00"
+  },
+
+  "low_stock_alert": {
+    "event_type": "inventory.low_stock",
+    "source_system": "loyverse",
+    "store_id": "hafjet-kulai",
+    "order_id": null,
+    "ticket_id": null,
+    "customer": null,
+    "items": [
+      {
+        "sku": "IP11-BAT",
+        "name": "iPhone 11 Battery",
+        "qty": 2,
+        "unit_price": 45.00,
+        "threshold": 5
+      },
+      {
+        "sku": "TG-TEMP",
+        "name": "Tempered Glass Universal",
+        "qty": 3,
+        "unit_price": 5.00,
+        "threshold": 10
+      }
+    ],
+    "amount_total": 0,
+    "payment_status": null,
+    "repair_status": null,
+    "pickup_due_date": null,
+    "invoice_url": null,
+    "notes_internal": "2 items below threshold",
+    "created_at": "2026-07-12T09:00:00+08:00"
+  }
+}

@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 24
+        "completed": 26
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-07-12T07:00:00+00:00",
-      "last_run_at": "2026-07-11T07:39:49.981867+00:00",
+      "next_run_at": "2026-07-14T07:00:00+00:00",
+      "last_run_at": "2026-07-13T07:09:42.225659+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -57,21 +57,21 @@
       "context_from": null,
       "schedule": {
         "kind": "cron",
-        "expr": "0 14 * * *",
-        "display": "0 14 * * *"
+        "expr": "0 13 * * *",
+        "display": "0 13 * * *"
       },
-      "schedule_display": "0 14 * * *",
+      "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 19
+        "completed": 22
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-07-12T14:00:00+00:00",
-      "last_run_at": "2026-07-10T14:01:29.025957+00:00",
+      "next_run_at": "2026-07-14T13:00:00+00:00",
+      "last_run_at": "2026-07-13T13:05:05.601576+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -83,7 +83,8 @@
         "thread_id": null
       },
       "enabled_toolsets": null,
-      "workdir": null
+      "workdir": null,
+      "fire_claim": null
     },
     {
       "id": "315e1bdcd7fc",
@@ -105,17 +106,17 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 15
+        "completed": 17
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-07-12T14:00:00+00:00",
-      "last_run_at": "2026-07-10T14:00:35.912624+00:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-07-14T14:00:00+00:00",
+      "last_run_at": "2026-07-12T14:00:38.800081+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -125,7 +126,8 @@
         "thread_id": "21448"
       },
       "enabled_toolsets": null,
-      "workdir": null
+      "workdir": null,
+      "fire_claim": null
     },
     {
       "id": "06496e813cd5",
@@ -147,17 +149,17 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 15
+        "completed": 17
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-07-12T09:00:00+00:00",
-      "last_run_at": "2026-07-11T09:01:06.903159+00:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-07-14T09:00:00+00:00",
+      "last_run_at": "2026-07-13T09:01:21.515289+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -190,15 +192,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 9
+        "completed": 11
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-07-12T09:00:00+00:00",
-      "last_run_at": "2026-07-11T09:00:48.431212+00:00",
+      "next_run_at": "2026-07-14T09:00:00+00:00",
+      "last_run_at": "2026-07-13T09:02:48.504189+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -212,7 +214,53 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null
+    },
+    {
+      "id": "ebdae9cc10ab",
+      "name": "hafjet-pickup-reminder",
+      "prompt": "Run the HAFJET pickup reminder script. Execute: python3 /home/hafizi145/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_pickup_reminder.py\n\nSteps:\n1. Load env vars from ~/.hermes/.env (GOOGLE_SHEET_ID, GOOGLE_SHEETS_CREDENTIALS, PICKUP_REMINDER_TAB, WHATSAPP_CLOUD_PHONE_ID, WHATSAPP_CLOUD_ACCESS_TOKEN, OWNER_PHONE).\n2. The script reads the Google Sheet repair tab, filters STATUS_REPAIR == 'SIAP DIAMBIL', and sends a free-form WhatsApp reminder to each CUSTOMER (NO_PHONE column) \u2014 NOT the owner.\n3. If WhatsApp returns error 470 (24h window), it logs and skips (owner will handle template later).\n4. Sends an optional owner summary of pending count to OWNER_PHONE.\n5. Report: how many sent, how many failed, any 470 blocks. Keep it concise.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": "opencode-zen",
+      "model_snapshot": "minimax-m3-free",
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 3 * * *",
+        "display": "0 3 * * *"
+      },
+      "schedule_display": "0 3 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 1
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-07-12T14:37:32.432693+00:00",
+      "next_run_at": "2026-07-14T03:00:00+00:00",
+      "last_run_at": "2026-07-13T03:01:01.101335+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1485374469",
+        "chat_name": "Hafizi",
+        "thread_id": "27680",
+        "user_id": "1485374469"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
     }
   ],
-  "updated_at": "2026-07-11T14:00:46.692839+00:00"
+  "updated_at": "2026-07-13T14:00:12.342644+00:00"
 }

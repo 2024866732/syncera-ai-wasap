@@ -299,5 +299,6 @@ On systems with PEP 668 (externally-managed-environment):
 - `references/shell-token-extraction.md` — Why shell grep|cut fails for token extraction
 - `references/spx-shopee-integration.md` — SPX Shopee endpoint mapping, status codes, reveal pattern
 - `references/telegram-delivery-pattern.md` — Telegram bot delivery pattern for report summaries
+- `references/remote-oauth-setup.md` — OAuth setup on remote/headless servers (Google Playground, xurl --headless, iPhone workarounds)
 - `scripts/fetch_sales.py` — Working example: Loyverse daily sales report with client-side date filtering, profit calculation, and CSV import
 - `whatsapp-webhook-dev` — WhatsApp Cloud API webhook development (FastAPI, Meta Graph API)

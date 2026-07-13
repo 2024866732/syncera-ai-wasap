@@ -1,7 +1,6 @@
 model:
-  provider: xiaomi
-  base_url: https://api.xiaomimimo.com/v1
-  default: mimo-v2.5
+  provider: opencode
+  default: deepseek-v4-flash-free
 providers:
   cerebras:
     base_url: https://api.cerebras.ai/v1
@@ -284,9 +283,9 @@ dashboard:
 privacy:
   redact_pii: false
 tts:
-  provider: edge
+  provider: elevenlabs
   edge:
-    voice: en-US-AriaNeural
+    voice: ms-MY-YasminNeural
   elevenlabs:
     voice_id: pNInz6obpgDQGcFmaJgB
     model_id: eleven_multilingual_v2

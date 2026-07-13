@@ -286,6 +286,80 @@ Query the monthly report on **day 2–3 of the following month** for best data c
 | File | Purpose |
 |------|---------|
 | `references/rollover-note.md` | Documents the 31-day API rollover quirk and why monthly totals shift between queries |
+| `references/security-patterns.md` | Security patterns: forbidden `curl \| python3 -c`, safe alternatives |
+
+## Cron Job Setup (Daily Digest)
+
+For scheduled daily sales reports, add to crontab:
+
+```bash
+# Create log directory
+mkdir -p ~/.hermes/logs
+
+# Add cron job (9:00 PM MYT)
+cat > /tmp/hafjet_crontab << 'EOF'
+# HAFJET Daily Sales Digest - 9:00 PM MYT
+0 21 * * * /home/hafizi145/hermes-agent/venv/bin/python3 /home/hafizi145/.hermes/skills/fetch_sales.py >> /home/hafizi145/.hermes/logs/sales-digest.log 2>&1
+EOF
+
+# Install crontab
+crontab /tmp/hafjet_crontab
+
+# Verify
+crontab -l
+```
+
+**Important:** Use the Hermes venv Python path (`/home/hafizi145/hermes-agent/venv/bin/python3`) instead of system Python to ensure all dependencies are available.
+
+**Verify cron is running:**
+```bash
+systemctl status cron
+tail -50 ~/.hermes/logs/sales-digest.log
+```
+
+## Test Script Pattern
+
+For testing Loyverse API without running the full sales report:
+
+```python
+#!/usr/bin/env python3
+"""Test Loyverse API - Fetch receipts safely."""
+import os
+import json
+import urllib.request
+
+# Get token from env
+token = os.environ.get("LOYVERSE_ACCESS_TOKEN")
+if not token:
+    env_path = os.path.expanduser("~/.hermes/.env")
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                if line.startswith("LOYVERSE_ACCESS_TOKEN="):
+                    token = line.split("=", 1)[1].strip()
+                    break
+
+if not token:
+    print("ERROR: LOYVERSE_ACCESS_TOKEN not set")
+    exit(1)
+
+# Fetch receipts
+url = "https://api.loyverse.com/v1.0/receipts?limit=5"
+req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+
+with urllib.request.urlopen(req, timeout=10) as resp:
+    data = json.loads(resp.read().decode())
+
+receipts = data.get("receipts", [])
+print(f"Found {len(receipts)} recent receipt(s):")
+for r in receipts:
+    created = (r.get("created_at") or "N/A")[:10]
+    total = r.get("total_money", 0)
+    items = len(r.get("line_items", []))
+    print(f"  {created} | RM{total:.2f} | {items} items")
+```
+
+Save as `/tmp/loyverse_test.py` and run with `python3 /tmp/loyverse_test.py`.
 
 ## Troubleshooting
 
@@ -300,4 +374,5 @@ Query the monthly report on **day 2–3 of the following month** for best data c
 | `python3 -c` exits with code -1 / pending_approval | Pattern-based approval blocks inline execution | Write a standalone `.py` file and run it instead |
 | `$(...)` token extraction fails with syntax errors / "you must specify a list of bytes" | Hermes terminal censors secrets with `***`, breaking `cut` and subshells | Run `grep` directly in separate commands, or use `scripts/telegram-delivery.py` which extracts env vars via Python subprocess |
 | Telegram send fails with "Bad Request: message text is empty" | JSON payload not properly encoded | Use Python's `json.dumps()` instead of shell string interpolation |
+| API returns `UNAUTHORIZED: Access token is not valid` after copying from Developer Portal | Copied **App Secret** instead of **Access Token** | App Secret is in Developer Portal; Access Token must be generated separately in **Back Office → Settings → Apps → Generate Access Token**. They are different values. |
 

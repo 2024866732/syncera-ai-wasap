@@ -1,7 +1,7 @@
 ---
-title: AI Provider Setup for Hermes (this server)
+title: Hermes Configuration for this Server
 name: ai-provider-hermes-setup
-description: Configure Hermes Agent model providers on THIS server (Oracle Cloud host). Covers the Groq IP-ban dead-end, the OpenRouter fallback that works, secret-key handling guardrails (never truncate keys), and model recommendations for coding agents. Use whenever the user wants to add/switch/test an AI model provider for Hermes.
+description: "Configure Hermes Agent on this server — both LLM model providers and TTS/voice settings. Covers OpenRouter fallback (Groq is IP-banned), secret-key guardrails, Edge TTS Malay voices, ElevenLabs setup, and model recommendations for coding agents. Use whenever the user wants to add/switch/test any Hermes provider (model or TTS)."
 ---
 
 # AI Provider Setup for Hermes (this server)
@@ -74,6 +74,65 @@ except urllib.error.HTTPError as e:
 - `403 error 1010` → IP banned (network), key is fine.
 - `401` with correct-length key → key invalid/expired.
 - `400` "not a valid model ID" → connection works, wrong model name.
+
+## TTS / Voice Configuration
+
+Hermes TTS lives under the `tts.*` config keys and uses `ELEVENLABS_API_KEY` from `.env` or the built-in Edge TTS backend. Set via `hermes config set tts.<key> <value>`.
+
+### Provider comparison
+
+| Provider | Setup | Cost | Malay support |
+|----------|-------|------|---------------|
+| **Edge TTS** | Built-in, no API key | **Free** | ✅ Native Malay voices |
+| **ElevenLabs** | `ELEVENLABS_API_KEY` in `.env` | Free tier (10k chars/mo) | ✅ Multilingual v2 model |
+| OpenAI | `VOICE_TOOLS_OPENAI_KEY` in `.env` | Paid | ❌ No Malay |
+| NeuTTS (local) | `pip install neutts[all]` + espeak-ng | Free | ❌ Robotic |
+
+### Quick-switch workflow
+
+1. **Edge TTS (free, good for Malay):**
+   ```bash
+   hermes config set tts.provider edge
+   hermes config set tts.edge.voice ms-MY-YasminNeural   # female, friendly
+   # Alternative: ms-MY-OsmanNeural (male)
+   ```
+   No API key needed — works immediately.
+
+2. **ElevenLabs (premium, most natural for Malay):**
+   - Sign up at https://elevenlabs.io → choose **ElevenCreative** plan (not ElevenAgents)
+   - Go to Settings → API Keys → **Create API Key**
+   - Enable **Text to Speech** = Access + **Voices** = Read only
+   - Add API key to `.env`: `ELEVENLABS_API_KEY=sk_xxxxxxxx`
+   - Default voice ID `pNInz6obpgDQGcFmaJgB` (Rachel) and `eleven_multilingual_v2` model are pre-configured
+   ```bash
+   hermes config set tts.provider elevenlabs
+   ```
+   Test via `text_to_speech` tool → verify `provider: elevenlabs` in output.
+
+3. **Verify current config:**
+   ```bash
+   grep -A12 'tts:' ~/.hermes/config.yaml
+   ```
+   Key fields to check: `provider`, `edge.voice`, `elevenlabs.voice_id`, `elevenlabs.model_id`.
+
+### Voice quality notes (learned from experience)
+
+| Scenario | Problem | Fix |
+|----------|---------|-----|
+| Edge TTS with English voice (`en-US-AriaNeural`) reading Malay | Robotic, unintelligible | Switch to native Malay voice |
+| Edge TTS with `ms-MY-YasminNeural` | Decent, slight synthetic tone | Good enough for daily use |
+| ElevenLabs Rachel (`eleven_multilingual_v2`) | Natural, human-like | Best option, free tier 10k chars/mo |
+| User says "English voice OK, Malay not OK" | Voice mismatch, not provider quality | Use Malay-optimised voice |
+
+Key insight: the **same** Edge TTS provider sounds robotic for Malay ONLY when using an English voice like `en-US-AriaNeural`. Switching to `ms-MY-YasminNeural` instantly fixes it at zero cost.
+
+### TTS config keys reference
+- `tts.provider` — `edge`, `elevenlabs`, `openai`, `neutts`
+- `tts.edge.voice` — voice ID for Edge TTS (e.g. `ms-MY-YasminNeural`)
+- `tts.elevenlabs.voice_id` — ElevenLabs voice UUID (default: `pNInz6obpgDQGcFmaJgB` = Rachel)
+- `tts.elevenlabs.model_id` — model for ElevenLabs (default: `eleven_multilingual_v2`)
+
+The `text_to_speech` tool reads config live. For voice messages in gateway conversations, do `/restart` after changing config.
 
 ## Other providers (from research, not all tested from this server)
 - **DeepSeek direct** (`https://api.deepseek.com/v1`, model `deepseek-v4-pro`): pay-per-token, ~same price as OpenRouter's DeepSeek. Reachability from this server UNVERIFIED — test before relying on it. Strong choice if OpenRouter ever fails.

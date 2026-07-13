@@ -1,21 +1,21 @@
 ---
 name: gif-search
-description: "Search/download GIFs from Tenor via curl + jq."
-version: 1.1.0
+description: "Search/download GIFs from Klipy (free) via curl + python3. Replaces deprecated Tenor API."
+version: 1.2.0
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
 prerequisites:
-  env_vars: [TENOR_API_KEY]
-  commands: [curl, jq]
+  env_vars: [KLIPY_API_KEY]
+  commands: [curl, python3]
 metadata:
   hermes:
-    tags: [GIF, Media, Search, Tenor, API]
+    tags: [GIF, Media, Search, Klipy, API]
 ---
 
-# GIF Search (Tenor API)
+# GIF Search (Klipy API)
 
-Search and download GIFs directly via the Tenor API using curl. No extra tools needed.
+Search and download GIFs via the Klipy API (free, by ex-Tenor team). No extra tools needed.
 
 ## When to use
 
@@ -23,41 +23,61 @@ Useful for finding reaction GIFs, creating visual content, and sending GIFs in c
 
 ## Setup
 
-Set your Tenor API key in your environment (add to `${HERMES_HOME:-~/.hermes}/.env`):
+Set your Klipy API key in your environment (add to `${HERMES_HOME:-~/.hermes}/.env`):
 
 ```bash
-TENOR_API_KEY=your_key_here
+KLIPY_API_KEY=your_key_here
 ```
 
-Get a free API key at https://developers.google.com/tenor/guides/quickstart — the Google Cloud Console Tenor API key is free and has generous rate limits.
+Get a free API key at https://partner.klipy.com/ (lifetime free).
 
 ## Prerequisites
 
-- `curl` and `jq` (both standard on macOS/Linux)
-- `TENOR_API_KEY` environment variable
+- `curl` and `python3` (both standard on macOS/Linux)
+- `KLIPY_API_KEY` environment variable
 
 ## Search for GIFs
 
 ```bash
-# Search and get GIF URLs
-curl -s "https://tenor.googleapis.com/v2/search?q=thumbs+up&limit=5&key=${TENOR_API_KEY}" | jq -r '.results[].media_formats.gif.url'
+# Search and get GIF URLs (python3 for JSON parsing)
+curl -s "https://api.klipy.com/v2/search?q=thumbs+up&limit=5&key=${KLIPY_API_KEY}" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for r in data.get('results', []):
+    print(r['url'])
+"
 
-# Get smaller/preview versions
-curl -s "https://tenor.googleapis.com/v2/search?q=nice+work&limit=3&key=${TENOR_API_KEY}" | jq -r '.results[].media_formats.tinygif.url'
+# Get title + URL
+curl -s "https://api.klipy.com/v2/search?q=nice+work&limit=3&key=${KLIPY_API_KEY}" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for r in data.get('results', []):
+    print(f\"{r.get('title','untitled')} — {r['url']}\")
+"
 ```
 
 ## Download a GIF
 
 ```bash
 # Search and download the top result
-URL=$(curl -s "https://tenor.googleapis.com/v2/search?q=celebration&limit=1&key=${TENOR_API_KEY}" | jq -r '.results[0].media_formats.gif.url')
+URL=$(curl -s "https://api.klipy.com/v2/search?q=celebration&limit=1&key=${KLIPY_API_KEY}" | python3 -c "import sys,json; print(json.load(sys.stdin)['results'][0]['url'])")
 curl -sL "$URL" -o celebration.gif
 ```
 
 ## Get Full Metadata
 
 ```bash
-curl -s "https://tenor.googleapis.com/v2/search?q=cat&limit=3&key=${TENOR_API_KEY}" | jq '.results[] | {title: .title, url: .media_formats.gif.url, preview: .media_formats.tinygif.url, dimensions: .media_formats.gif.dims}'
+curl -s "https://api.klipy.com/v2/search?q=cat&limit=3&key=${KLIPY_API_KEY}" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for r in data.get('results', []):
+    print(json.dumps({
+        'title': r.get('title'),
+        'url': r['url'],
+        'slug': r.get('slug'),
+        'duration': r.get('duration')
+    }, indent=2))
+"
 ```
 
 ## API Parameters
@@ -65,27 +85,22 @@ curl -s "https://tenor.googleapis.com/v2/search?q=cat&limit=3&key=${TENOR_API_KE
 | Parameter | Description |
 |-----------|-------------|
 | `q` | Search query (URL-encode spaces as `+`) |
-| `limit` | Max results (1-50, default 20) |
-| `key` | API key (from `$TENOR_API_KEY` env var) |
-| `media_filter` | Filter formats: `gif`, `tinygif`, `mp4`, `tinymp4`, `webm` |
-| `contentfilter` | Safety: `off`, `low`, `medium`, `high` |
-| `locale` | Language: `en_US`, `es`, `fr`, etc. |
+| `limit` | Max results (default 20) |
+| `key` | API key (from `$KLIPY_API_KEY` env var) |
+| `locale` | Language: `en`, `ms`, etc. |
 
-## Available Media Formats
+## Response Structure
 
-Each result has multiple formats under `.media_formats`:
-
-| Format | Use case |
-|--------|----------|
-| `gif` | Full quality GIF |
-| `tinygif` | Small preview GIF |
-| `mp4` | Video version (smaller file size) |
-| `tinymp4` | Small preview video |
-| `webm` | WebM video |
-| `nanogif` | Tiny thumbnail |
+Each result has:
+- `url` — Direct GIF URL (use in markdown: `![alt](url)`)
+- `title` — GIF title/description
+- `slug` — URL-friendly ID
+- `duration` — Video duration (for clips)
+- `created` — Timestamp
 
 ## Notes
 
+- Klipy is free forever (lifetime free tier)
+- API endpoint: `https://api.klipy.com/v2/search`
 - URL-encode the query: spaces as `+`, special chars as `%XX`
-- For sending in chat, `tinygif` URLs are lighter weight
-- GIF URLs can be used directly in markdown: `![alt](url)`
+- For sending in chat, use the direct `url` field

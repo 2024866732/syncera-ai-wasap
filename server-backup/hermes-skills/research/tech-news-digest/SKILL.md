@@ -239,3 +239,18 @@ terminal('python3 /tmp/extract.py /tmp/page1.html /tmp/page2.html')
 - [ ] Source links included at end
 - [ ] Not fabricated — all claims backed by real search/browse output
 - [ ] Language tone matches casual Malay + Kelantan dialect naturally
+
+## Note: GIF Integration
+
+When adding GIFs or visual reactions to digest output (e.g., for Telegram delivery), use the `gif-search` skill with **Klipy API** (`api.klipy.com/v2/search`). Tenor API is deprecated (Jan 2026, shutdown Jun 30 2026). Do not reference Tenor endpoints.
+
+## Note: Skill Installation Workflow
+
+When user requests multiple skills to be set up, organize by priority tiers:
+1. First identify dependencies (env vars, CLI tools, pip packages, npm packages)
+2. Install all non-interactive deps in parallel (pip, npm, apt-get)
+3. Interactive setup (API keys, OAuth) last — collect from user one at a time
+4. Test each skill immediately after install
+5. Report status table at the end
+
+System-level installs may need `sudo apt-get install` (e.g., `libreoffice-core`, `poppler-utils` for PowerPoint). User-level installs go to `~/.local/bin/` when `/usr/local/bin/` requires sudo.

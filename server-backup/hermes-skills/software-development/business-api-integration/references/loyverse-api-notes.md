@@ -13,7 +13,28 @@ Authorization: Bearer <token>
 ```
 Token from: Loyverse Back Office → Settings → API → Personal Access Tokens
 
-## Receipts Endpoint
+### ⚠️ Getting the Token — Common Confusion
+
+There are TWO places to get Loyverse credentials, and they serve different purposes:
+
+| Source | What You Get | Use For |
+|--------|-------------|---------|
+| **Developer Portal** (developer.loyverse.com) | App ID + App Secret | OAuth2 flow (not needed for basic API access) |
+| **Back Office** (backoffice.loyverse.com) → Settings → Apps | **Personal Access Token** | API calls (this is what we need) |
+
+**If the user says "App Secret" or "App ID"** — those are NOT the Access Token. Guide them to:
+1. Login to https://backoffice.loyverse.com
+2. Go to Settings → Apps / Integrations
+3. Click "Generate Access Token" or "Personal Access Token"
+4. Copy the token (long string, no dashes)
+
+**Verification pattern:** Always test token validity first with `/stores` endpoint:
+```bash
+curl -s "https://api.loyverse.com/v1.0/stores" -H "Authorization: Bearer <token>"
+```
+If valid, you'll see store names. If invalid, you'll get `UNAUTHORIZED` error.
+
+### Stores
 
 ### Get list of receipts
 ```
