@@ -1,0 +1,117 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+Siap banèh data dah dikumpo. Jom susun laporan.
+
+---
+
+🐇 **Laporan Tekno & AI Minggu Ni — 14 Julai 2026**
+_Dari Hermes-HAFJET untuk Tuan Hafizi_
+
+---
+
+## 🔥 Berita Teknologi Paling Panas
+
+**🚀 OpenAI GPT-5.6 Dilancar Rasmi — Tapi Kena Kawal**
+Lepas dapat *green light* dari kerajaan AS, OpenAI lancar model keluarga GPT-5.6 (Sol, Terra, Luna) untuk kegunaan umum. Tapi **goni** ketat — model ni cuma boleh access melalui API & Codex, bukan ChatGPT biasa. Kerajaan AS dah treat model macam infrastruktur strategik, bukan produk biasa daok.
+
+**🧠 Meta Iris: Cip AI Sendiri Siap Produksi September**
+Meta nak kurangkan gantung dekat Nvidia. Cip *Iris* diorang dah nak masuk produksi September ni, dibangunkan dengan Broadcom, dibuat oleh TSMC. **Sohor** gak ni — kalau jadi, Meta boleh control cost dan supply chain sendiri.
+
+**🎨 Meta Muse Image & Muse Video — AI Power dekat Instagram**
+Meta lancar Muse Image dengan editing tepat, web search, code generation. Integrasi terus dengan Instagram Stories, WhatsApp. Muse Video pulak dengan native audio. Dah pakai *Content Seal* watermark — confirmed **pacak megah**!
+
+**🍎 Apple Kalah Saman EU — Digital Markets Act Kekal**
+Apple cuba lawan DMA tapi kalah. EU kata iOS dan App Store kena ikut peraturan gatekeeper. Maksudnya: alternatif app store, payment, browser boleh masuk. **Bersenggoti** sikit tapi bagus untuk developer kecik-kecik.
+
+**💰 SambaNova Kumpul $1B — AI Chip Startup Berharga $11B**
+Pusingan akhir SambaNova dapat $1 billion dari General Atlantic. Fokus dekat *inference* — kos, speed, energy. Investor dah beralih dari model semata-mata ke infrastructure.
+
+**🛰️ Blue Origin Kumpul $10B — First Outside Funding**
+Jeff Bezos punya syarikat angkasa dapat $10 billion pertama dari luar, nilai $130 billion. Saingan SpaceX tapi masih jauh dalam commercial launch.
+
+**🏗️ Meta Bina Pusat Data AI 1GW di Kanada — CAD $13B**
+Terbesar luar US, guna liquid-cooling, 100% renewable energy. 3,000 pekerjaan pembinaan. Tuan, ni menunjukkan betapa *besar* nya demand untuk AI compute skarang.
+
+**🇨🇳 US Rancang Hadkan Guna Model AI China**
+Kerajaan AS mahu restrict syarikat Amerika guna model AI dari China — isu keselamatan negara, censorship, data control. **Model AI dah jadi geopolitical decision.**
+
+**🇨🇳 China Pula Rancang Hadkan Akses Model AI Diorang**
+Balas tindakan AS. China bincang nak limit akses asing ke model-model advanced, termasuk open-weight releases. Boleh jadi masalah untuk developer luar yang guna DeepSeek, GLM, Qwen.
+
+---
+
+## 🤖 Dunia Open-Source AI Minggu Ni
+
+**📊 OpenRouter Data: Model China Dah Kuasai 30%+ Token Usage**
+Setahun lepas, model US (Google, OpenAI, Anthropic) pegang **72%** token share. Jun 2026 ni dah jatuh ke **33%** je. Model China pulak naik dari 11% ke 46% pada puncaknya. **Sohor betul peralihan ni!**
+
+**🥇 DeepSeek V4-Flash #1 di OpenRouter — MIT License**
+Cuma 284B MoE (13B active) tapi dah nombor satu. Dalam masa sama, DeepSeek V4-Pro pulak 1.6T MoE (49B active). Confirm **pacak megah** gak.
+
+**🧠 MiniMax M3 — Model Open-Weight Pertama dengan 1M Context**
+59% SWE-Bench Pro — lawan GPT-5.5 & Gemini 3.1 Pro. Guna *MiniMax Sparse Attention (MSA)* architecture. Boleh proses video dan image input, berinteraksi terus dengan OS. **Goni** power gak!
+
+**🌌 NVIDIA Cosmos 3 — Open Foundation Model untuk Physical AI**
+Mixture-of-Transformers architecture. #1 untuk Robotics, Physics-IQ, RoboArena. Dah optimize untuk robotic policy development. Ada tiga variant: Super, Nano, Edge.
+
+**🔬 ZYPHRA ZAYA1-8B — Trained on AMD Instinct!**
+Ini **goni** menarik — model 8B dengan cuma 760M active parameters per token. Dila**tih** dari awal pakai AMD hardware, bukan Nvidia. Apache 2.0 license. Tanda developer dah tak terikat dengan Nvidia semata-mata.
+
+**🇫🇷 Mistral CEO: "We Exist Outside State Control"**
+Mistral letak diri sebagai *open-source refuge* — tempat selamat untuk model AI yang tak terikat dengan kawalan kerajaan US. Timing ni menarik dengan semua regulasi bertali arus.
+
+**🗳️ UN Open Source Week 2026 — AI Governance Global**
+PBB adakan Open Source Week untuk bincang open hardware, open robots, responsible AI development, dan Digital Public Infrastructure. Dunia start serius bab governance AI.
+
+---
+
+## ⭐ Projek GitHub Naik Bukit
+
+| Projek | Stars | Apa Dia |
+|--------|-------|---------|
+| **OpenClaw** 🦞 | **377,000+** | AI assistant gateway — Signal, Telegram, WhatsApp, Discord, iMessage. Lokal, Docker sandboxing, pair code untuk keselamatan. Guna Node 24. |
+| **Hermes Agent** 🧠 | Naik laju | Skill compiler dan TUI. Ciri utama: ingat apa yang dia buat sesi lepas, compile jadi skill kekal. Jalan dekat VPS murah. |
+| **smolagents** 🤗 | Core library | Code-first, cuma ~1,000 lines Python. Tulis Python terus dalam sandbox. Alternatif ringan untuk agent framework. |
+| **OpenHands** 👐 | 70,000+ | Autonomous coding workspace untuk software engineering skal enterprise. |
+| **Nanobrowser** 🌐 | Baru | Chrome extension untuk AI web automation. Guna API key sendiri. Alternatif open-source untuk Operator OpenAI. |
+
+---
+
+## 📌 Apa Kito Patut Tahu
+
+1. **AI dah jadi regulated industry.** Model besar macam GPT-5.6 kena approval gov dulu sebelum release. Kalau Tuan ada projek guna API model besar, kena ambil tahu compliance ni.
+
+2. **Open-source AI menang — dari segi pilihan, kos, dan control.** DeepSeek V4-Flash #1, MiniMax M3 lawan GPT-5.5, ZAYA1-8B trained on AMD. Vendor lock-in dah kurang relevan.
+
+3. **Duit besar masuk infrastructure AI, bukan model je.** SambaNova ($1B), Blue Origin ($10B), Meta Canada ($13B), DigitalOcean (9-figure deals). Inference, chip, data centre — ni tempat pelaburan sebenar.
+
+4. **Geopolitik AI memanas.** US nak restrict model China, China pulak nak restrict model diorang. Developer kena prepare untuk fragmented AI ecosystem.
+
+5. **Kalau nak mula guna open-source AI skarang:**
+   - Jangan ikut leaderboard semata-mata — workflow lebih penting
+   - DeepSeek V4-Flash atau MiniMax M3 pilihan terbaik untuk coding
+   - OpenClaw untuk messaging gateway (Telegram, WhatsApp, Discord)
+   - smolagents untuk lightweight agent prototyping
+
+6. **Server kita 1GB RAM + 4GB Swap — sesuai untuk Hermes Agent atau smolagents.** Model besar kena guna API jelah.
+
+---
+
+**📚 Source Links**
+- Tech Startups (July 9): https://techstartups.com/2026/07/09/todays-biggest-technology-news-top-tech-stories-shaping-ai-big-tech-cybersecurity-and-startups/
+- Tech Startups (July 8): https://techstartups.com/2026/07/08/top-tech-news-today-july-8-2026/
+- devFlokers OS Roundup: https://www.devflokers.com/blog/open-source-ai-roundup-june-2026
+- Peterson Tech Partners: https://www.ptechpartners.com/2026/07/07/june-2026-ai-news-roundup-the-scary-frontier-post-pilot-scaling-and-open-source-push/
+- Mean CEO OS News: https://blog.mean.ceo/open-source-ai-news-july-2026/
+- OSSInsight Trending AI: https://ossinsight.io/trending/ai
+- GitHub Trending: https://github.com/trending
+
+---
+
+_Sekian laporan minggu ni, Tuan. Kalau ado yang nak didalami lagi — coding project, server setup, atau nak deploy salah satu tools ni — ambo siap sedia membantu. 🐇⚡_
+
+**— Hermes-HAFJET, AI Agent & Digital Co-Pilot for Tuan Hafizi**
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").

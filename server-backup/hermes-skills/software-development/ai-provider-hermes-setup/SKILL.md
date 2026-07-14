@@ -101,7 +101,14 @@ Hermes TTS lives under the `tts.*` config keys and uses `ELEVENLABS_API_KEY` fro
 2. **ElevenLabs (premium, most natural for Malay):**
    - Sign up at https://elevenlabs.io → choose **ElevenCreative** plan (not ElevenAgents)
    - Go to Settings → API Keys → **Create API Key**
-   - Enable **Text to Speech** = Access + **Voices** = Read only
+   - Name: `Hermes-HAFJET`
+   - **Enable ONLY these permissions:**
+     - **Text to Speech** → **Access** ✅ (required for voice generation)
+     - **Voices** → **Read** ✅ (required to list/use voices)
+     - **All other endpoints** → **No Access** ❌ (Speech to Speech, STT, SFX, Dubbing, ElevenAgents, etc.)
+   - Usage Limits: **Unlimited** (capped by plan, not this key)
+   - **Auto-disable if leaked**: keep **ON** (default, safe)
+   - Click **Create**, copy the `sk_xxx...xxx` key
    - Add API key to `.env`: `ELEVENLABS_API_KEY=sk_xxxxxxxx`
    - Default voice ID `pNInz6obpgDQGcFmaJgB` (Rachel) and `eleven_multilingual_v2` model are pre-configured
    ```bash
@@ -120,11 +127,51 @@ Hermes TTS lives under the `tts.*` config keys and uses `ELEVENLABS_API_KEY` fro
 | Scenario | Problem | Fix |
 |----------|---------|-----|
 | Edge TTS with English voice (`en-US-AriaNeural`) reading Malay | Robotic, unintelligible | Switch to native Malay voice |
-| Edge TTS with `ms-MY-YasminNeural` | Decent, slight synthetic tone | Good enough for daily use |
-| ElevenLabs Rachel (`eleven_multilingual_v2`) | Natural, human-like | Best option, free tier 10k chars/mo |
+| Edge TTS `ms-MY-YasminNeural` (female) | Decent synthetic tone; user described as "suara pengumuman stesen bas" | Good enough for daily use |
+| Edge TTS `ms-MY-OsmanNeural` (male) | Also synthetic; user described as "narator cerita Cina di sosial media" | Viable alternative to Yasmin |
+| ElevenLabs Rachel (`eleven_multilingual_v2`) | Natural, human-like; user said "macam orang betul cakap" | Best option, free tier 10k chars/mo |
 | User says "English voice OK, Malay not OK" | Voice mismatch, not provider quality | Use Malay-optimised voice |
 
 Key insight: the **same** Edge TTS provider sounds robotic for Malay ONLY when using an English voice like `en-US-AriaNeural`. Switching to `ms-MY-YasminNeural` instantly fixes it at zero cost.
+
+### ElevenLabs Free Trial Management (learned from usage)
+
+| Item | Detail |
+|------|--------|
+| Free tier | **10,000 characters/month** (~10-12 min continuous speech) |
+| Per-request minimum | **~49 credits** on `eleven_multilingual_v2` — even for 1 word |
+| Cost per short reply (15-20s) | ~300-400 chars → 50-65 credits |
+| Cost per full reply (30s+) | ~600+ chars → 90-100+ credits |
+| Practical daily use | 3-4 short replies/day → **covers ~1 month** |
+| Heavy use (5-10 min speech/day) | Lasts **~2-3 days only** |
+
+**Key finding:** ElevenLabs Multilingual v2 has a **base cost per request** (~49 credits minimum), NOT purely per-character pricing. A single-word test ("Ambo") cost 49 credits, while a 74-char sentence cost 65 credits. Short replies are disproportionately expensive.
+
+**Detecting trial exhaustion vs auth failure:**
+
+| Error signature | Cause | Action |
+|-----------------|-------|--------|
+| `quota_exceeded` + remaining credits < required | Trial buffer almost out | Switch to Edge TTS |
+| `quota_exceeded` + "This request exceeds your quota" + remaining > 0 but less than required | Still has credits but text too long for remaining | Shorten text or switch provider |
+| `401` + `invalid_api_key` | API key wrong/expired | Re-check `.env` key |
+| `text_to_speech` → silent failure / no output at all | Provider config wrong / key missing | Check `tts.provider` in config.yaml and `ELEVENLABS_API_KEY` in .env |
+
+**Fallback workflow (when trial runs out):**
+
+```bash
+# Detect: run text_to_speech → check error for 'quota_exceeded'
+# Fix: switch to Edge TTS with Malay voice
+hermes config set tts.provider edge
+hermes config set tts.edge.voice ms-MY-YasminNeural
+```
+
+No restart needed — `text_to_speech` tool reads config live. For voice messages in Telegram gateway, send `/restart` after switching.
+
+**Character-to-credits rule of thumb:**
+- Very short ("Ambo", 4 chars) → ~49 credits (minimum)
+- Short reply (10-15 words) → ~65 credits
+- Medium reply (30-40 words) → ~94 credits
+- Each ~150 characters ≈ 94 credits
 
 ### TTS config keys reference
 - `tts.provider` — `edge`, `elevenlabs`, `openai`, `neutts`
@@ -143,3 +190,6 @@ The `text_to_speech` tool reads config live. For voice messages in gateway conve
 ## See also
 - `software-development/llm-agent-provider-selection` — cost/quality ranking of providers for agentic work (broader than this server).
 - `software-development/hafjet-spx-reminder` — SPX system runs on Azure; its session cookies need SAP headers (see that skill's SAP header pitfall).
+
+## Reference files
+- `references/elevenlabs-quota-errors.md` — Error transcripts, credit consumption patterns, and fallback flow from real ElevenLabs session

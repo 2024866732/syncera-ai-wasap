@@ -1,6 +1,8 @@
 model:
-  provider: opencode
+  provider: opencode-zen
   default: deepseek-v4-flash-free
+  base_url: https://opencode.ai/zen/v1
+  api_mode: chat_completions
 providers:
   cerebras:
     base_url: https://api.cerebras.ai/v1
@@ -283,9 +285,9 @@ dashboard:
 privacy:
   redact_pii: false
 tts:
-  provider: elevenlabs
+  provider: edge
   edge:
-    voice: ms-MY-YasminNeural
+    voice: ms-MY-OsmanNeural
   elevenlabs:
     voice_id: pNInz6obpgDQGcFmaJgB
     model_id: eleven_multilingual_v2
