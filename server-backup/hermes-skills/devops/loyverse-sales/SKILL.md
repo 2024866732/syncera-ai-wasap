@@ -15,11 +15,13 @@ Fetch daily sales data from Loyverse API and produce formatted reports with CSV 
 ## Architecture
 
 ```
-~/.hermes/skills/fetch_sales.py           ← main script (date-filtered, CSV export)
-~/.hermes/reports/sales_YYYY-MM-DD.csv    ← daily CSV
-~/.hermes/reports/sales_YYYY-MM.csv       ← monthly CSV (profit-enhanced)
-~/.hermes/.env                            ← LOYVERSE_ACCESS_TOKEN (and Telegram vars)
-/run_sales.py                          ← wrapper: reads token from file, runs fetch_sales.py
+~/.hermes/skills/fetch_sales.py              ← main script (date-filtered, CSV export)
+~/.hermes/skills/monthly_tracking.py         ← cumulative monthly tracker (JSON, day-by-day)
+~/.hermes/scripts/run_monthly_tracking.py    ← wrapper: reads .env, runs monthly_tracking.py
+~/.hermes/reports/sales_YYYY-MM-DD.csv       ← daily CSV
+~/.hermes/reports/monthly_tracking.json      ← cumulative JSON (all months, per-day breakdown)
+~/.hermes/.env                               ← LOYVERSE_ACCESS_TOKEN (and Telegram vars)
+/run_sales.py                             ← wrapper: reads token from file, runs fetch_sales.py
 ```
 
 ## How to Run
@@ -281,6 +283,71 @@ Query the monthly report on **day 2–3 of the following month** for best data c
   ...
 ```
 
+### Daily Cumulative Tracking (Hermes Cron)
+
+For persistent month-to-date tracking that accumulates day-by-day, use the `monthly_tracking.py` approach instead of on-demand aggregation:
+
+**Script:** `~/.hermes/skills/monthly_tracking.py`
+
+**Data file:** `~/.hermes/reports/monthly_tracking.json` — a cumulative JSON file with this structure:
+
+```json
+{
+  "2026-06": {
+    "store": "HAFIZI GADJET ENTERRPRISE",
+    "days": {
+      "2026-06-15": {
+        "total_sales": 2161.00, "total_cost": 1442.00,
+        "gross_profit": 719.00, "profit_margin": 33.3,
+        "transaction_count": 12, ...
+      }
+    },
+    "monthly_total": {
+      "total_sales": 7783.99, "total_cost": 5533.09,
+      "gross_profit": 2187.91, "profit_margin": 28.1
+    },
+    "manual_entry": true,
+    "notes": "Data diisi manual dari screenshot"
+  }
+}
+```
+
+**What it does each run:**
+1. Fetches today's receipts from Loyverse API (client-side filtered)
+2. Summarizes: sales, COGS, profit, margin, transaction count, payment breakdown
+3. Appends/updates the day's data in the month's `days` object
+4. Recalculates month-to-date totals
+5. Saves to `monthly_tracking.json`
+6. Prints a Telegram-friendly report (today + MTD)
+
+**Key differences from on-demand monthly query:**
+| Aspect | On-demand aggregation | Cumulative tracking |
+|--------|----------------------|---------------------|
+| Data source | Live API every time | JSON file + daily API |
+| Historical accuracy | May shift due to 31-day API window | Snapshot frozen per day |
+| Backfill | Re-query whole month | Manual entry via JSON edit |
+| Cost | Re-fetches old pages every time | Only fetches today's data |
+
+**Backfilling historical data:**
+When adding data from screenshots or manual records, edit `monthly_tracking.json` directly:
+```python
+# Add manual June 2026 data
+tracking["2026-06"] = {
+    "store": "HAFIZI GADJET ENTERRPRISE",
+    "days": {},
+    "manual_entry": True,
+    "monthly_total": {
+        "total_sales": 7783.99,
+        "total_cost": 5533.09,
+        "gross_profit": 2187.91,
+        "profit_margin": 28.1,
+        "total_discount": 62.99,
+        "transaction_count": 0
+    },
+    "notes": "Data dari screenshot Loyverse June 2026"
+}
+```
+
 ## Reference Files
 
 | File | Purpose |
@@ -289,6 +356,8 @@ Query the monthly report on **day 2–3 of the following month** for best data c
 | `references/security-patterns.md` | Security patterns: forbidden `curl \| python3 -c`, safe alternatives |
 
 ## Cron Job Setup (Daily Digest)
+
+### Option A: OS crontab (traditional)
 
 For scheduled daily sales reports, add to crontab:
 
@@ -316,6 +385,53 @@ crontab -l
 systemctl status cron
 tail -50 ~/.hermes/logs/sales-digest.log
 ```
+
+### Option B: Hermes-native cron with `no_agent=True` (✅ preferred for tracking scripts)
+
+For scripts that produce their own output and need zero LLM cost, use Hermes cron's `no_agent=True` mode. The script's stdout is delivered verbatim without any agent inference.
+
+**Setup:**
+
+1. Create a wrapper script at `~/.hermes/scripts/` that reads `LOYVERSE_ACCESS_TOKEN` from `~/.hermes/.env` and runs the main script:
+
+```python
+#!/usr/bin/env python3
+"""Wrapper: read Loyverse token from .env and run target script"""
+import os, sys, subprocess
+
+env_path = os.path.expanduser("~/.hermes/.env")
+token = None
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            if line.startswith("LOYVERSE_ACCESS_TOKEN="):
+                token = line.split("=", 1)[1].strip()
+                break
+if not token:
+    print("❌ LOYVERSE_ACCESS_TOKEN not found")
+    sys.exit(1)
+
+os.environ["LOYVERSE_ACCESS_TOKEN"] = token
+result = subprocess.run([sys.executable, "~/.hermes/skills/monthly_tracking.py"], capture_output=False)
+sys.exit(result.returncode)
+```
+
+2. Create the cron job via `cronjob` tool:
+```
+cronjob(action="create", name="monthly-tracking", schedule="0 15 * * *",
+        script="run_monthly_tracking.py", no_agent=True, deliver="origin")
+```
+
+**Key advantages over OS crontab:**
+- Built-in delivery to Telegram/SMS/etc via `deliver=` parameter
+- No crontab management needed
+- Auto-retry and error logging built into Hermes scheduler
+- `no_agent=True` means zero LLM token consumption
+
+**Pitfalls:**
+- The script path must be relative to `~/.hermes/scripts/` (absolute paths are rejected by the API)
+- The script MUST read its own credentials (e.g. from `~/.hermes/.env`) since `no_agent=True` skips the agent entirely
+- Script output is delivered verbatim — keep it concise and Telegram-Markdown-friendly
 
 ## Test Script Pattern
 

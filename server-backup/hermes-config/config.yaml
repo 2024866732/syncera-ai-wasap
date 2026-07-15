@@ -1,8 +1,6 @@
 model:
-  provider: opencode-zen
-  default: deepseek-v4-flash-free
-  base_url: https://opencode.ai/zen/v1
-  api_mode: chat_completions
+  provider: nous
+  default: tencent/hy3:free
 providers:
   cerebras:
     base_url: https://api.cerebras.ai/v1

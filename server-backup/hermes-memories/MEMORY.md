@@ -6,8 +6,11 @@ External API defense: never trust resp.json() alone — use _safe_json() that re
 §
 Azure: RG=hafjet-bot-rg. Webapp: `hafjet-whatsapp-bot`. HTTP timeout=240s (gunicorn 600s). startup.txt>start.sh; clear __pycache__; Kudu VFS PUT+AAD. zip deploy skips Oryx. `az webapp stop`+`start` (not restart). Health: GET /health → JSON. Dashboard: /dashboard/ (SPA), API: /api/stats.
 §
-BANNED terminal (Tuan DENIES all 3 — agent must not run unreviewed code): pipe net output into interpreter, python3 heredoc, append/redirect into config dotfiles. Safe form: write .py to /tmp then run; curl -o then parse; suggest config lines for Tuan to edit manually. Pickup reminder RESOLVED via Google Sheets (Azure bot has NO repair API). Cron 0 3 * * * = 11AM MYT, script reads Sheet 1T0FzNhk..., filters STATUS_REPAIR=='SIAP DIAMBIL', WhatsApp to CUSTOMER (NO_PHONE), owner +60198021500 summary only. Daily sales cron 9408be4cd593 now 0 13 * * * (9PM MYT). Cron MYT=UTC+8.
+BANNED terminal: pipe net→interpreter, python3 heredoc, redirect into config dotfiles. Safe: write .py to /tmp then run; curl -o then parse; suggest config for manual edit. Cron MYT=UTC+8 (UTC 0 3 * * * = 11AM MYT). Daily sales cron 0 13 * * * (9PM MYT).
 §
-Superpowers: Email, GitHub, X, Google Workspace, Notion, PowerPoint, Tech News Digest, Loyverse POS (2 stores). Loyverse Store: HAFIZI GADJET ENTERRPISE, Raub Pahang (ID: 7ff40a33-f30b-4680-a2e0-a6b644f05988). Architecture: Loyverse (data/mata) FIRST, then WhatsApp (mulut) — stable data layer before customer messaging.
+Superpowers: Email, GitHub, X, Google Workspace, Notion, PowerPoint, Tech News Digest, Loyverse POS (2 stores). Architecture: Loyverse (data) FIRST, then WhatsApp (mulut).
 §
 TTS voice: ElevenLabs Rachel (pNInz6obpgDQGcFmaJgB, eleven_multilingual_v2) preferred. Edge TTS ms-MY-YasminNeural fallback.
+§
+Monthly Sales Tracking — HAFIZI GADJET ENTERRPRISE:
+- June 2026: Gross RM7,783.99 | Refunds RM0.00 | Discounts RM62.99 | Net RM7,721.00 | COGS RM5,533.09 | Gross Profit RM2,187.91 (28.3% margin)

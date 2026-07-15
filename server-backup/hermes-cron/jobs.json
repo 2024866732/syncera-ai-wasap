@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 27
+        "completed": 28
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-07-15T07:00:00+00:00",
-      "last_run_at": "2026-07-14T07:10:55.699886+00:00",
+      "next_run_at": "2026-07-16T07:00:00+00:00",
+      "last_run_at": "2026-07-15T07:09:07.540900+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -63,15 +63,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 23
+        "completed": 24
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-07-15T13:00:00+00:00",
-      "last_run_at": "2026-07-14T13:05:09.652444+00:00",
+      "next_run_at": "2026-07-16T13:00:00+00:00",
+      "last_run_at": "2026-07-15T13:01:59.716107+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -106,15 +106,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 18
+        "completed": 19
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-07-15T14:00:00+00:00",
-      "last_run_at": "2026-07-13T14:03:31.494371+00:00",
+      "next_run_at": "2026-07-16T14:00:00+00:00",
+      "last_run_at": "2026-07-14T14:03:21.714769+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -149,15 +149,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 18
+        "completed": 19
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-07-15T09:00:00+00:00",
-      "last_run_at": "2026-07-14T09:02:58.264098+00:00",
+      "next_run_at": "2026-07-16T09:00:00+00:00",
+      "last_run_at": "2026-07-15T09:03:52.172589+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -192,15 +192,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 12
+        "completed": 13
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-07-15T09:00:00+00:00",
-      "last_run_at": "2026-07-14T09:02:51.994342+00:00",
+      "next_run_at": "2026-07-16T09:00:00+00:00",
+      "last_run_at": "2026-07-15T09:03:52.569955+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -221,10 +221,10 @@
       "prompt": "Run the HAFJET pickup reminder script. Execute: python3 /home/hafizi145/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_pickup_reminder.py\n\nSteps:\n1. Load env vars from ~/.hermes/.env (GOOGLE_SHEET_ID, GOOGLE_SHEETS_CREDENTIALS, PICKUP_REMINDER_TAB, WHATSAPP_CLOUD_PHONE_ID, WHATSAPP_CLOUD_ACCESS_TOKEN, OWNER_PHONE).\n2. The script reads the Google Sheet repair tab, filters STATUS_REPAIR == 'SIAP DIAMBIL', and sends a free-form WhatsApp reminder to each CUSTOMER (NO_PHONE column) \u2014 NOT the owner.\n3. If WhatsApp returns error 470 (24h window), it logs and skips (owner will handle template later).\n4. Sends an optional owner summary of pending count to OWNER_PHONE.\n5. Report: how many sent, how many failed, any 470 blocks. Keep it concise.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
-      "provider_snapshot": "opencode-zen",
-      "model_snapshot": "minimax-m3-free",
+      "model": "deepseek-v4-flash-free",
+      "provider": "opencode-zen",
+      "provider_snapshot": null,
+      "model_snapshot": null,
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -237,17 +237,17 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 2
+        "completed": 5
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-07-15T03:00:00+00:00",
-      "last_run_at": "2026-07-14T03:00:24.096893+00:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (model 'minimax-m3-free' -> 'deepseek-v4-flash-free'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=ebdae9cc10ab provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
+      "next_run_at": "2026-07-16T03:00:00+00:00",
+      "last_run_at": "2026-07-15T03:08:40.637818+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -260,7 +260,47 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null
+    },
+    {
+      "id": "db55396890ff",
+      "name": "monthly-tracking",
+      "prompt": "Run monthly tracking script",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "run_monthly_tracking.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 15 * * *",
+        "display": "0 15 * * *"
+      },
+      "schedule_display": "0 15 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 1
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-07-14T17:05:27.034793+00:00",
+      "next_run_at": "2026-07-15T15:00:00+00:00",
+      "last_run_at": "2026-07-14T17:05:43.311709+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": null,
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
     }
   ],
-  "updated_at": "2026-07-14T14:00:32.486390+00:00"
+  "updated_at": "2026-07-15T14:00:02.751180+00:00"
 }

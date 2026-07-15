@@ -1,7 +1,7 @@
 ---
 name: hafjet-biz-ops
 description: Operasi bisnes HAFJET untuk WhatsApp, Loyverse, Gmail, repair updates, invoice dispatch, stock alerts, dan daily digest.
-version: 1.0.0
+version: 1.1.0
 author: HAFJET (M) SDN BHD
 license: Proprietary
 platforms: [linux]
@@ -64,7 +64,10 @@ Gunakan skill ini bila tugasan melibatkan operasi kedai HAFJET, termasuk jualan 
 - Format untuk owner, bukan customer.
 
 ### cron.pickup-reminder
-- Cari ticket ready-pickup lebih 3 hari.
+- Cari ticket ready-pickup (Status == SIAP) dalam Google Sheet.
+- **Semak pending count dulu** — kalau > 50, script akan timeout (≈120s untuk ~230 entries).
+  Guna DRY_RUN=1 untuk lihat count tanpa send. Kalau > 100, jalankan secara berperingkat
+  atau minta Tuan cleanup data lama dulu.
 - Hantar reminder lembut sekali sehari maksimum.
 - Elakkan spam; jangan lebih 1 reminder/customer/day.
 
@@ -97,6 +100,55 @@ Gunakan skill ini bila tugasan melibatkan operasi kedai HAFJET, termasuk jualan 
 - payment_status bukan paid: jangan dispatch invoice customer kecuali diminta sistem.
 - repair_status tidak dikenali: tandakan untuk semakan manual.
 
+## Pitfalls (dari operasi harian)
+
+### Stale env vars corrupt script results
+Setting `COLUMN_NAME_*` or other env overrides for testing leaves them in the terminal session. Subsequent runs (including cron) pick up the stale overrides and fail silently (0 pending rows, wrong column lookups). **Always `unset` overrides after testing, or use a subshell.**
+
+### Verify actual sheet headers, don't trust docs
+Sheet column names change over time. Before running pickup reminder, probe the actual headers:
+```python
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+creds = service_account.Credentials.from_service_account_file(
+    '/home/hafizi145/.hermes/secrets/gsheet_sa.json',
+    scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])
+svc = build('sheets', 'v4', credentials=creds)
+result = svc.spreadsheets().values().get(
+    spreadsheetId='1T0FzNhkOTgyORFvllsc0pXz2xsZV2nkrwBBvzNYs9KE',
+    range='REPAIR BARU!A1:Z1000').execute()
+print(result['values'][0])  # actual headers
+```
+
+### Check WhatsApp API credentials before batch-sending
+The Phone Number ID and access token can expire or become invalid. Always test with a single message first:
+```bash
+curl -s -X POST "https://graph.facebook.com/v21.0/${PHONE_ID}/messages" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"messaging_product":"whatsapp","to":"60198021500","type":"text","text":{"preview_url":false,"body":"Test"}}'
+```
+If you get `code:100, error_subcode:33` ("object does not exist"), the PHONE_ID or token is invalid.
+
+### Phone number format issues in sheet data
+Some cells contain multiple numbers separated by `/` (e.g. `601111144636/0104163884`). The `norm_phone()` function passes these raw, causing HTTP 400. Same for non-Malaysian numbers. These should be logged as data quality issues.
+
+### Status filter value must match actual sheet data
+The sheet uses `SIAP` (not `SIAP DIAMBIL`). There is also a variant `SEDIA DI AMBIL` (7 rows) not caught by a single-value filter. Always check actual status VALUE distribution before running:
+```python
+from collections import Counter
+statuses = Counter((d.get('Status') or '').strip().upper() for d in data)
+print(statuses)
+```
+
+### Large pending queue causes script timeout
+With 621 SIAP tickets, the script processes ~230 entries in 120s before timing out — the full 621 would take ~5 minutes, exceeding default cron timeouts.
+**Mitigations:**
+1. Run `DRY_RUN=1` first to check pending count.
+2. If > 100 pending, ask Tuan to clean up old SIAP data (many are from 2022).
+3. For background runs, increase terminal timeout (e.g. `timeout=300`).
+4. Long-term: add `MAX_PER_RUN=50` env var so cron auto-chunks.
+
 ## Output yang dijangka
 - whatsapp_message
 - gmail_subject
@@ -108,6 +160,7 @@ Gunakan skill ini bila tugasan melibatkan operasi kedai HAFJET, termasuk jualan 
 - `references/message-templates.md` — Template mesej WhatsApp & Gmail
 - `references/status-mapping.md` — Pemetaan status backend ke customer-facing
 - `references/cron-jobs.md` — Jadual cron jobs operasi
+- `references/pickup-reminder-gsheets.md` — Detail pickup reminder GSheet+WA
 
 ## Architecture
 
@@ -146,18 +199,12 @@ When implementing workflows for HAFJET:
 
 3. **Safe script pattern:**
    ```python
-   # Write to /tmp/script.py first, then run with python3 /tmp/script.py
-   import os
-   import json
-   import urllib.request
-   
+   import os, json, urllib.request
    token = os.environ.get("LOYVERSE_ACCESS_TOKEN")
    url = "https://api.loyverse.com/v1.0/receipts?limit=5"
    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
-   
    with urllib.request.urlopen(req, timeout=10) as resp:
        data = json.loads(resp.read().decode())
-   
    print(f"Found {len(data.get('receipts', []))} receipts")
    ```
 
@@ -166,8 +213,6 @@ When implementing workflows for HAFJET:
    0 21 * * * /home/hafizi145/hermes-agent/venv/bin/python3 /path/to/script.py >> /home/hafizi145/.hermes/logs/output.log 2>&1
    ```
 
-See `references/security-patterns.md` in `loyverse-sales` skill for full details.
-
 ## Security SOP (pointer)
 Banned patterns + safe alternatives are enforced in the **`hafjet-command-safety`** skill
 (software-development). Summary confirmed by Tuan Hafizi this session (denied 3x):
@@ -175,7 +220,7 @@ never `curl | python3 -c`, never `python3 << 'EOF'` heredoc, never redirect into
 (`cat >> ~/.hermes/.env`). Agent SUGGESTS; Tuan edits `.env` manually via `nano`. Schedule
 jobs with the `hermes cron` TOOL, not `crontab -e`.
 
-## Live Implementation State (2026-07-12)
+## Live Implementation State (2026-07-14)
 
 **Integration = Option A:** Hermes is the AI BACKEND behind the EXISTING HAFJET Bot (Azure).
 KEEP webhook `https://hafjet-whatsapp-bot.azurewebsites.net/webhook` and
@@ -196,12 +241,34 @@ Google Sheet below, NOT the bot DB.
 - Sheet `1T0FzNhkOTgyORFvllsc0pXz2xsZV2nkrwBBvzNYs9KE`, tab **`REPAIR BARU`**, range `REPAIR BARU!A1:Z1000`.
 - SA JSON `/home/hafizi145/.hermes/secrets/gsheet_sa.json` (chmod 600); SA email
   `hafjet-sheets-sa@neat-ring-502113-c0.iam.gserviceaccount.com` (share sheet as Viewer).
-- Cols (env-overridable): `NAMA CUSTOMER`, `NO_PHONE`, `STATUS_REPAIR`, `NO_REPAIR`, `TARIKH_SIAP`.
-  Filter `STATUS_REPAIR == SIAP DIAMBIL` (override via `PICKUP_REMINDER_STATUS_VALUE`).
-- Route to CUSTOMER `NO_PHONE` (NOT owner). `OWNER_PHONE=60198021500` → summary only.
+- **Actual sheet headers (verified 2026-07-14):** `NAMA CUSTOMER`, `NO TELEFON`, `Status`,
+  `Repair ID`, `TARIKH AMBIL`, ... Script defaults match these. Only set `COLUMN_NAME_*`
+  overrides if headers change.
+- **Filter:** `Status == SIAP` (NOT `SIAP DIAMBIL` as previously documented). Set
+  `PICKUP_REMINDER_STATUS_VALUE=SIAP`. Variant `SEDIA DI AMBIL` (7 rows) exists but
+  single-value filter won't catch it — data cleanup or script enhancement needed.
+- **Phone format issues found:** some `NO TELEFON` cells contain two numbers separated
+  by `/` (e.g. `601111144636/0104163884`) — `norm_phone()` passes them raw causing send
+  failures. Non-MY numbers also present (`917639075994`, `189017751`).
+- Route to CUSTOMER `NO TELEFON` (NOT owner). `OWNER_PHONE=60198021500` → summary only.
+- **Env var mapping:** Script reads `WHATSAPP_CLOUD_PHONE_ID` / `WHATSAPP_CLOUD_ACCESS_TOKEN`,
+  but `.env` stores `WHATSAPP_PHONE_ID` / `WHATSAPP_ACCESS_TOKEN`. Export before running:
+  ```
+  export WHATSAPP_CLOUD_PHONE_ID="$WHATSAPP_PHONE_ID"
+  export WHATSAPP_CLOUD_ACCESS_TOKEN="$WHATSAPP_ACCESS_TOKEN"
+  ```
+- **Pre-flight check:** Always test the WhatsApp API with a single message to verify
+  the Phone Number ID and token are still valid before batch-sending.
 - 24h window: Meta error 470 → log + skip (template message needed later).
 - `DRY_RUN=1` = read + print, send nothing. Script: `scripts/hafjet_pickup_reminder.py`.
 
-**Duplicate note:** a stale copy of this skill existed under `devops/hafjet-biz-ops/` (v1.0.0,
-no scripts). This `software-development/` copy is canonical — delete the `devops/` one to
-remove registry ambiguity.
+## Files
+
+### Scripts
+- `scripts/hafjet_pickup_reminder.py` — Main pickup reminder script. Reads GSheet, filters SIAP, sends WhatsApp.
+
+### References
+- `references/message-templates.md` — Templates
+- `references/status-mapping.md` — Status translations
+- `references/cron-jobs.md` — Cron schedules
+- `references/pickup-reminder-gsheets.md` — Detailed pickup reminder setup
