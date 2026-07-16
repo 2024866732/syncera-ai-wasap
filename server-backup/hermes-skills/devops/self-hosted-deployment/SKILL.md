@@ -127,6 +127,14 @@ For large npm packages (1000+ deps), see `references/heavy-npm-installs.md` — 
 ## Server maintenance & weekly cleanup
 For automated log/cache cleanup scripts and cron setup, see `references/server-maintenance.md` — covers safe-mode cleanup targeting APT cache, journal, rotated logs, temp files, and user caches with a weekly cron pattern.
 
+## Exposing Hermes itself (`hermes-api-server`)
+To expose Hermes as an OpenAI-compatible endpoint for external devices/frontends
+(e.g. white-label AI gadgets, Open WebUI, LobeChat), see
+`references/hermes-api-server.md` — env-var enable (`.env` only, NOT config.yaml),
+endpoints, and the **full-toolset / no-TLS security pitfalls**. Key fact:
+`API_SERVER_HOST` defaults to loopback `127.0.0.1`; front with Cloudflare Tunnel
+or nginx+TLS before any public exposure.
+
 ## Node.js / Next.js + Prisma + PostgreSQL apps
 
 Many modern self-hosted web apps (e.g. **prompts.chat**) are Next.js + Prisma ORM +

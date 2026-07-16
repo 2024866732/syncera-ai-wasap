@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 28
+        "completed": 29
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-07-16T07:00:00+00:00",
-      "last_run_at": "2026-07-15T07:09:07.540900+00:00",
+      "next_run_at": "2026-07-17T07:00:00+00:00",
+      "last_run_at": "2026-07-16T07:02:18.039112+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -63,15 +63,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 24
+        "completed": 25
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-07-16T13:00:00+00:00",
-      "last_run_at": "2026-07-15T13:01:59.716107+00:00",
+      "next_run_at": "2026-07-17T13:00:00+00:00",
+      "last_run_at": "2026-07-16T13:01:28.513389+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -106,15 +106,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 19
+        "completed": 20
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-07-16T14:00:00+00:00",
-      "last_run_at": "2026-07-14T14:03:21.714769+00:00",
+      "next_run_at": "2026-07-17T14:00:00+00:00",
+      "last_run_at": "2026-07-15T14:00:25.532483+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -149,15 +149,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 19
+        "completed": 20
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-07-16T09:00:00+00:00",
-      "last_run_at": "2026-07-15T09:03:52.172589+00:00",
+      "next_run_at": "2026-07-17T09:00:00+00:00",
+      "last_run_at": "2026-07-16T09:00:51.745389+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -192,15 +192,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 13
+        "completed": 14
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-07-16T09:00:00+00:00",
-      "last_run_at": "2026-07-15T09:03:52.569955+00:00",
+      "next_run_at": "2026-07-17T09:00:00+00:00",
+      "last_run_at": "2026-07-16T09:00:46.881962+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -237,15 +237,15 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 5
+        "completed": 6
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-07-16T03:00:00+00:00",
-      "last_run_at": "2026-07-15T03:08:40.637818+00:00",
+      "next_run_at": "2026-07-17T03:00:00+00:00",
+      "last_run_at": "2026-07-16T03:08:40.197472+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -283,15 +283,15 @@
       "schedule_display": "0 15 * * *",
       "repeat": {
         "times": null,
-        "completed": 1
+        "completed": 2
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-14T17:05:27.034793+00:00",
-      "next_run_at": "2026-07-15T15:00:00+00:00",
-      "last_run_at": "2026-07-14T17:05:43.311709+00:00",
+      "next_run_at": "2026-07-16T15:00:00+00:00",
+      "last_run_at": "2026-07-15T15:00:27.597440+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -300,7 +300,53 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null
+    },
+    {
+      "id": "41a5046bdc08",
+      "name": "HAFJET Monthly Gaji-Profit Tracker",
+      "prompt": "Run the HAFJET monthly Gaji vs Profit tracker update.\n\nSteps:\n1. Get Loyverse token: read /tmp/.loyverse_token (if missing, run: grep LOYVERSE_ACCESS_TOKEN ~/.hermes/.env | head -1 | cut -d= -f2- > /tmp/.loyverse_token)\n2. Run the tracker script for the PREVIOUS month (not current). Compute it: if today is day 1, the target month is last month. Example: on Aug 1, run for July. Use Python in the script to derive last month automatically if possible, OR pass explicit args: python3 /tmp/gaji_profit_calc.py YYYY MM where YYYY MM = last month.\n3. The script auto-fetches Loyverse sales for that month, subtracts fixed costs (Sewa RM400 + BSN RM400 + TNB RM500 = RM1300), computes net profit, baki hidup, and hire-readiness status, then updates ~/.hermes/reports/gaji_profit_tracker.csv automatically.\n4. After the script runs, read the final lines of output and report a concise Telegram summary to Tuan Hafizi:\n   - Bulan laporan\n   - Jualan total\n   - Net Profit\n   - Kos Tetap (RM1,300)\n   - Baki Hidup (after costs, before salary)\n   - Status hire-readiness (READY / PART-TIME / BELUM + gap amount)\n5. Keep the message short and scannable (bullet points). Use Malay. Note: API only returns 31 days history, so the run on day 1 captures the full previous month correctly.\n\nImportant: The script handles fetching, CSV update, and calculation. Just run it for the correct previous month and deliver the summary. If the token file is missing AND grep fails, report the blocker honestly \u2014 do not invent numbers.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": "nous",
+      "model_snapshot": "tencent/hy3:free",
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 14 1 * *",
+        "display": "0 14 1 * *"
+      },
+      "schedule_display": "0 14 1 * *",
+      "repeat": {
+        "times": null,
+        "completed": 1
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-07-16T07:43:12.162195+00:00",
+      "next_run_at": "2026-08-01T14:00:00+00:00",
+      "last_run_at": "2026-07-16T07:54:20.280425+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1485374469",
+        "chat_name": "Hafizi",
+        "thread_id": "21224",
+        "user_id": "1485374469"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
     }
   ],
-  "updated_at": "2026-07-15T14:00:02.751180+00:00"
+  "updated_at": "2026-07-16T14:00:25.762497+00:00"
 }

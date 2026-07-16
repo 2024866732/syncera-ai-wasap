@@ -257,6 +257,7 @@ Expected success response includes `"ok":true` and `message_id`.
 |--------|---------|
 | `scripts/telegram-delivery.py` | Send messages to Telegram via Bot API. Reads tokens via Python subprocess, avoiding `grep|cut` shell issues. |
 | `scripts/run_sales.py` | Wrapper that reads `LOYVERSE_ACCESS_TOKEN` from `/tmp/.loyverse_token` file and runs `fetch_sales.py`. Avoids shell token masking entirely. |
+| `scripts/gaji_profit_calc.py` | Monthly Gaji vs Profit / hire-readiness tracker with the >31-day data-integrity guard. |
 
 ## Monthly Report Pattern
 
@@ -348,12 +349,71 @@ tracking["2026-06"] = {
 }
 ```
 
+## Gaji vs Profit Tracker (Hire-Readiness) 🆕
+
+A derived business-intelligence layer on top of the sales data. Answers: **"Bila boleh hire pekerja?"**
+
+### Files
+- `~/.hermes/reports/gaji_profit_tracker.csv` — monthly rows: `bulan,jualan,net_profit,kos_tetap,gaji_pekerja,baki_hidup,status`
+- `scripts/gaji_profit_calc.py` — **canonical** runner (skill dir). Reads token from `/tmp/.loyverse_token` → `~/.hermes/.env`, fetches the month, subtracts fixed costs, upserts the CSV, prints hire-readiness. Any `/tmp/gaji_profit_calc.py` is a transient, non-authoritative copy.
+- Full formulas + the >31-day guard + as-of status: `references/gaji-profit-tracker.md`
+
+### Fixed costs (Jul 2026, from Tuan Hafizi)
+```python
+SEWA = 400.0      # sewa tertunggak, baki total RM5,000
+BSN  = 400.0      # BSN loan
+TNB  = 500.0      # range 400-500, use 500 conservative
+KOS_TETAP = 1300.0
+```
+
+### Hire-readiness logic (thresholds on `baki_hidup`) — PRODUCTION MODEL
+```python
+HIRE_READY  = 3200.0   # baki_hidup needed for full-time hire
+PART_TIME    = 1500.0   # baki_hidup needed for part-time hire
+if baki_hidup >= HIRE_READY:   status = "READY — boleh hire full-time"
+elif baki_hidup >= PART_TIME:   status = f"PART-TIME — perlu +RM {HIRE_READY-baki_hidup:,.2f} lagi"
+elif baki_hidup >= 0:          status = f"OK - belum boleh hire (perlu +RM {HIRE_READY-baki_hidup:,.2f})"
+else:                          status = f"⚠️ BELUM — perlu +RM {HIRE_READY-baki_hidup:,.2f} lagi"
+```
+> NOTE: an older doc version used `HIRE_PROFIT_THRESHOLD=3500` + salary/living-wage math. That does
+> NOT match the production tracker (the 3200 model is what generated the CSV rows). This is the source
+> of truth.
+
+### CRITICAL: data-integrity guard — never re-fetch a month older than 31 days
+Loyverse free tier returns ONLY the last 31 days. A tracker run on, say, the 16th for the prior
+month returns only late-month receipts (early days are gone) → re-fetching + overwriting the CSV
+**permanently understates that month** (confirmed 2026-07-16: API returned only Jul 14-16, 0 June
+matches; June 1-15 was >45 days old).
+**Guard (in `scripts/gaji_profit_calc.py`):** if `today - month_start > 31 days` AND a row already
+exists in the tracker, PRESERVE the existing row — do NOT fetch/overwrite. Only fetch+write when the
+month is still within the 31-day window. Late runs then become safe no-ops on captured months.
+
+### Run
+```bash
+python3 scripts/gaji_profit_calc.py 2026 6   # explicit YYYY MM
+python3 scripts/gaji_profit_calc.py           # no args = PREVIOUS month (auto-derived)
+```
+The tracker reports the PREVIOUS month, never the current in-progress month.
+
+### Cron job (auto month-end update)
+- **Job ID:** `41a5046bdc08` — "HAFJET Monthly Gaji-Profit Tracker"
+- **Schedule:** `0 14 1 * *` (10:00 AM MYT, day 1 of month → reports PREVIOUS month)
+- **Why day 1:** Loyverse 31-day window means previous month is still fully visible on day 1. Running on day 1 captures the complete prior month.
+- **Delivery:** origin (Telegram chat)
+- **Prompt instructs:** derive last month automatically, run calc, deliver short Malay summary with bulan/jualan/net_profit/kos_tetap/baki_hidup/status.
+
+### Business context (from conversation)
+- Tuan Hafizi jaga kedai SENDIRI setiap hari — "terperuk, tak boleh ke mana". Hiring frees his time.
+- ROI argument: hire when (value of freed time) > (salary + profit gap). Even if shop profit doesn't rise, if freed time earns >RM2,400/mo elsewhere (logistics, AI ops), hiring is ROI-positive.
+- Margin insight: reload/bill-payment days = 2-5% margin; phone/repair days = 25-80%. Pushing 2-3 phone units/mo like VIVO V70 (+RM607) closes the hire gap fast.
+
 ## Reference Files
 
 | File | Purpose |
 |------|---------|
 | `references/rollover-note.md` | Documents the 31-day API rollover quirk and why monthly totals shift between queries |
 | `references/security-patterns.md` | Security patterns: forbidden `curl \| python3 -c`, safe alternatives |
+| `references/gaji-profit-tracker.md` | Gaji vs Profit / hire-readiness tracker: calculation chain, the >31-day data-integrity guard, and as-of status |
 
 ## Cron Job Setup (Daily Digest)
 

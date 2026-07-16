@@ -94,7 +94,7 @@ For short-answer/essay:
 - Give the corrected answer clearly, then brief explanation
 - The user wants the right answer fast, not a debate
 
-## Language
-- Respond in **Bahasa Malaysia** for legal explanations (this is a Malaysian law subject)
+## Grounding rule (CRITICAL for this user)
+When the user supplies their OWN course materials (e.g. a NotebookLM notebook, past-year papers, lecturer slides), **answer from those materials, not from generic legal canon.** Verified 2026-07-16: the user's LAW299 NotebookLM used DIFFERENT cases/sections than standard textbooks — e.g. repossession was **s 16 HPA 1967** (not s 38/38A), and "duty to explain" did not exist in their syllabus. Textbook cases the user expected (`Jones v Padavatton`, `Derry v Peek`, `Freeman & Lockyer`, `United Asian Bank v Lim Hoy`) were ABSENT from their sources. Always tell the user explicitly which of their requested items are NOT in their own materials, and never invent cases/sections to fill gaps. Pair with the `notebooklm-access` skill to pull and ground on the user's actual sources.
 - Use English for case names and Act titles
 - Keep it concise — the user is studying for exams and needs quick, accurate answers

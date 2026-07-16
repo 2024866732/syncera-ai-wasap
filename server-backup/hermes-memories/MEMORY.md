@@ -12,5 +12,6 @@ Superpowers: Email, GitHub, X, Google Workspace, Notion, PowerPoint, Tech News D
 §
 TTS voice: ElevenLabs Rachel (pNInz6obpgDQGcFmaJgB, eleven_multilingual_v2) preferred. Edge TTS ms-MY-YasminNeural fallback.
 §
-Monthly Sales Tracking — HAFIZI GADJET ENTERRPRISE:
-- June 2026: Gross RM7,783.99 | Refunds RM0.00 | Discounts RM62.99 | Net RM7,721.00 | COGS RM5,533.09 | Gross Profit RM2,187.91 (28.3% margin)
+HAFJET fixed costs (Jul 2026): Sewa tertunggak RM400/bln (baki RM5,000), BSN loan RM400/bln, TNB RM400-500/bln. Min gaji pekerja RM1,700/bln. Tuan jaga kedai sendiri tiap hari (terperuk). Hire bila net profit >RM3,500/bln stabil atau nilai masa bebas >(gaji+gap).
+§
+Monthly Sales Tracking — HAFIZI GADJET ENTERRPRISE (GSheets): June 2026: Gross RM7,783.99 | Refunds RM0 | Discounts RM62.99 | Net RM7,721.00 | COGS RM5,533.09 | Gross Profit RM2,187.91 (28.3%). Note: figure berbeza dari Loyverse API (RM9,443.98) — mungkin 1 vs 2 store / kaedah accounting.

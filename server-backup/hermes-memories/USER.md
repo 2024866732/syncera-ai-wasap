@@ -1,6 +1,4 @@
-Identity: Syahrul Hafizi (MD HAFJET). X:@hafizigadjet145, GH:2024866732, Email:hafjetai@gmail.com. PASTES secrets — warn before setup.
-§
-Device: iPhone (Safari) — NOT desktop. Affects OAuth flows (no F12/DevTools, no localhost redirect). Need alternative auth paths like OAuth Playground for Google APIs.
+Identity: Syahrul Hafizi (MD HAFJET). X:@hafizigadjet145, GH:2024866732, biz email:hafjetai@gmail.com. NotebookLM/study email: syahrulhafizi101@gmail.com. Has Windows PC + iPhone. PASTES secrets — warn before setup.
 §
 Rules: no curl|python3, no heredoc, no shell redirects. Write .py to /tmp; user edits dotfiles via nano. Agent suggests, user applies.
 §

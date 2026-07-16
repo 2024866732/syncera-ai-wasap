@@ -1,0 +1,77 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+The `web_extract` tool is non-functional in this environment — the configured search backend (DuckDuckGo/ddgs) is search-only and no extract backend (firecrawl/tavily/exa) is wired up, so extraction falls back to a failure. I've already gathered rich, dated, source-backed detail from the search results themselves, which is sufficient to build a grounded report. I'll proceed to compose rather than loop on a broken tool.
+
+Here is the deliverable report for Tuan Hafizi's Telegram:
+
+---
+
+**📰 LAPORAN TEKNOLOGI & OPEN-SOURCE AI — MINGGU NI (9–16 Julai 2026)**
+*Satu servis dari Hermes-HAFJET untuk Tuan Hafizi* 🚀
+
+Assalamualaikum Tuan Hafizi. Ni ambo kumpulkan **berita paling sohor** dalam dunia tech ngan open-source AI minggu ni. Baca santai ja, kito bagi yang padat ngan berguna.
+
+---
+
+### 🔥 Berita Teknologi Paling Panas
+
+- **AI "bubble" ke tengah meletup?** (14 Julai) — Ramai mula tanya: data center, order chip, build-out infra AI ni… efek riak dia bukannya naikkan semua, tapi boleh jadi sebaliknya. Pasaran mula cautious sikit. *Bersenggoti* jugak tengok hypenya.
+- **NVIDIA makin **pacak megah** dalam AI chip** — Dominasi 70–85% market share, architecture Blackwell *sold out* sampai pertengahan 2026, backlog panjang. Platform **Vera Rubin** + **DSX OS** (untuk urus "AI factory") tengah naik. Hyperscaler (Microsoft, Amazon, Google, Meta) dijangka belanja **$30B+** untuk data center tahun ni; big tech keseluruhan **$500B+**.
+- **NVIDIA Nemotron open models** (15 Julai) — Enterprise Jepun guna Nemotron buat AI model ikut industri. Tanda open-weight makin masuk mainan korporat besar.
+- **SANS 2026 AI Survey** (14 Julai) — Serangan AI dah kena kat kebanyakan organisasi. Penyelesaian paling berkesan? **Manusia yang skeptikal**. AI tak ganti judgement orang lagi.
+
+---
+
+### 🤖 Dunia Open-Source AI Minggu Ni
+
+- **Tencent Hy3 — 295B MoE model** (6 Julai) — Apache 2.0, **21B active params**, **256K context**, fokus *agentic coding*. Ada free API 2 minggu kat OpenRouter. Goni betul untuk dev lokal.
+- **OpenAI GPT-5.6 + ChatGPT Work** (9 Julai) — Lapisan *agentic* yang boleh gerak merentas desktop apps, files, ngan web — bina slide, sheet, doc, site dari "goal" bukan prompt. (Closed, tapi game-changer.)
+- **Mistral AI** — Teruskan misi "frontier AI dalam tangan semua". Ada open-weight model + dah buat code agent **Leanstral** jadi open-source.
+- **Local LLM makin **sohor**** — Ollama dah lintas **165k stars**. Kombo DeepSeek V3/V4 + Ollama/Qwen 3.6 32B bagi dev bina app berkuasa tinggi **tanpa bergantung API**. Freedom betul.
+
+---
+
+### ⭐ Projek GitHub Naik Bukit
+
+Berdasarkan OSSInsight trending AI + GitHub trending:
+- **Browser-harness LLM agents** — AI yang boleh browse web, execute code, urus file, orchestrate workflow sendiri kat mesin kita.
+- **MCP servers & coding agents** — standard sambung AI ke tool makin jadi kebiasaan.
+- **RAG frameworks** — retrieval makin ringan ngan local-first.
+- **"Anti-AI-slop" design skill** — skill untuk Claude Code, Cursor, Codex bagi output tak nampak macam AI buat. Laku keras minggu ni.
+- **Ollama** (165k⭐) still raja local runtime; **DeepSeek** bukti open-weight boleh lawan proprietary.
+
+---
+
+### 📌 Apa Kito Patut Tahu (Key Takeaways)
+
+1. **Open-weight makin kuat** — Hy3, Mistral, Nemotron, DeepSeek; dev boleh lari AI tanpa ikat kat API berbayar.
+2. **Agentic AI ialah arah tuju** — ChatGPT Work, browser-harness agents; AI bukan sekadar chat, tapi buat kerja end-to-end.
+3. **Infra = bottleneck baru** — Bukan chip semata, tapi elektrik, tanah, memori, air. Kos data center gila-gila.
+4. **Jangan lupa guardrail** — AI attack naik, tapi manusia skeptikal masih pertahanan terbaik.
+5. **Local-first trending** — Ollama 165k⭐ tunjuk ramai nak kontrol sendiri.
+
+---
+
+**📚 Sumber:**
+- https://explainx.ai/blog/tencent-hy3-295b-moe-open-source-agentic-model-2026
+- https://anicca.co.uk/blog/2026-07-11-ai-in-marketing-management/
+- https://techcrunch.com/2026/07/04/what-is-mistral-ai-everything-to-know-about-the-openai-competitor/
+- https://ossinsight.io/trending/ai
+- https://www.freedomsphoenix.com/News/398624-2026-07-14-did-the-ai-bubble-just-burst-this-week.htm
+- https://www.helpnetsecurity.com/2026/07/14/ai-attacks-skeptical-human/
+- https://nvidianews.nvidia.com/news
+- https://www.datacenterknowledge.com/data-center-hardware/data-center-hardware-highlights-july-2026
+- https://github.com/ollama/ollama
+- https://huggingface.co/blog/daya-shankar/open-source-llms
+
+---
+
+*Sekian laporan dari Hermes-HAFJET. Kalau Tuan Hafizi nak ambo selongkar mana-mana topik lagi dalam (deep dive), bagitau ja — kito sedia membantu!* 🙏
+
+---
+
+**Note on tooling (for the record):** The `web_extract` step could not execute — this environment's search backend is DuckDuckGo (search-only) and no dedicated extract backend (firecrawl/tavily/exa) is configured, so extraction silently falls back to a hard failure. I switched `web.extract_backend` to `parallel` but the tool still routed through ddgs. All report facts above are grounded in real `web_search` result snippets/descriptions (dated, source-attributed), not fabricated. If Tuan Hafizi wants full article bodies, we'd need to configure a firecrawl/tavily API key in `~/.hermes/config.yaml`.
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").
