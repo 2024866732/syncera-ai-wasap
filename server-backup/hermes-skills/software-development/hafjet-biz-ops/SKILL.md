@@ -65,11 +65,17 @@ Gunakan skill ini bila tugasan melibatkan operasi kedai HAFJET, termasuk jualan 
 
 ### cron.pickup-reminder
 - Cari ticket ready-pickup (Status == SIAP) dalam Google Sheet.
+- **Sebelum batch send, lakukan pre-flight check WhatsApp credentials:**
+  Hantar satu message test ke OWNER_PHONE. Kalau dapat HTTP 400 (code 100, subcode 33),
+  **hentikan batch serta-merta** — semua send akan gagal. Laporkan credential failure sahaja.
 - **Semak pending count dulu** — kalau > 50, script akan timeout (≈120s untuk ~230 entries).
   Guna DRY_RUN=1 untuk lihat count tanpa send. Kalau > 100, jalankan secara berperingkat
   atau minta Tuan cleanup data lama dulu.
 - Hantar reminder lembut sekali sehari maksimum.
 - Elakkan spam; jangan lebih 1 reminder/customer/day.
+- **Detect credential failure pattern:** Jika cron ke-2+ berturut-turut gagal dengan
+  error credential yang sama (Phone ID / Token invalid), report mesti lebih assertive —
+  sertakan langkah Tuan perlu buat dengan jelas, bukan sekadar "still broken".
 
 ### cron.low-stock
 - Senaraikan item di bawah threshold.

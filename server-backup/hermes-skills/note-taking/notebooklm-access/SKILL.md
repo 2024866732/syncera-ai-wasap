@@ -37,17 +37,27 @@ notebooklm list
 ```
 
 ## Pulling notebook content (after auth)
-Notebook ID = the `<ID>` segment from `notebooklm.google.com/notebook/<ID>`. **Use `-n <ID>` (partial/pretty-ID match works, e.g. `3b143ab9`), NOT `--notebook` — that global flag does not exist and errors out.** Env fallback: `NOTEBOOKLM_NOTEBOOK`.
+Notebook ID = the `<ID>` segment from `notebooklm.google.com/notebook/<ID>`.
+
+**⚠️ CRITICAL CORRECTION (verified 2026-07-16): there is NO `-n` global flag.** Older notes claimed `notebooklm -n <ID> metadata` works — it does NOT (`Error: No such option '-n'`). The correct flow is TWO steps: first `notebooklm use <ID>` to set session context (partial-ID match works, e.g. `a7416353`), then run subcommands WITHOUT `-n`. Env fallback `NOTEBOOKLM_NOTEBOOK` is also not a real flag — use `use`.
 
 ```bash
-notebooklm -n <ID> metadata --json                 # list sources + artifacts
-notebooklm -n <ID> source get-fulltext <source_id> # full indexed text of one source (per README)
-notebooklm -n <ID> ask --prompt-file q.txt         # grounded Q&A (redirect to a file, then read it)
-notebooklm -n <ID> generate report --format study-guide --prompt-file p.txt --wait --json
-notebooklm -n <ID> download report ./guide.md --force        # downloads LATEST report as markdown
-notebooklm -n <ID> generate quiz --difficulty hard
-notebooklm -n <ID> download quiz --format markdown ./quiz.md
+source /home/hafizi145/.venv-notebooklm/bin/activate
+notebooklm use <ID>                       # set active notebook context (persists for session)
+notebooklm metadata                       # list sources + artifacts (NO -n; titles only, no --json ID column)
+notebooklm source fulltext <source_id>    # full indexed text of ONE source
+notebooklm ask --prompt-file q.txt        # grounded Q&A (stateful — see Pitfalls)
+notebooklm generate report --format study-guide --prompt-file p.txt --wait --json
+notebooklm download report ./guide.md --force
+notebooklm generate quiz --difficulty hard
+notebooklm download quiz --format markdown ./quiz.md
 ```
+
+**Subcommand gotchas:**
+- Source fulltext is `source fulltext <source_id>` — NOT `get-fulltext` (errors: "No such command 'get-fulltext'. Did you mean 'fulltext'?").
+- `source fulltext <N>` matches by partial-ID/ordinal ambiguously — `source fulltext 5` may resolve to a DIFFERENT source than the 5th listed in `metadata`. For reliable single-source pulls, prefer `ask --prompt-file` grounded extraction.
+- `metadata --json` returns sources WITHOUT an `id` field (only title) — you cannot map ordinal→source_id from JSON; rely on `ask` instead.
+
 Use `--prompt-file PATH` for long prompts (never put long prompts on the shell line). Full cookbook incl. a worked LAW299 example: `references/notebooklm-cli-cookbook.md`.
 
 ## Pitfalls

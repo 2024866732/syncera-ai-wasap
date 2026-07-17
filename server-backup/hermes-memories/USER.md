@@ -6,8 +6,8 @@ Telegram iPhone: MEDIA:path FAILS — paste code as ```blocks.
 §
 Specs: exact JSON schemas + matching message strings (no extra periods). Wants test functions before deploy. Confirmation before UI changes. Methodical: server test → deploy → frontend.
 §
-GSheets accounting: 'Kewangan Hafizi Gadget' — 471 txns, OLD cols (Amaun Masuk/Keluar). GAS WebApp: AKfycbz5QuVH1RZRn190zcMHgVbrJiKWAB9CCe2LNC0rtGm_IpFZRgAuqUFdNiJiCXRk4rhkXQ. Priority: 1) deleteTransaction 2) generatePnl 3) balanceSheet/cashFlow 4) Telegram.
+NotebookLM: Tuan guna aktif sbg rujukan — jangka Hermes ground dari notebooks (cth 'WhatsApp AI Chatbot Kickstart Webinar Guide'). Server ada .venv-notebooklm + storage_state.json valid (2026-07-16); try `notebooklm list` dulu sebelum minta cookies laptop.
 §
-Prefers: exact output match, pre-filled 12 chart months, soft-delete not hard, LockService.waitLock for concurrent safety, default 'active' status for old rows.
+Verification report preference: lepas commit, mahukan laporan berstruktur — commit hash, msg, exact files included + explicitly excluded/unstaged, static check by category (inbound reply path / dashboard-inbox / env-runtime settings), & risks/not-runtime-tested. Commit-only bila diminta; jangan deploy tanpa arahan eksplisit.
 §
 TTS: Edge TTS Yasmin (ms-MY-YasminNeural) daily use. ElevenLabs Rachel when trial active. Malay voices only — dislikes robotic TTS for Malay.

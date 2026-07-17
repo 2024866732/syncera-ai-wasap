@@ -91,7 +91,8 @@ curl -s -X POST "https://graph.facebook.com/v21.0/${WHATSAPP_CLOUD_PHONE_ID}/mes
 ## Pitfalls
 - **Stale env vars:** Setting COLUMN_NAME_* overrides leaves them in terminal session. Always `unset` before real runs.
 - **Status value mismatch:** Sheet uses `SIAP`, not `SIAP DIAMBIL`. If 0 pending but rows exist, check actual status values with a probe script.
-- **Phone number ID invalid (still stale as of 2026-07-15):** `.env` value `107158292462704` returned "object does not exist" (code 100, subcode 33) on 2026-07-14 and again on 2026-07-15. Still needs updating — escalate to Tuan.
+- **Phone number ID invalid (still stale as of 2026-07-17):** `.env` value `107158292462704` returned "object does not exist" (code 100, subcode 33) on 2026-07-14, 2026-07-15, and 2026-07-17. **This has failed 3 consecutive cron runs.** Tuan must get the correct Phone Number ID from Meta Business (Facebook Business → WhatsApp → API Setup). Until fixed, all batch sends are wasted.
+- **Repeated credential failure escalation:** If the SAME credential error fires across ≥2 consecutive cron runs, the cron report should abort early (no batch attempt), flag the credentials as the sole blocker, and give precise recovery steps — not just "still broken".
 - **Script timeout with 621 pending:** 621 SIAP tickets cause the script to timeout at ~120s after processing ~230 entries (≈3.5s per message). Full batch would take ~5 min. Mitigation: run `DRY_RUN=1` first, or add `MAX_PER_RUN=50` chunking.
 - **Dual phone numbers:** Some cells have two numbers (e.g. `601111144636/0104163884`). These fail send.
 - **Very old data:** Most SIAP tickets date from Sept–Nov 2022. May need status cleanup.

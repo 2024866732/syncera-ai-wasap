@@ -21,6 +21,43 @@ Before deploying, confirm ALL these files exist in the ZIP:
 - `.env` — must be set via Azure App Settings
 - `__pycache__` / `*.pyc` — stale bytecode
 - `node_modules/`, `.git/`, `.venv/`, `*.db`
+- `.tar.gz` / `*backup*` — DB dumps & settings backups (e.g. `db-backup-*.tar.gz`, `azure-settings-backup-*.json`)
+- `*_test.py` / `check_*.py` / `upload_*.py` / `debug_*.py` / `verify_*.py` / `monitor_*.py` / `fix_*.py` — temp/debug scripts
+- `AGENTS.md`, `DEPLOYMENT*.md`, `oracle-*.md`, `*.user.js`, `business_info.txt` (loose untracked copy), `intent_rules.json`, `media_map.json`, `start_local.sh`
+
+## ⚠️ CRITICAL: build_zip.py walks DISK, not git
+
+`build_zip.py` uses `os.walk(src)` over the working dir. **Untracked files on disk enter the artifact even if never committed.** A clean `git status` / commit does NOT mean a clean ZIP.
+
+**MANDATORY pre-build gate (every deploy):**
+1. Review untracked junk: `git status --short` — any `??` file NOT in `exclude_patterns` will ship.
+2. Confirm `build_zip.py` `exclude_patterns` covers: `.tar.gz`, `backup`, `AGENTS.md`, `DEPLOYMENT`, `oracle-`, `.user.js`, `business_info.txt`, `check_`, `upload_`, `debug_`, `verify_`, `monitor_`, `fix_`, `intent_rules.json`, `media_map.json`, `start_local.sh`, `apply_all_patches.py`, `run_fetch_phones.py`, `s2f5_test.py`, `azure-settings-backup`.
+3. Build: `python3 build_zip.py` (prints full manifest + size).
+4. Re-scan the printed manifest for any of the Excluded patterns above. If found → STOP, fix `exclude_patterns`, rebuild.
+5. Only then deploy.
+
+**Quick pollution probe (run before build):**
+```bash
+cd ~/.hermes/whatsapp-bot && python3 - <<'PY'
+import os
+src=os.path.expanduser("~/.hermes/whatsapp-bot")
+excl=[".git","__pycache__",".venv",".env",".zip","logs",".db",".tar.gz","backup",
+"AGENTS.md","DEPLOYMENT","oracle-",".user.js","business_info.txt",
+"check_","upload_","debug_","verify_","monitor_","fix_","intent_rules.json",
+"media_map.json","start_local.sh","apply_all_patches.py","run_fetch_phones.py",
+"s2f5_test.py","azure-settings-backup"]
+import subprocess
+for r,d,f in os.walk(src):
+    d[:]=[x for x in d if not any(p in x for p in excl)]
+    for fn in f:
+        if any(p in fn for p in excl): continue
+        rel=os.path.relpath(os.path.join(r,fn),src)
+        if subprocess.run(["git","-C",src,"ls-files","--error-unmatch",rel],
+                          capture_output=True).returncode!=0:
+            print("UNTRACKED->ZIP:",rel)
+PY
+```
+Any line printed = file ships to prod uncommitted. Investigate before building.
 
 **Verification command:**
 ```bash

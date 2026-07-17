@@ -9,13 +9,16 @@
 - **Skill:** hafjet-biz-ops
 
 ## hafjet-repair-pickup-reminder
-- **Jadual:** `0 11 * * *` (11:00 AM setiap hari)
-- **Timezone:** Asia/Kuala_Lumpur
-- **Tujuan:** Reminder item siap pickup melebihi 3 hari.
-- **Input:** Semua ticket `ready-pickup` dengan `ready_since >= 3 days`.
-- **Output:** WhatsApp customer.
+- **Job ID:** ebdae9cc10ab
+- **Jadual (UTC):** `0 3 * * *`
+- **Jadual (MYT):** 11:00 AM setiap hari
+- **Tujuan:** Reminder item siap pickup.
+- **Input:** Google Sheet `REPAIR BARU` — filter `Status == SIAP`.
+- **Output:** WhatsApp customer (free-form text).
 - **Had:** Maksimum satu reminder sehari per customer.
-- **Skill:** hafjet-biz-ops
+- **Pre-flight:** Test WhatsApp credential dengan satu send ke OWNER_PHONE dulu. Kalau gagal (code 100/subcode 33), abort terus — jangan batch.
+- **Credential failure escalation:** Jika cron ke-2+ berturut-turut gagal dengan error yang sama, report mesti include langkah Tuan perlu buat (buka Meta Business → WhatsApp → API Setup → dapatkan Phone Number ID baru).
+- **Skill:** hafjet-biz-ops (software-development)
 
 ## hafjet-low-stock-alert
 - **Jadual:** `0 8 * * *` (8:00 AM setiap hari)
