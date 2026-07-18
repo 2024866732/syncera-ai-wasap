@@ -65,9 +65,15 @@ Gunakan skill ini bila tugasan melibatkan operasi kedai HAFJET, termasuk jualan 
 
 ### cron.pickup-reminder
 - Cari ticket ready-pickup (Status == SIAP) dalam Google Sheet.
-- **Sebelum batch send, lakukan pre-flight check WhatsApp credentials:**
-  Hantar satu message test ke OWNER_PHONE. Kalau dapat HTTP 400 (code 100, subcode 33),
-  **hentikan batch serta-merta** — semua send akan gagal. Laporkan credential failure sahaja.
+- **Pre-flight check (SOP — belum diimplementasi dalam script):**
+  SOP kata: Hantar satu message test ke OWNER_PHONE sebelum batch send. Kalau dapat
+  HTTP 400 (code 100, subcode 33), hentikan batch serta-merta.
+  **Realiti:** Script `scripts/hafjet_pickup_reminder.py` TIDAK lakukan pre-flight check.
+  Ia terus batch-send, dan setiap message individual gagal dengan HTTP 400. Owner summary
+  juga gagal sebab credential sama. Script perlu diupdated untuk:
+  1. Test credential dulu dengan satu message ke OWNER_PHONE.
+  2. Jika gagal (code 100, subcode 33), abort terus — jangan spam API dengan 621 calls.
+  3. Jika OK, baru proceed batch send.
 - **Semak pending count dulu** — kalau > 50, script akan timeout (≈120s untuk ~230 entries).
   Guna DRY_RUN=1 untuk lihat count tanpa send. Kalau > 100, jalankan secara berperingkat
   atau minta Tuan cleanup data lama dulu.
@@ -127,14 +133,31 @@ print(result['values'][0])  # actual headers
 ```
 
 ### Check WhatsApp API credentials before batch-sending
-The Phone Number ID and access token can expire or become invalid. Always test with a single message first:
+The Phone Number ID and access token can expire or become invalid. The script does NOT
+perform a pre-flight check — it tries every message and each one fails with HTTP 400.
+**Always test manually first before any batch run:**
+
 ```bash
 curl -s -X POST "https://graph.facebook.com/v21.0/${PHONE_ID}/messages" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"messaging_product":"whatsapp","to":"60198021500","type":"text","text":{"preview_url":false,"body":"Test"}}'
 ```
-If you get `code:100, error_subcode:33` ("object does not exist"), the PHONE_ID or token is invalid.
+
+If you get `code:100, error_subcode:33` ("object does not exist"), the PHONE_ID or token
+is invalid. **Recovery steps:**
+1. Go to https://business.facebook.com → WhatsApp → API Setup
+2. Check the Phone Number ID — it may have changed if the number was re-added
+3. Copy the new Phone Number ID (numeric, ~15 digits)
+4. If the token is expired, regenerate a new access token in Meta Business settings
+5. Update `~/.hermes/.env`:
+   ```bash
+   # Edit WHATSAPP_PHONE_ID and WHATSAPP_ACCESS_TOKEN
+   nano ~/.hermes/.env
+   ```
+6. Verify the WABA ID (`WHATSAPP_BUSINESS_ACCOUNT_ID` in .env) is still correct
+7. Re-test with the curl command above
+8. Only then re-run the pickup reminder batch
 
 ### Phone number format issues in sheet data
 Some cells contain multiple numbers separated by `/` (e.g. `601111144636/0104163884`). The `norm_phone()` function passes these raw, causing HTTP 400. Same for non-Malaysian numbers. These should be logged as data quality issues.
@@ -226,7 +249,7 @@ never `curl | python3 -c`, never `python3 << 'EOF'` heredoc, never redirect into
 (`cat >> ~/.hermes/.env`). Agent SUGGESTS; Tuan edits `.env` manually via `nano`. Schedule
 jobs with the `hermes cron` TOOL, not `crontab -e`.
 
-## Live Implementation State (2026-07-14)
+## Live Implementation State (2026-07-18)
 
 **Integration = Option A:** Hermes is the AI BACKEND behind the EXISTING HAFJET Bot (Azure).
 KEEP webhook `https://hafjet-whatsapp-bot.azurewebsites.net/webhook` and
@@ -259,12 +282,21 @@ Google Sheet below, NOT the bot DB.
 - Route to CUSTOMER `NO TELEFON` (NOT owner). `OWNER_PHONE=60198021500` → summary only.
 - **Env var mapping:** Script reads `WHATSAPP_CLOUD_PHONE_ID` / `WHATSAPP_CLOUD_ACCESS_TOKEN`,
   but `.env` stores `WHATSAPP_PHONE_ID` / `WHATSAPP_ACCESS_TOKEN`. Export before running:
-  ```
+  ```bash
   export WHATSAPP_CLOUD_PHONE_ID="$WHATSAPP_PHONE_ID"
   export WHATSAPP_CLOUD_ACCESS_TOKEN="$WHATSAPP_ACCESS_TOKEN"
   ```
-- **Pre-flight check:** Always test the WhatsApp API with a single message to verify
-  the Phone Number ID and token are still valid before batch-sending.
+  **Wrapper script approach:** For terminal runs (not cron), use
+  `/home/hafizi145/run_pickup_reminder.py` which reads `.env`, maps the var names, and
+  sets hardcoded values (GOOGLE_SHEET_ID, SA path, OWNER_PHONE). This avoids having to
+  manually export each time. Run with:
+  ```bash
+  python3 /home/hafizi145/run_pickup_reminder.py
+  ```
+- **Pre-flight check gap:** SOP says to test credential before batch, but script does NOT
+  implement this. When Phone ID is stale (code:100, subcode:33), the script sends all 621
+  messages and they all fail with HTTP 400. The owner summary also fails because it uses
+  the same broken credential. This wastes API calls and time (~300s for full batch).
 - 24h window: Meta error 470 → log + skip (template message needed later).
 - `DRY_RUN=1` = read + print, send nothing. Script: `scripts/hafjet_pickup_reminder.py`.
 
@@ -272,6 +304,7 @@ Google Sheet below, NOT the bot DB.
 
 ### Scripts
 - `scripts/hafjet_pickup_reminder.py` — Main pickup reminder script. Reads GSheet, filters SIAP, sends WhatsApp.
+- External: `~/run_pickup_reminder.py` — Wrapper that bridges env var names and sets hardcoded config for terminal runs (not part of skill directory).
 
 ### References
 - `references/message-templates.md` — Templates
