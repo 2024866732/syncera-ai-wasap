@@ -1,0 +1,68 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+Laporan dah siap kito compile. Ni hasil research dari web search guna tool sendiri (web_search) — web_extract backend tak support kat environment ni, so ambo guna multiple targeted searches untuk verify detail. Sini ambo hantar report terus:
+
+---
+
+**📡 Laporan Tech & Open-Source AI Minggu Ni**
+*(Minggu 13–19 Julai 2026 — utk Tuan Hafizi)*
+
+Assalam & ghuyo Tuan Hafizi 👋 Ambo dah kumpul berita paling *sohor* minggu ni dari web. Banyak *goni* benda menarik. Meh ambo bagi ringkas tapi padat.
+
+---
+
+### 🔥 Berita Teknologi Paling Panas
+
+- **Starship Flight 13 kena abort last-second!** Roket gergasi SpaceX terpaksa scrub launch Khamis lepas bila **4 dari 33 enjin Raptor gagal nyala** kat T-zero. Musk kata 2 enjin kena tukar, target liftoff baru 20 Julai. First time full-scale Starship kena last-second abort.
+- **Saham SpaceX jatuh ~23%** lepas IPO gempak bulan Jun. Investor tengah *bersenggoti* risau pasal test flight gagal + beban hutang AI.
+- **Trump admin + industri AI bincang "capability framework"** — laporan eksklusif Washington Post (13 Julai) pasal nak kawal selia keupayaan AI secara formal.
+
+---
+
+### 🤖 Dunia Open-Source AI Minggu Ni
+
+- **VibeThinker-3B (Weibo AI)** — model **3 bilion param je**, *MIT license*, tapi score **94.3 kat AIME 2026** — seimbang dengan DeepSeek V3.2 (671B) & Kimi K2.5 (1T)! Boleh lari dalam 6.7GB VRAM. *Pacak megah* betul untuk model kecik. Kos train pun cita-cita ~$7,800.
+- **Google AI Studio "vibe coding" full-stack** — deploy terus ke Cloud Run + Firestore/Firebase. Dari prompt terus jadi app production. Game changer untuk dev pantas.
+- **Mistral** posisikan diri sebagai "open-source refuge" — CEO Mensch kata *"We exist outside state control"* lepas US ketatkan export control. Open-weight makin jadi tumpuan global.
+- **⚠️ Amaran security:** Penyelidik UK berjaya *backdoor* model open-weight dengan bajet bawah £75. Supply-chain risk kat dunia open-source kena *bersenggoti* betul-betul.
+- **OSI keluarkan Open Source AI Definition 1.0** — nak bezakan "betul-betul open" dari "marketing theater".
+
+---
+
+### ⭐ Projek GitHub Naik Bukit
+
+- **Ollama, n8n, Claude Code** — still *sohor* giler dalam senarai AI repos 2026 (source: thecode.media).
+- **Workweave Router** — proxy routing model open-source, integrate dengan Claude Code, Codex CLI & Cursor. Claim **jimat 40–70% kos**.
+- **OpenDesign** — alternatif open-source kepada Claude Design, local-first, BYOK, bawa 276 skills + 151 design systems.
+- **Komi Store** — app store open-source untuk GitHub releases (16K+ stars), one-click install + auto-update.
+
+---
+
+### 📌 Apa Kito Patut Tahu (Key Takeaways)
+
+- 🔹 **Model kecik = kuat giler sekarang.** 3B param dah boleh lawan 1T. Peluang besar untuk server kito yang cuma 1GB RAM + 4GB swap — boleh run local LLM yang ringan.
+- 🔹 **Vibe coding makin mainstream** — Google & Firebase dah integrasi. Bagus untuk prototaip pantas HAFJET ecosystem.
+- 🔹 **Security open-source kena jaga** — jangan download model/dependency main bedal. Verify dulu sumber.
+- 🔹 **Mistral + China model makin gain** — AI tak lagi monopolize US je. Peluang untuk guna model murah & open.
+
+---
+
+**🔗 Sumber:**
+- https://www.euronews.com/next/2026/07/17/four-engine-failures-abort-starships-13th-launch-bid-at-the-last-second
+- https://www.cnbc.com/2026/07/17/spacex-stock-starship-test-flight-aborted.html
+- https://www.marktechpost.com/2026/06/19/vibethinker-3b-a-3b-dense-reasoning-model-built-on-qwen2-5-coder-3b-with-the-spectrum-to-signal-post-training-pipeline/
+- https://huggingface.co/WeiboAI/VibeThinker-3B
+- https://cloud.google.com/blog/products/databases/vibe-coded-ai-studio-apps-with-firestore-firebase-cloud-sql
+- https://techcrunch.com/2026/07/04/what-is-mistral-ai-everything-to-know-about-the-openai-competitor/
+- https://www.resultsense.com/news/2026-07-17-open-weight-model-poisoning/
+- https://thecode.media/ai-github-repositories-2026/
+- https://github.com/trending
+- https://aiweekly.co/ai-news-today/open-source-ai-news
+
+---
+
+*Tu jelah goni ringkasan minggu ni Tuan Hafizi. Kalau mung nak ambo dalami mana-mana topik (contoh: test run VibeThinker-3B kat server kito ke), bagi tau je. Ambo sedia berenti! 🚀*
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").

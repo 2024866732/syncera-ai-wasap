@@ -51,6 +51,7 @@ This happened 4 times in one session. The model auto-abstracts long secrets as `
    ```
    - A correctly-stored Groq key is **56 chars, HAS_DOTS False**. If LEN==13 and HAS_DOTS True → you truncated it again, redo.
 3. **Never use `...` as a placeholder in any config-set command.** The display redaction (`gsk_FY...SIEY` in `hermes config` output) is automatic — you don't need to manually abbreviate, and doing so corrupts the stored value.
+4. **User may set keys manually in `.env` themselves** (e.g. `DEEPSEEK_API_KEY`, `TOKENROUTER_API_KEY`). When they say "I already added the key manually," do NOT ask them to re-paste it. Verify with `hermes config` + a real test call (`hermes chat -q "reply OK"`), then switch `model.provider`/`base_url`/`default` accordingly. Source the key from `.env` if you need it for a direct isolation test.
 
 ## Isolation test pattern (when a provider fails)
 
@@ -74,6 +75,9 @@ except urllib.error.HTTPError as e:
 - `403 error 1010` → IP banned (network), key is fine.
 - `401` with correct-length key → key invalid/expired.
 - `400` "not a valid model ID" → connection works, wrong model name.
+- **`401` on a DUMMY key (e.g. `Bearer dummy`) → server is responsive and the auth layer is reachable.** Fastest way to distinguish "network/IP-banned" from "key problem". If dummy→401 but real→401 too, key is bad; if dummy→401 but real→**timeout**, auth PASSED and the model is just slow/queued.
+- **`timeout` (no 401/403) with a correct-length real key → AUTH PASSED, model is slow/queued.** Seen with TokenRouter `z-ai/glm-5.2-free`: request entered queue but never returned within 200s. NOT a key problem — free tier too congested for agentic use. Don't re-check the key.
+- **`403` "This token has no access to model X" with a correct key → key valid but tier lacks that model.** Seen with TokenRouter: free key can't reach paid `z-ai/glm-5.2`. Use a free-tier model or upgrade the plan.
 
 ## TTS / Voice Configuration
 
@@ -182,10 +186,29 @@ No restart needed — `text_to_speech` tool reads config live. For voice message
 The `text_to_speech` tool reads config live. For voice messages in gateway conversations, do `/restart` after changing config.
 
 ## Other providers (from research, not all tested from this server)
-- **DeepSeek direct** (`https://api.deepseek.com/v1`, model `deepseek-v4-pro`): pay-per-token, ~same price as OpenRouter's DeepSeek. Reachability from this server UNVERIFIED — test before relying on it. Strong choice if OpenRouter ever fails.
 - **OpenCode Go** ($10/mo): 14 models (DeepSeek V4 Pro, GLM-5.2, Qwen 3.7, MiniMax M3), dollar-based limits ($60/mo, $30/wk, $12/5h), servers US/EU/SG. OpenAI-compatible.
 - **Mimo / Xiaomi MiMo** ($6/mo, 4.1B credits, model `mimo-v2.5`): OpenAI-compatible (`https://api.xiaomimimo.com/v1`), Token Plan uses `tp-xxxxx` key + possibly different base_url.
 - **OpenCode Zen**: free tier, 100 req/day, OpenAI-compatible. Good backup.
+
+## TokenRouter (added 2026-07-18, tested from this server)
+
+`https://api.tokenrouter.com/v1` — OpenAI-compatible aggregator proxy. User key `sk-dTBjBoSjYFE0...` (51 chars) tested.
+
+| Model ID | Result from this server | Note |
+|---|---|---|
+| `z-ai/glm-5.2-free` | ✅ Auth passes, ❌ **never returns** (timeout 200s) | Free tier queue too congested for agentic loops |
+| `z-ai/glm-5.2` (paid) | ❌ `403` "This token has no access" | Free key can't reach paid models |
+
+**Verdict:** TokenRouter key is valid and the server can reach it (dummy key → 401, real key → auth-passed timeout). But the **free tier is unusable for Hermes** — agent needs sub-minute responses, not 3+ minute queues. Only viable if the user buys a paid plan that exposes non-`-free` models.
+
+Hermes config (if paid plan later):
+```bash
+hermes config set model.provider tokenrouter
+hermes config set model.base_url https://api.tokenrouter.com/v1
+hermes config set model.default z-ai/glm-5.2
+hermes config set model.api_mode chat_completions
+hermes config set model.api_key <KEY>
+```
 
 ## See also
 - `software-development/llm-agent-provider-selection` — cost/quality ranking of providers for agentic work (broader than this server).
@@ -193,3 +216,4 @@ The `text_to_speech` tool reads config live. For voice messages in gateway conve
 
 ## Reference files
 - `references/elevenlabs-quota-errors.md` — Error transcripts, credit consumption patterns, and fallback flow from real ElevenLabs session
+- `references/provider-diagnostic-ladder.md` — Reusable urllib probe + result-interpretation table for isolating any provider failure (dummy-key → 401 = network OK; real-key timeout = auth passed but model slow; etc.)

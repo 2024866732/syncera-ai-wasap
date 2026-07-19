@@ -89,12 +89,39 @@ The `webhook_listener` process on the Hermes server (`127.0.0.1:8000`, dir `~/.h
 3. **Frontend polling:** Trigger via background sync, poll sync-progress instead of blocking
 4. **Current status:** Jul 2026 — `fetch-phones` endpoint exists at `POST /api/spx/fetch-phones` (requires JWT auth), returns 504 on large batches. Use the background sync (`POST /api/spx/sync`) for phone fetching instead.
 
-### State machine
+### State machine (sync, not reminder — separate)
 
 ```
 idle → fetching_orders → fetching_phones → completed
                         ↘ failed
 ```
+
+### ⚠️ Reminder state machine — CRITICAL DEADLOCK BUG (Jul 2026, fixed in hotfix)
+
+**The `_Sent` suffix is the contract between two functions. Mismatch = permanent deadlock.**
+
+- `_check_spx_reminders()` sends, then MUST persist `f"{next_state}_Sent"` (e.g. `Remind2_Sent`).
+- `_resolve_next_reminder_state(order)` ONLY advances FROM `*_Sent` states (e.g. line 653 `elif cur == "Remind2_Sent":`). Plain `"Remind2"` matches NO branch → returns `None` → scheduler `if not next_state: continue` → **no further sends, ever**.
+
+**Symptom seen in prod:** all orders stuck at `Remind2`/`Remind3` (plain), `last_reminder_sent_at` filled (first send happened 2026-07-05), but no escalating reminders after that. DB had `Remind2`(5), `Remind3`(1), `Pending`(3).
+
+**Fix (Fix A — applied in commit after 775f5e2):** in send block, `sent_state = f"{next_state}_Sent"` then `update_spx_reminder_state(id, sent_state, now_str)`.
+
+**One-time migration REQUIRED for already-stuck rows** (plain states won't progress even after code fix — resolver ignores plain states):
+```sql
+UPDATE spx_self_collection_orders SET hafjet_reminder_state='Remind2_Sent' WHERE hafjet_reminder_state='Remind2';
+UPDATE spx_self_collection_orders SET hafjet_reminder_state='Remind3_Sent' WHERE hafjet_reminder_state='Remind3';
+```
+Apply BEFORE or with the code deploy. Without it, plain-state rows stay deadlocked until manually migrated.
+
+**Verification gotcha — send window blocks observation:**
+- Send window = **08:00–21:00 MYT** (line 513 `if not (8 <= now_my.hour < 21): return`).
+- Scheduler fires every 15 min but at 07:23 MYT it logs `[SPX] Outside Malaysia send window: 07:23 MYT` and returns BEFORE reaching send logic.
+- So a post-deploy log tail at 07:xx MYT shows the job ran (no error) but NO `[SPX-PILOT] sending stage=` lines. That is CORRECT, not a bug.
+- First in-window cycle = 08:08 MYT (00:08 UTC). To confirm `*_Sent` progression, tail logs until ≥08:00 MYT OR run a read-only DB check after an in-window run.
+- Log format after fix: `[SPX-PILOT] sending stage=Remind2 ...`, `[SPX-PILOT] ✅ sent stage=Remind2 (state->Remind2_Sent) ...`, `[SPX-PILOT] ❌ send FAILED stage=Remind2 ...`, `[SPX-PILOT] SKIP no phone tracking=... id=... state=... — recipient_phone is null/empty`.
+
+**Null-phone rows:** `_check_spx_reminders` skips `if not phone:` (now logs explicit SKIP). 4 test rows had null `recipient_phone` (ids 4,6,8,9) — they will ALWAYS be skipped until backfilled via CSV import (col 3) or `bulk_map_phones` / manual UPDATE. Do NOT delete without Tuan approval.
 
 ### Shared progress state (`_sync_progress` dict, DB-backed since v2.2.1)
 

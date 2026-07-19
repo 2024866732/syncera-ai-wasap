@@ -1,6 +1,6 @@
 ---
 name: hafjet-deployment-plan
-description: "Use when discussing, planning, or executing deployment for the HAFJET WhatsApp Bot. Locked strategy with four environments (Azure, AWS, Heroku, Oracle), exact CLI steps, and decision matrices for upgrades, throttling recovery, and failovers."
+description: "Use when discussing, planning, or executing deployment for the HAFJET WhatsApp Bot. Locked strategy with four environments (Azure, AWS, Heroku, Oracle), exact CLI steps, and decision matrices for upgrades, throttling recovery, and failovers. ALSO covers post-deploy verification protocol + dashboard auth 401 debugging + build_zip.py artifact hygiene."
 version: 1.11.0
 author: Hermes-HAFJET
 license: MIT

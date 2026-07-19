@@ -20,17 +20,17 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 31
+        "completed": 33
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-07-19T07:00:00+00:00",
-      "last_run_at": "2026-07-18T07:00:23.470299+00:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
+      "next_run_at": "2026-07-20T07:00:00+00:00",
+      "last_run_at": "2026-07-19T07:01:26.915701+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -63,17 +63,17 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 27
+        "completed": 29
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-07-19T13:00:00+00:00",
-      "last_run_at": "2026-07-18T13:00:29.522628+00:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
+      "next_run_at": "2026-07-20T13:00:00+00:00",
+      "last_run_at": "2026-07-19T13:02:16.107961+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -106,17 +106,17 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 23
+        "completed": 24
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-07-19T14:00:00+00:00",
-      "last_run_at": "2026-07-18T14:00:29.183834+00:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
+      "next_run_at": "2026-07-20T14:00:00+00:00",
+      "last_run_at": "2026-07-18T16:35:13.977357+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -127,10 +127,7 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": {
-        "at": "2026-07-18T16:35:01.460468+00:00",
-        "by": "HAFJET-Hermes-Server:607547"
-      }
+      "fire_claim": null
     },
     {
       "id": "06496e813cd5",
@@ -152,17 +149,17 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 22
+        "completed": 23
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-07-19T09:00:00+00:00",
-      "last_run_at": "2026-07-18T09:00:25.155371+00:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
+      "next_run_at": "2026-07-20T09:00:00+00:00",
+      "last_run_at": "2026-07-19T09:00:45.288024+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -195,17 +192,17 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 16
+        "completed": 17
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-07-19T09:00:00+00:00",
-      "last_run_at": "2026-07-18T09:00:25.162604+00:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
+      "next_run_at": "2026-07-20T09:00:00+00:00",
+      "last_run_at": "2026-07-19T09:00:40.857456+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "telegram",
       "origin": {
@@ -240,15 +237,15 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 8
+        "completed": 9
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-07-19T03:00:00+00:00",
-      "last_run_at": "2026-07-18T03:10:39.675182+00:00",
+      "next_run_at": "2026-07-20T03:00:00+00:00",
+      "last_run_at": "2026-07-19T03:04:50.622003+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -351,5 +348,5 @@
       "fire_claim": null
     }
   ],
-  "updated_at": "2026-07-18T16:35:01.460877+00:00"
+  "updated_at": "2026-07-19T14:00:23.554260+00:00"
 }

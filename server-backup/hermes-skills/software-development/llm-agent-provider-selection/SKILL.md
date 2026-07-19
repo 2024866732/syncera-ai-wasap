@@ -90,6 +90,7 @@ If the user asks for a provider not listed above (e.g. Command Code, OpenCode Ze
 - **Command Code** (`https://api.commandcode.ai/provider/v1`) — OpenAI-compatible `/chat/completions` + Anthropic-compatible `/messages`. Auth: `Authorization: Bearer ***`. **⚠️ Only works on Provider plan ($15/mo); Go plan blocks API access.** See `references/commandcode-api.md`.
 - **OpenCode Zen** (`https://opencode.ai/zen/v1`) — OpenAI-compatible. Free models available. See `references/opencode-zen.md`.
 - **Google Gemini** (`https://generativelanguage.googleapis.com/v1beta`) — requires AI Studio API key, not consumer subscription. See `references/gemini-api-access.md`.
+- **TokenRouter** (`https://api.tokenrouter.com/v1`) — OpenAI-compatible aggregator. Models: `z-ai/glm-5.2-free`, `z-ai/glm-5.2`. ⚠️ From HAFJET server: free-tier `glm-5.2-free` auth-passes but **times out (200s+) — too congested for agentic use**. Paid `glm-5.2` returns 403 on free keys. Only viable on a paid plan.
 
 ## Pitfalls
 
@@ -105,6 +106,8 @@ If the user asks for a provider not listed above (e.g. Command Code, OpenCode Ze
 - **Gemini free tier quota=0:** Valid API key from free-tier project can return 429 with `limit: 0` even when key is correct. Enable billing or use paid tier project.
 - **Gemini API pricing:** Pay-per-token only, no monthly fee. Minimum top-up $50. Input/output billed separately. Cached tokens billed at discounted rate.
 - **Provider key reuse:** Keys are provider-specific. CommandCode key won’t work with Gemini base_url, and vice versa.
+- **TokenRouter free-tier timeout:** `z-ai/glm-5.2-free` passes auth but never returns within 200s from the HAFJET server — free tier too congested for agentic loops needing sub-minute responses. Not a key/config problem; upgrade to a paid plan or use a different provider.
+- **Diagnostic ladder for provider failures:** dummy key → 401 means server+auth reachable (network OK); real key → timeout (not 401/403) means auth PASSED but model is slow/queued; real key → 403 "no access to model" means key valid but tier lacks that model. Don't re-check the key on timeouts.
 
 ## Trigger (expanded)
 
