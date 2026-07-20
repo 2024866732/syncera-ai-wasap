@@ -17,8 +17,11 @@ WSL2, Azure VPS, hybrid topologies. Driven by Tuan Hafizi's tight fixed-cost dis
 - Reuse existing hardware first:
   - PC-gaming: Ryzen 7 8700F + RTX 4070 12GB + 32GB RAM + 3TB NVMe. Powerful but electricity
     ~RM40+/mo 24/7 → was switched OFF, bot moved to VPS.
-  - PC-office (confirmed Jul 2026): Intel i3, 18GB RAM, 512GB SSD (Windows installed), 320GB HDD
-    (NTFS, holds office documents). On-demand boot keeps electricity ~RM5-15/mo.
+  - PC-office (confirmed Jul 2026): Intel i3, 18GB RAM, 512GB SSD — **Linux partition is only
+    100GB (~400GB unallocated, not yet grown)**; 320GB HDD (NTFS, holds office documents,
+    NEVER format). On-demand boot keeps electricity ~RM5-15/mo. If PC Office needs more space
+    (Docker images, AI models, backups), grow `/` into the unallocated space — disk op, do it
+    when PC is off / carefully; 100GB is enough for Hermes + base tools for now.
 - PC-office beats Azure VPS specs: 18GB RAM vs 1GB, 512GB vs 30GB, plus 320GB HDD.
 
 ## Dual-Boot Ubuntu + Windows (CRITICAL pitfalls)
@@ -41,6 +44,43 @@ When installing Ubuntu on the same SSD as Windows:
   compatible (live deploys May 2026). LTS until 2031. Prefer over 24.04 for new installs.
 - Caveat: Python 3.14 default — let Hermes installer use `uv` (auto-handles), never force system python.
 - Known: `hermes update` git-path corruption on 26.04 (GH #32384) — use normal `hermes update`.
+
+## PC Office Python ML venv recipe (torch / transformers / HF)
+PC Office ships **Python 3.14 system-wide ONLY**; it is PEP 668 externally-managed and has NO `python3-venv` package. Naive venv creation FAILS:
+- ❌ `python3 -m venv ~/x` → "ensurepip is not available … apt install python3.14-venv" (package absent, sudo blocked).
+- ❌ `python3 -m pip install --user uv` → "error: externally-managed-environment" (PEP 668 blocks even user pip).
+- ✅ **WORKING recipe** (install `uv` as the single `--break-system-packages` tool, then `uv` manages a standalone Python + venv):
+  ```bash
+  python3 -m pip install --user --break-system-packages uv
+  export PATH="$HOME/.local/bin:$PATH"
+  uv python install 3.11          # 3.11 has torch CPU wheels; 3.14 often lacks them
+  rm -rf ~/tts_venv               # uv venv REFUSES to overwrite an existing dir → clear first
+  uv venv --python 3.11 ~/tts_venv
+  VENV_PY="$HOME/tts_venv/bin/python"
+  uv pip install --python "$VENV_PY" torch --index-url https://download.pytorch.org/whl/cpu
+  uv pip install --python "$VENV_PY" "transformers" "huggingface_hub[cli]" soundfile tqdm
+  ```
+- PC Office has **NO GPU** (Intel iGPU only) → CPU inference only. A 0.6B model on CPU does ~10–30s per short sentence; not realtime for concurrent users.
+- **`uv venv` has NO `pip` module.** After `uv venv`, `python -m pip` fails with `No module named pip` and `which pip` may resolve to system 3.14 pip (PEP 668). ALWAYS install deps with `uv pip install --python "$VENV_PY" <pkgs>` — never `python -m pip install`. (Hit & debugged 2026-07-20.)
+- **`hf download` include-flag quirk:** `hf download REPO file1 --include file2` triggers `UserWarning: Ignoring --include since filenames have been explicitly set` — the `--include` is silently dropped. To grab specific files pass them ALL as positional args: `hf download REPO fileA fileB --local-dir DIR`. Also: the `hf` CLI is **NOT installed on PC Office** (only on the Azure gateway). On PC Office use the Python API instead: `python -c "from huggingface_hub import hf_hub_download; hf_hub_download(repo_id=..., filename=..., local_dir=...)"` (run inside the venv). (Hit 2026-07-20: `model_config.json` was missed by a bad `--include`, recovered via Python API.)
+- **DistilCodec has an UNDECLARED dependency chain — install them ALL up front, don't debug one-by-one.** Each import is top-level (no conditional), so `from distilcodec import DistilCodec` fails repeatedly until every dep is present. The full set (in order hit 2026-07-20): `librosa` → `matplotlib` → `wandb` → `tensorboard` → `torchaudio`. Install in one shot (slow — run in background with notify):
+  ```bash
+  uv pip install --python "$VENV_PY" librosa matplotlib wandb tensorboard
+  # torchaudio MUST come from the CPU index on PC Office (see pitfall below):
+  uv pip install --python "$VENV_PY" --reinstall torchaudio --index-url https://download.pytorch.org/whl/cpu
+  ```
+  `librosa` alone pulls numba/llvmlite/scikit-learn and takes ~3 min to resolve — never run it foreground (180s timeout). (Hit & debugged 2026-07-20: 7 sequential ModuleNotFoundErrors before clean import.)
+- **🔴 torchaudio CPU pitfall (GPU-less box):** Plain `uv pip install torchaudio` pulls the **CUDA build**, which at runtime fails with `OSError: libcudart.so.13: cannot open shared object file` (PC Office has Intel iGPU only, no CUDA). Fix = reinstall from the CPU wheel index: `uv pip install --python "$VENV_PY" --reinstall torchaudio --index-url https://download.pytorch.org/whl/cpu`. Always pair torchaudio's index with the torch CPU index you already used. (Hit & debugged 2026-07-20.)
+- **DistilCodec `from_pretrained` signature** (per mesolitica README, NOT the standard HF pattern):
+  ```python
+  codec = DistilCodec.from_pretrained(config_path=".../DistilCodec-v1.0/model_config.json",
+                                      model_path=".../DistilCodec-v1.0/g_00204000",
+                                      use_generator=True, is_debug=False).eval()
+  ```
+  The codec weights live at `IDEA-Emdoor/DistilCodec-v1.0` as `g_00204000` (1.6 GB) + `model_config.json` — separate repo from the TTS model. Both must be downloaded.
+- **Malaysian-TTS-0.6B-v1 working pipeline (Qwen3 LM → DistilCodec decode → 24 kHz MP3):** model is NOT a standard TTS; it's a Qwen3 causal LM that generates `speech_NNN` tokens, then DistilCodec detokenizes to audio. Confirmed generating valid MP3s on PC Office CPU (idayu + husein speakers). Full tested `test_tts.py` + install/download scripts are in `references/pc-office-python-ml-venv.md`. Key gotchas: (a) text MUST be **normalized** (`123` → `one two three`) or output is garbled; (b) prompt format `<s>speaker: text<|speech_start|>`; (c) **license = None on the HF card** — NOT verified for commercial use; Tuan approved **personal-use only** this session. Do NOT wire into the customer-facing WhatsApp bot until license is confirmed.
+- **SCP-to-PC-Office approval trap:** every `scp`/`ssh` to the Tailscale IP `100.121.94.41` triggers a MEDIUM security-scan approval ("raw IP"). It auto-blocks on timeout if Tuan doesn't click approve promptly. Batch the work and ask Tuan to approve fast, or have Tuan run the file copy himself.
+- See `references/pc-office-python-ml-venv.md` for the full tested install/download/run scripts + mesolitica Qwen3-TTS (Malaysian-TTS) specifics (DistilCodec dependency, Xet storage needs `hf download` not `curl`, normalized-text requirement, license caveat).
 
 ## Azure VPS read-only filesystem recovery
 - Symptom: bot stuck, `rm` → "Read-only file system", `touch` fails.
@@ -93,18 +133,20 @@ was online at Tailscale IP 100.121.94.41 (~93–195ms via DERP hkg), latency acc
   reliable one. This installer is the ONE approved exception to Tuan's no-curl-pipe rule
   (official Nous Research script, not arbitrary code). Tick "Install OpenSSH server", skip import key.
 - **GitHub clone failure / install breakage on PC Office (hit 2026-07-19) — ROOT CAUSE
-  CORRECTED:** it is NOT IPv6. PC Office sits behind an **office firewall that DROPS ALL
-  external :443 egress** (verified: `github.com`, `pypi.org`, `codeload.github.com`,
-  `files.pythonhosted.org`, `ubuntu.com`, `google.com`, `cloudflare.com`, `tailscale.com`
-  ALL return `000` / "Could not connect" in 0ms = packet drop, NOT DNS/IPv6 failure).
-  Only **Tailscale traffic** (UDP + its own relay) passes. `apt` "worked" earlier only
-  because the office mirrors Ubuntu via a LAN cache/proxy — real internet is blocked.
-  Symptom: installer bootstrap downloads fine (raw.githubusercontent reachable at first),
-  but clone to `github.com:443` dies with `✗ Failed to clone repository` and
-  `hermes: command not found`. `pip install` for deps will ALSO fail (PyPI blocked).
-  ⚠️ **The `git config --global http.curloptResolve "github.com:443:20.205.243.166"`
-  IPv4 pin did NOT fix it** — 0ms drop means firewall block, not address family. Do NOT
-  rely on it. Working fixes, in order:
+  WAS TRANSIENT, NOT A PERMANENT FIREWALL BLOCK:** the FIRST attempt failed because at
+  bootstrap time PC Office had **NO working internet route** (no default gateway configured
+  → every external `curl`/`git` to :443 returned `000` "Could not connect" in 0ms, even
+  `github.com`, `pypi.org`, `ubuntu.com`, `google.com`). This LOOKED like a firewall block
+  but was a **missing default route / network unreachable** state. Tuan fixed it by bringing
+  up the LAN route: `inet 192.168.1.252/24` on `enp1s0`, `default via 192.168.1.1`, `ping
+  8.8.8.8` OK. ⚠️ **Do NOT assume a permanent office firewall block** — once the route was
+  up, `github.com`=200, `codeload`=301, `pypi`=200, and a **plain re-run of the installer
+  succeeded with NO proxy and NO scp fallback** (see RESOLVED STATE below). ⚠️ The
+  `git config --global http.curloptResolve "github.com:443:20.205.243.166"` IPv4 pin did NOT
+  fix it during the no-route window (0ms drop = no path, not address family) — only relevant
+  if DNS resolves but routing is broken. If external :443 is STILL `000` AFTER a default
+  route exists, THEN suspect a real egress firewall and use the proxy/scp fixes below.
+  Working fixes, in order:
   1. **Route PC Office egress through Azure via a proxy.** Azure has full internet.
      On Azure run a tiny HTTP proxy (tinyproxy on :3128, `Listen 0.0.0.0`, `Allow 0.0.0.0/0`),
      then on PC Office: `export HTTP_PROXY=http://100.111.105.120:3128 HTTPS_PROXY=$HTTP_PROXY`
@@ -129,8 +171,62 @@ was online at Tailscale IP 100.121.94.41 (~93–195ms via DERP hkg), latency acc
   provides per-node ACL. If hardening later, the correct sequence is:
   `sudo ufw default deny incoming; sudo ufw default allow outgoing; sudo ufw allow OpenSSH;
   sudo ufw allow in on tailscale0; sudo ufw enable`.
-- After SSH works, configure as a SEPARATE Hermes profile (`~/.hermes/profiles/<name>/`)
-  so node #2 doesn't clobber the Azure node's skills/cron/memories.
+- After SSH works, configure Hermes on PC Office. Tuan chose **Pilihan B: clone Azure
+  config** (not a separate profile) for consistency — see RESOLVED STATE below.
 - Reference: `references/pc-office-node2-bootstrap.md` — exact commands for Tuan to paste
-  on PC Office + per-step pitfalls (key register, enable Tailscale SSH, Hermes install,
-  GitHub-clone IPv4 fix).
+  on PC Office + per-step pitfalls (key register, enable Tailscale SSH, Hermes install).
+
+### RESOLVED STATE — Pilihan B (confirmed 2026-07-19)
+After the LAN route was fixed, the FULL bootstrap completed cleanly with a plain re-run.
+Final topology chosen:
+- **Azure VPS = GATEWAY 24/7** — `hermes-gateway.service` (user service) active+enabled,
+  `loginctl show-user hafizi145 -p Linger` → `Linger=yes` (survives logout). Telegram /
+  Discord / WebUI all terminate here.
+- **PC Office = WORKER on-demand** — Hermes agent v0.18.2 installed, **config cloned
+  from Azure** (NOT a separate profile — Tuan wanted consistency), **NO gateway installed**
+  (no listening :8000/:8080/:3000). Reachable only via Tailscale SSH.
+
+**Successful install path (once internet route is up — NO proxy needed):**
+```bash
+# From Azure, drive PC Office remotely:
+ssh -o StrictHostKeyChecking=accept-new hafizi145@hafjet-pc-office \
+  'rm -rf ~/.hermes/hermes-agent && curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash'
+# Clone Azure config to PC Office (secret-safe: scp file, don't print):
+scp ~/.hermes/config.yaml ~/.hermes/.env hafizi145@hafjet-pc-office:/home/hafizi145/.hermes/
+```
+**Verification commands that worked (run from Azure):**
+```bash
+# PC Office agent smoke test:
+ssh hafizi145@hafjet-pc-office 'export PATH="$HOME/.local/bin:$HOME/.hermes/bin:$PATH"; hermes --version; echo "Say OK" | hermes chat -q "Say OK"'
+# Expect: Hermes Agent v0.18.2 ... + reply "OK"
+# Azure gateway health:
+systemctl --user status hermes-gateway   # active (running)
+loginctl show-user hafizi145 -p Linger     # Linger=yes
+# Confirm PC Office exposes NO gateway ports:
+ssh hafizi145@hafjet-pc-office 'ss -tlnp | grep -E ":8000|:8080|:3000" || echo no-gateway-ports'
+```
+**Pitfall — `hermes setup` wizard on a remote/non-interactive shell is SKIPPED** by the
+installer ("Setup wizard skipped (no terminal available)"). If Tuan runs `hermes setup`
+interactively on PC Office later, it may briefly leave a `hermes setup` process running —
+harmless; it just configures provider/key (which the cloned `.env` already supplies).
+**Do NOT install gateway on PC Office** for Pilihan B — that would double-handle Telegram
+messages and split the single chat surface. Keep Azure as the sole gateway.
+
+**Azure `terminal.backend` decision (Pilihan B — FINAL, confirmed 2026-07-19):** Do NOT set
+`terminal.backend: ssh` globally on the Azure gateway to point at PC Office. We tested this —
+it works (passwordless SSH Azure→PC Office is solid), BUT it makes EVERY Azure terminal tool
+run remotely on PC Office. If PC Office is off/sleeping, Azure's terminal tools **"lumpuh"**
+(all fail to connect → Hermes can't do any terminal work). The safer choice Tuan confirmed:
+keep Azure `terminal.backend: local` so Azure stays self-sufficient for light work, and only
+delegate to PC Office selectively later (e.g. a dedicated profile or skill that sets the `ssh`
+backend for heavy jobs). SSH target details are still saved for future use:
+```bash
+hermes config set terminal.backend local
+hermes config set terminal.ssh.host 100.121.94.41
+hermes config set terminal.ssh.user hafizi145
+hermes config set terminal.ssh.port 22
+```
+⚠️ `hermes config show terminal` is **INVALID** — `config show` takes NO sub-argument
+(parser errors "unrecognized arguments: terminal"). Inspect via `hermes config show` (full)
+or `read_file ~/.hermes/config.yaml`. Also: `hermes config get` subcommand does NOT exist
+(use `show` or read the file).

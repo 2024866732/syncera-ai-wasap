@@ -50,6 +50,10 @@ terminal:
   docker_extra_args: []
   docker_run_as_host_user: false
   persistent_shell: true
+  ssh:
+    host: 100.121.94.41
+    user: hafizi145
+    port: 22
 web:
   backend: ddgs
   search_backend: ''

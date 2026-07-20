@@ -107,6 +107,16 @@ Tuan's rule: no delete without a standalone approval each time, even for
 safe-to-rebuild caches. If the command would have been DENIED anyway, stop
 and wait.
 
+### Bundled delete + install pitfall (learned 2026-07-20)
+Do NOT chain a destructive delete with a long-running install in ONE command,
+e.g. `rm -rf ~/.cache/pip ~/xiaozhi-server/.venv && python3 -m venv .venv && pip install ...`.
+This session it hit the approval/timeout gate and was **BLOCKED as a whole** —
+the delete never ran, the venv was never created, state was left exactly as
+before. That is correct safety behavior; do NOT retry or rephrase it. Instead:
+(1) get a standalone approval for the delete alone, run it, confirm it worked;
+(2) THEN run the install as a separate command in a later step. Keep destructive
+ops and setup ops in SEPARATE turns.
+
 ### READ-ONLY FILESYSTEM — the real "disk full" cause (learned 2026-07-19)
 If `rm`/`touch` fail with **"Read-only file system"** on EVERY file (not
 permission denied), the root fs has been remounted read-only by the kernel
