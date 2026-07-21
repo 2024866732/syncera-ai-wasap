@@ -42,6 +42,33 @@ Redaction rule: never log the raw token. Use
 - `[8] exception in bridge: ... InvalidStatusCode ... HTTP 401` → token wrong/expired → check xiaozhi.me, rotate.
 - Process exits immediately with no `[2]` → endpoint rejected / MCP feature not enabled in console.
 
+### PRE-FLIGHT validation (run BEFORE load+run; never prints the value)
+```bash
+grep -q '^XIAOZHI_MCP_TOKEN=*** ~/hafjet-mcp-bridge/run.env && echo TOKEN_OK
+grep -q '^XIAOZHI_MCP_ENDPOINT=wss://' ~/hafjet-mcp-bridge/run.env && echo URL_OK
+```
+If neither matches → STOP, tell the user the EXACT line to write, do NOT load/run.
+
+### RECURRING FAILURE MODE (captured 2026-07-20 — 4x in one session!)
+User repeatedly wrote `run.env` with the **value only** (no `XIAOZHI_MCP_*=`
+prefix) — bare token or bare `wss://...?token=...` on line 1. Each attempt:
+```
+run.env: line 1: eyJhbG...E1ZA: command not found
+# or
+run.env: line 1: wss://api.xiaozhi.me/mcp/?token=eyJhbG...R3oA: No such file or directory
+```
+→ shell executes the token as a command, **splats a PARTIAL TOKEN into the
+terminal (LEAK)**, and the variable stays unset so the bridge logs
+`[8] startup failed: XIAOZHI_MCP_TOKEN / XIAOZHI_MCP_ENDPOINT not set`.
+**Required format** (flush `=`; no spaces before/after):
+```
+XIAOZHI_MCP_TOKEN=<token>
+# OR
+XIAOZHI_MCP_ENDPOINT=wss://api.xiaozhi.me/mcp/?token=<token>
+```
+If a token EVER appears in a terminal error, ROTATE it after the PoC. Do NOT
+auto-retry the run.
+
 ## 2. The `run.env` secret-injection pattern (Option B)
 Terminal is non-interactive — user cannot `export` during the agent session.
 

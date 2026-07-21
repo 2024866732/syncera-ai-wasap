@@ -10,13 +10,20 @@ author: HAFJET (M) SDN BHD
 Class of work: download, install deps for, and run/sandbox ML models from Hugging Face on HAFJET's on-prem PC Office worker. Trigger this when Tuan asks to test a TTS/LLM/STT/vision model, replace a paid API (Edge TTS, OpenAI), or benchmark a checkpoint before deploying.
 
 ## Target: hafjet-pc-office
-- Reachable ONLY via Tailscale SSH: `ssh hafizi145@100.121.94.41` (raw IP → MEDIUM security-scan approval every time; see `hafjet-command-safety`).
-- Confirmed profile (2026-07-20): Ubuntu, **4-core i3, 16GB RAM, NO GPU** (Intel iGPU only → CPU inference only), ~78G free on `/`.
+- Reachable via Tailscale SSH: `ssh hafizi145@100.121.94.41` (raw IP → MEDIUM security-scan approval every time; see `hafjet-command-safety`).
+- **Workflow rule:** Before giving manual "copy-paste this" instructions, always try SSH first. If Tuan says he has Tailscale access, that means you CAN SSH in.
+- Confirmed profile (2026-07-26): Ubuntu 26.04, **Intel i3-2100 (Sandy Bridge, 2011)**, 16GB RAM, **NO GPU** (Intel iGPU only → CPU inference only), ~78G free on `/`.
+- **CPU instruction set:** i3-2100 has AVX **but NOT AVX2/FMA/AVX-512**. Any ML framework compiled with `-mavx2` or higher **will crash with SIGILL** (exit 132). Always prefer ONNX Runtime when available instead of native PaddlePaddle/TensorFlow.
 - On-demand: may be asleep; first `ssh` wakes/probes it. If SSH times out, Tuan must power it on.
 - **NEVER format/delete the 320GB HDD (`/dev/sdb1`)** — customer docs live there.
 
-## Step 0 — Environment bootstrap (venv FAILS here)
-PC Office ships **Python 3.14.4 ONLY**, with **no `python3.14-venv`** and **no `uv`**. `python3 -m venv` fails: *"ensurepip is not available"*. `sudo` is blocked (same as Azure). Fix: user-install `uv` and pin Python 3.11 (torch ships wheels for 3.11; 3.14 often has none).
+## Pitfall: Python 3.14 venv + uv
+PC Office ships Python 3.14.4 ONLY, with **no python3-venv**. `sudo apt install` is blocked. Use `uv` user-install (already present at `~/.local/bin/uv`). Always use `--python 3.13` or `--python 3.11` for ML frameworks (PyTorch/paddlepaddle often have no 3.14 wheel):
+```bash
+uv python install 3.13
+uv venv --python 3.13 ~/ocr-env
+source ~/ocr-env/bin/activate
+```
 
 ```bash
 python3 -m pip install --user uv
@@ -48,5 +55,30 @@ This is a **Qwen3 causal LM that emits speech tokens**, decoded to 24kHz audio b
 - SCP/SSH to `100.121.94.41` triggers a MEDIUM approval each time (raw IP). Write scripts to `/tmp` locally, SCP them, then run remotely — never inline heredocs/pipe-to-python (see `hafjet-command-safety`).
 - For **commercial** TTS, prefer models with explicit Apache/MIT license (e.g. parler-tts) over unlicensed mesolitica checkpoints. Tuan currently uses Edge TTS Yasmin (ms-MY-YasminNeural) for production — keep that until a licensed self-hosted option is validated.
 
+## OCR Deployment (RapidOCR/ONNX)
+
+When Tuan asks for OCR on PC Office — **do NOT install PaddlePaddle**. The i3-2100 CPU lacks AVX2 → PaddlePaddle 3.x crashes with SIGILL. Use **RapidOCR** (PP-OCRv6 models via ONNX Runtime) instead:
+
+```bash
+# Fresh env, no PaddlePaddle
+uv venv ~/ocr-env --python 3.13
+source ~/ocr-env/bin/activate
+uv pip install rapidocr-onnxruntime pillow
+```
+
+Usage:
+```python
+from rapidocr_onnxruntime import RapidOCR
+engine = RapidOCR()
+result, elapse = engine('invois.jpg')
+for box, text, conf in result:
+    print(f'{text} ({conf:.0%})')
+```
+
+Performance on i3-2100: ~1.5s/image (detection 1.16s + recognition 0.32s). Malay support via PP-OCRv6 multilingual model (50 languages, no explicit Malay model needed — multilingual handles it).
+
+Full setup details in `references/ocr.md`.
+
 ## References
 - `references/malaysian-tts.md` — full run recipe, dependency list, speaker list, limitations, license status.
+- `references/ocr.md` — RapidOCR setup, PaddlePaddle crash workaround, test results.

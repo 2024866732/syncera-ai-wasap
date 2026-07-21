@@ -15,7 +15,7 @@ metadata:
 
 ## Overview
 
-This skill documents the locked deployment strategy for HAFJET WhatsApp Bot v2.1.
+Deployment strategy for HAFJET WhatsApp Bot v2.1. Pre-commit rule: see `references/pre-commit-review-rule.md`.
 
 ## ⚠️ Deployment Method Pitfall (Jul 2026)
 

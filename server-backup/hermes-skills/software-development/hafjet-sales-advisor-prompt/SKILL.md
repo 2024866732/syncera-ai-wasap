@@ -9,6 +9,8 @@ description: Use when updating or redesigning the HAFJET WhatsApp bot system pro
 - Tuan Hafizi wants to change the bot's persona / system prompt
 - Adding AI Memory (conversation history), Power Question, or segmented follow-up
 - Adapting external prompt templates (e.g. Reply.la) into HAFJET's `system_prompt.txt`
+- Implementing or extending AI Knowledge items (FTS5 RAG store for product catalog/reference)
+- Adding CRUD API or search for catalog data
 
 ## Grounding source (NotebookLM)
 Tuan keeps the authoritative Reply.la webinar material in NotebookLM:
@@ -19,8 +21,67 @@ Verify with `notebooklm use a7416353 && notebooklm metadata`, then `notebooklm a
 The verified Reply.la prompt structure is captured in `references/reply-la-structure.md` — reuse it
 when rewriting `system_prompt.txt` so the bot stays aligned with the webinar spec.
 
+## Phase 2 — Full module architecture (Jul 2026)
+Tuan explored ALL 14 Reply.la modules directly from his dashboard. The complete spec —
+data models, field structures, gap analysis, and proposed HAFJET clone tables — is in
+`references/reply-la-full-architecture.md`. **Load this file before designing Phase 2 AI Training
+implementation.** Key shift: HAFJET will move from manual `system_prompt.txt` to an auto-compiled
+prompt builder that reads from structured tables.
+
+### 14 modules (spec complete)
+**Prompt Builder (8 modules):** Business Info, Language & Style, Closing Flow, FAQs, Constraints,
+Custom Instruction, AI Knowledge (RAG — **REVISED Jul 2026: full hybrid RAG via Ubuntu PC Office microservice (16GB RAM, Tailscale), NOT FTS5-only on Azure**, see `references/reply-la-full-architecture.md`), AI Memory
+(27 structured customer profile fields vs HAFJET's 8-message rolling chat history).
+
+**Automation Engine (3 sub-modules under AI Actions):** Auto Label (LLM classify → auto-tag),
+Auto Follow Up (delayed scheduler + WhatsApp 24h rule — HAFJET must handle template fallback),
+Human Takeover (AI detect → notify admin + pause bot — upgrade from HAFJET's manual escalation).
+
+**External Integrations:** AI Tools (function-calling — P3 defer, needs model that supports tool use).
+
+**Quality Control:** AI Checker (verify-then-send, double LLM call — P3 defer, too costly for free tier),
+AI Feedback (uncertain query review system — patch plan proposed in `references/reply-la-full-architecture.md`).
+
+**Testing:** AI Playground (sandbox test panel — patch plan proposed, in-memory session isolation pattern).
+
+**Global Settings:** General Settings (reply delay, message limit, welcome message, owner controls),
+AI Settings (status, memory length, creativity, training mode, strict mode, media support).
+
+### Functional gaps (priority order, updated Jul 2026)
+1. AI Knowledge hybrid RAG (FTS5 ✅ done; FAISS vector upgrade still deferred to Ubuntu PC Office microservice)
+2. AI Memory (27 structured profile fields vs 8-msg rolling chat history — next Sprint B task)
+3. Keyword Rules v2 (multi-step sequence + labels — Sprint B Phase 3)
+4. Auto Follow Up (HAFJET has SPX reminder scheduler but NOT sales follow-up; needs 24h WhatsApp rule)
+5. AI Playground (sandbox test panel)
+
 ## Architecture facts (HAFJET)
-- System prompt lives in `system_prompt.txt` (read by `hermes_ai.py` at startup via `safe_read_text`)
+
+### Phase 2A — Prompt Builder (Jul 2026, implemented)
+HAFJET has moved from manual `system_prompt.txt` to an **auto-compiled prompt builder** that reads from 4 structured SQLite tables. See `references/phase-2a-prompt-builder.md` for full implementation details (schema, seed data, compile function, integration pattern).
+
+### Phase 2B — AI Knowledge Items (Jul 2026, implemented)
+HAFJET now has a lightweight FTS5-based RAG store for product catalog and reference data.
+See `references/phase-2b-ai-knowledge-items.md` for complete implementation details:
+
+- `ai_knowledge_items` table + `ai_knowledge_fts` (FTS5 virtual table with sync triggers)
+- 7 CRUD functions in `db_logger.py` (add/get/list/update/delete/search + prompt integration)
+- 6 JWT-protected API endpoints in `webhook_listener.py`
+- 4 seed items (price catalog, repair pricing, ordering guide, installment terms)
+- FTS5 MATCH primary retrieval → LIKE fallback → graceful omission on total failure
+- Section 7 in `build_full_system_prompt()` injects top-3 FTS5 matches
+
+**Key constraint:** FTS5-only for now on Azure 1GB. Hybrid RAG (FTS5 + FAISS) is deferred to a separate microservice on the Ubuntu PC Office (16GB RAM) when Tuan approves.
+
+### Prompt Builder Architecture (shared by Phase 2A + 2B)
+- `build_full_system_prompt()` in `db_logger.py` — compiles from `ai_config`, `ai_business_info`, `closing_flow_steps`, `ai_faqs` into 6 sections + section 7 (ai_knowledge_items FTS5)
+- `build_soul_context()` in `hermes_ai.py` — runtime wrapper that calls `build_full_system_prompt()` on each AI call, falls back to static `SOUL_CONTEXT` on DB failure
+- `build_soul_context()` in `hermes_ai.py` — runtime wrapper that calls `build_full_system_prompt()` on each AI call, falls back to static `SOUL_CONTEXT` on DB failure
+- `ask_openrouter()` now calls `build_soul_context()` at runtime (not module-level `SOUL_CONTEXT`)
+- `system_prompt.txt` is now a **FALLBACK only** — used when DB tables are empty or `build_full_system_prompt()` raises. File is NOT deleted.
+- Tables created in `init_db()` with `CREATE TABLE IF NOT EXISTS` + seed-if-empty pattern (non-destructive)
+
+### Legacy architecture (pre-Phase 2A)
+- System prompt was read from `system_prompt.txt` at module load time via `safe_read_text`
 - `SOUL_CONTEXT` = system_prompt + business_info + extra rules, injected as `role: system`
 - `ask_hermes(message, wa_name, phone=None)` → `ask_openrouter(...)` calls OpenRouter (nemotron)
 - `webhook_listener.py: generate_reply(message, sender_name, sender_number)` calls `ask_hermes` via `run_in_executor`
@@ -38,11 +99,14 @@ when rewriting `system_prompt.txt` so the bot stays aligned with the webinar spe
 
 ## Pitfalls
 - `run_in_executor` passes positional args — order matters: `(ask_hermes, message, sender_name, sender_number)`
+- `run_in_executor` does NOT support `**kwargs`. Use `lambda: func(id, **data)` when the endpoint needs to pass dynamic dict fields to a `**kwargs` function.
 - `_query_customer` is SYNC (wraps `_get_db`) — safe to call from the executor thread inside `ask_hermes`
 - Memory block should be EMPTY for brand-new customers so Power Question triggers
 - Keep guardrails: no fake promo, no final price without inspection, location = Raub Pahang (never Shah Alam), number = +60 16-980 8736
 - Pyright may flag pre-existing `str | None` errors elsewhere — ignore unless on lines you touched
 - **Segmented follow-up (Cold/Interested/Hot/Very Hot) is NOT auto-triggered** — the prompt mentions the concept but there is no scheduler/blast worker in the bot. Treat as a separate future feature, not part of the prompt-integration task.
+- **Phase 2A pitfall — `safe_read_text` accidental deletion:** When patching `hermes_ai.py` to add `build_soul_context()`, the existing `safe_read_text()` function (used by `SYSTEM_PROMPT` and `BUSINESS_INFO` module-level assignments) can be accidentally overwritten. Always verify `safe_read_text` still exists after patching — `SYSTEM_PROMPT = safe_read_text(SYSTEM_PROMPT_PATH, DEFAULT_SYSTEM_PROMPT)` depends on it.
+- **Phase 2A pitfall — runtime vs module-level:** `SOUL_CONTEXT` is built at module load time. `build_soul_context()` must be called inside `ask_openrouter()` at runtime (per-message) so prompt edits via DB take effect without app restart. Do NOT replace `SOUL_CONTEXT` with a one-time `build_soul_context()` call at module level.
 
 ## Verification
 - Syntax: `python3 -m py_compile hermes_ai.py webhook_listener.py`

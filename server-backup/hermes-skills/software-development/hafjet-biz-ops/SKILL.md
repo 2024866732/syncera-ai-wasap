@@ -65,15 +65,16 @@ Gunakan skill ini bila tugasan melibatkan operasi kedai HAFJET, termasuk jualan 
 
 ### cron.pickup-reminder
 - Cari ticket ready-pickup (Status == SIAP) dalam Google Sheet.
-- **Pre-flight check (SOP — belum diimplementasi dalam script):**
-  SOP kata: Hantar satu message test ke OWNER_PHONE sebelum batch send. Kalau dapat
-  HTTP 400 (code 100, subcode 33), hentikan batch serta-merta.
-  **Realiti:** Script `scripts/hafjet_pickup_reminder.py` TIDAK lakukan pre-flight check.
-  Ia terus batch-send, dan setiap message individual gagal dengan HTTP 400. Owner summary
-  juga gagal sebab credential sama. Script perlu diupdated untuk:
-  1. Test credential dulu dengan satu message ke OWNER_PHONE.
-  2. Jika gagal (code 100, subcode 33), abort terus — jangan spam API dengan 621 calls.
-  3. Jika OK, baru proceed batch send.
+- **Pre-flight check (dah diimplementasi dalam script v2):**
+  Script `scripts/hafjet_pickup_reminder.py` sekarang buat GET request ke
+  `https://graph.facebook.com/v21.0/{PHONE_ID}` untuk validate credential SEBELUM
+  batch send. Kalau dapat HTTP 400 (code 100, subcode 33), abort terus dengan exit code 1.
+  Owner summary pun tak sempat dihantar — jimat API call.
+  **Cara ia berfungsi:**
+  1. Selepas filter pending rows, script buat GET request ke Graph API untuk Phone ID.
+  2. Jika balas 200 OK → credential sah, proceed batch send.
+  3. Jika balas 400 + subcode 33 → abort dengan mesej jelas + recovery steps.
+  4. Jika error lain → print warning, proceed anyway (mungkin rate limit dll).
 - **Semak pending count dulu** — kalau > 50, script akan timeout (≈120s untuk ~230 entries).
   Guna DRY_RUN=1 untuk lihat count tanpa send. Kalau > 100, jalankan secara berperingkat
   atau minta Tuan cleanup data lama dulu.
@@ -133,9 +134,12 @@ print(result['values'][0])  # actual headers
 ```
 
 ### Check WhatsApp API credentials before batch-sending
-The Phone Number ID and access token can expire or become invalid. The script does NOT
-perform a pre-flight check — it tries every message and each one fails with HTTP 400.
-**Always test manually first before any batch run:**
+The Phone Number ID and access token can expire or become invalid. **As of script v2,
+the script now performs an automatic pre-flight check** via GET request to the Graph API
+Phone ID endpoint before any batch send. If the credential is invalid (code 100, subcode 33),
+it aborts immediately with exit code 1.
+
+Manual test still useful for debugging:
 
 ```bash
 curl -s -X POST "https://graph.facebook.com/v21.0/${PHONE_ID}/messages" \
@@ -293,10 +297,9 @@ Google Sheet below, NOT the bot DB.
   ```bash
   python3 /home/hafizi145/run_pickup_reminder.py
   ```
-- **Pre-flight check gap:** SOP says to test credential before batch, but script does NOT
-  implement this. When Phone ID is stale (code:100, subcode:33), the script sends all 621
-  messages and they all fail with HTTP 400. The owner summary also fails because it uses
-  the same broken credential. This wastes API calls and time (~300s for full batch).
+- **Pre-flight check (implemented in script v2):** Script now runs GET `/v21.0/{PHONE_ID}` to
+  validate credential before any batch send. Aborts with exit code 1 on code 100/subcode 33.
+  No more wasted 621 API calls on dead credentials.
 - 24h window: Meta error 470 → log + skip (template message needed later).
 - `DRY_RUN=1` = read + print, send nothing. Script: `scripts/hafjet_pickup_reminder.py`.
 

@@ -15,6 +15,8 @@ Status filter value (override if different):
 
 Behaviour:
   - Filter STATUS == value -> pending pickup
+  - Pre-flight: GET /v21.0/{PHONE_ID} to validate WhatsApp credential before batch send
+    (aborts immediately on code 100 / subcode 33 — no wasted API calls)
   - Send free-form WhatsApp text to CUSTOMER (NO_PHONE), NOT owner
   - On WhatsApp error 470 (24h window), log + skip (template needed later)
   - DRY_RUN=1 -> read + print only, NO WhatsApp send (safe test)
@@ -91,6 +93,34 @@ def send_whatsapp(to: str, text: str):
         return json.loads(r.read().decode())
 
 
+def preflight_check():
+    """Validate WhatsApp credential via GET /v21.0/{PHONE_ID}.
+    Aborts with code 1 if credential is invalid (code 100 / subcode 33).
+    Prints warning and continues for non-credential errors.
+    Returns True if credential OK, False on non-fatal errors."""
+    url = f"https://graph.facebook.com/v21.0/{PHONE_ID}"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {TOKEN}"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            info = json.loads(r.read().decode())
+            display = info.get("display_phone_number", info.get("id", "?"))
+            print(f"  ✅ Credential OK — Phone ID: {display}")
+            return True
+    except urllib.error.HTTPError as e:
+        err = e.read().decode()
+        if '"code": 100' in err and '"error_subcode": 33' in err:
+            print(f"  ❌ ABORT: WhatsApp credential invalid (Phone ID or token).")
+            print(f"  → Tuan: Update WHATSAPP_PHONE_ID in ~/.hermes/.env from")
+            print(f"           Meta Business -> WhatsApp -> API Setup")
+            sys.exit(1)
+        else:
+            print(f"  ⚠️ Pre-flight failed (HTTP {e.code}) — proceeding: {err[:120]}")
+            return False
+    except Exception as e:
+        print(f"  ⚠️ Pre-flight error — proceeding anyway: {e}")
+        return False
+
+
 def main():
     print(f"🔧 Tab='{TAB}' | Status filter='{READY_VALUE}' | DRY_RUN={DRY_RUN}")
 
@@ -112,6 +142,11 @@ def main():
     # 3. Filter
     pending = [d for d in data if (d.get(STATUS_COL) or "").strip().upper() == READY_VALUE]
     print(f"📋 Total rows: {len(data)} | Pending pickup ('{READY_VALUE}'): {len(pending)}")
+
+    # Pre-flight: validate WhatsApp credential before batch send
+    if not DRY_RUN and pending:
+        print("🔍 Pre-flight: checking WhatsApp credential...")
+        preflight_check()
 
     sent = 0
     failed = []

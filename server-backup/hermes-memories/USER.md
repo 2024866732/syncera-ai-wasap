@@ -8,6 +8,6 @@ Specs: exact JSON schemas + matching message strings (no extra periods). Wants t
 §
 NotebookLM: Tuan guna aktif sbg rujukan — jangka Hermes ground dari notebooks (cth 'WhatsApp AI Chatbot Kickstart Webinar Guide'). Server ada .venv-notebooklm + storage_state.json valid (2026-07-16); try `notebooklm list` dulu sebelum minta cookies laptop.
 §
-Verification report preference: lepas commit, mahukan laporan berstruktur — commit hash, msg, exact files included + explicitly excluded/unstaged, static check by category (inbound reply path / dashboard-inbox / env-runtime settings), & risks/not-runtime-tested. Commit-only bila diminta; jangan deploy tanpa arahan eksplisit.
+Wants structured verification report pre-deploy: branch, commit, diff, files, risks. Only commit when asked; never deploy without explicit cmd. Prefers version-controlled startup (start.sh in repo) over hidden Azure config. Git must be traceable (branch, commit, clean tree) before deploy.
 §
 TTS: Edge TTS Yasmin (ms-MY-YasminNeural) daily use. ElevenLabs Rachel when trial active. Malay voices only — dislikes robotic TTS for Malay.

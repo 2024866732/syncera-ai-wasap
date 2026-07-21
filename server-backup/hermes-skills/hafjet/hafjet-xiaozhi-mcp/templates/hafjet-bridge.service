@@ -1,0 +1,19 @@
+[Unit]
+Description=HAFJET Hermes MCP Bridge (XiaoZhi official)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hafizi145/hafjet-mcp-bridge
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/home/hafizi145/hafjet-mcp-bridge/run.env
+ExecStart=/home/hafizi145/hafjet-mcp-bridge/.venv/bin/python /home/hafizi145/hafjet-mcp-bridge/hafjet_bridge.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

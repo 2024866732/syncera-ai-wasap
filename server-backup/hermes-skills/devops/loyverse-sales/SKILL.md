@@ -117,13 +117,41 @@ today_receipts = [r for r in receipts if r.get("created_at", "").startswith(targ
 
 The `created_at` field format is ISO 8601: `2026-06-25T14:15:05.000Z`
 
+## Pagination Stability Invariants (I1–I5) 🔒
+
+For live Loyverse receipts pagination — daily, weekly, monthly, or any custom range — apply these invariants so traversal stays stable on data that is still being written. Proven in the HAFJET MCP bridge (`hafjet-mcp-bridge/hafjet_bridge.py`): `_fetch_loyverse_today` (I1–I4), `_fetch_loyverse_weekly` (I1–I5), and `_fetch_all_items` (I1, I4, I5) reuse the same loop shape.
+
+> **One-liner:** Freeze the upper bound once, keep filters constant across cursor pages, compare full MYT datetimes for range guards, optionally deduplicate by immutable receipt identifier, and warn on runaway page loops.
+
+| # | Invariant | Why |
+|---|-----------|-----|
+| **I1** | **Cursor reuse** — pages after the first reuse the SAME `created_at.gte` / `created_at.lte` / `limit`; append `cursor` only (never re-derive or mutate filters per page) | Stable traversal; no filter drift mid-loop (cursor is opaque, not derived from `created_at`/`id`) |
+| **I2** | **Frozen upper bound** — compute `lte` (= now) ONCE at entry; the loop never re-reads the clock | Snapshot bounded to a single time horizon even if new receipts arrive mid-loop |
+| **I3** | **Full-MYT datetime guard** — compare `datetime` objects (`gte_dt ≤ ca_dt ≤ lte_dt`), not `str.startswith(date)` | No boundary mis-inclusion on strict audit; `created_at` is ISO 8601 UTC (`...Z`), convert to MYT before compare |
+| **I4** | **Optional dedup** — `seen = set(r.get("id") or r.get("receipt_number"))`; skip duplicates | Hardens against cursor drift / retry overlap; prefer immutable `id`, fall back to `receipt_number` |
+| **I5** | **Runaway brake** — `if page > 50: break + log WARNING` | Operational signal (not just stop): flags unexpected volume or cursor-loop bug while the tool still "succeeds" |
+
+### Partial semantics (must be explicit)
+- **402 + rows > 0** → *success partial* (still useful, non-fatal → natural TTS "setakat data…")
+- **402 + rows == 0** → *hard error* (31-day window exhausted)
+- **400 / 401 / 403** → *hard error* (bad request / auth / forbidden)
+
+### Cursor pagination contract
+```
+url = f"{BASE}/receipts?limit=50&created_at.gte={gte}&created_at.lte={lte}"
+if cursor:
+    url += f"&cursor={cursor}"   # raw — NEVER url-encode
+```
+Loop: request → append filtered rows → take `cursor` → continue. Treat `cursor` as a continuation token supplied by the API.
+
 ## API Details
 
 - Base URL: `https://api.loyverse.com/v1.0`
 - Auth: Bearer token in `Authorization` header
 - Pagination: cursor-based (use `cursor` from response)
 - Rate limit: HTTP 402 when requesting receipts older than 31 days (requires Unlimited Sales History subscription)
-- Page size: 10 (API max)
+- **Items API** (supplementary): `GET /v1.0/items` — same auth, same cursor-pagination (I1–I5), limit=50. See `references/loyverse-items-api.md`.
+- Page size: default=50, max=50; 10 recommended for reliability (values &gt;50 return HTTP 402)
 
 ## Output Format
 
@@ -264,7 +292,7 @@ Expected success response includes `"ok":true` and `message_id`.
 For consolidated month-end reports (e.g. "Laporan Jun 2026"):
 
 1. Set date range from **1st of month** to **last day of month** in MYT
-2. Use `created_at.min` with the 1st's midnight ISO timestamp
+2. Use `created_at.gte` (and `created_at.lte`) with the 1st's midnight ISO timestamp
 3. Filter client-side by prefix: `if r.get("created_at", "").startswith("2026-06")`
 4. Aggregate totals and profit across all receipts
 5. Save to `~/.hermes/reports/sales_YYYY-MM.csv`
@@ -414,6 +442,7 @@ The tracker reports the PREVIOUS month, never the current in-progress month.
 | `references/rollover-note.md` | Documents the 31-day API rollover quirk and why monthly totals shift between queries |
 | `references/security-patterns.md` | Security patterns: forbidden `curl \| python3 -c`, safe alternatives |
 | `references/gaji-profit-tracker.md` | Gaji vs Profit / hire-readiness tracker: calculation chain, the >31-day data-integrity guard, and as-of status |
+| `references/loyverse-items-api.md` | Loyverse Items/Inventory API (supplementary to receipts): endpoint, data model, pagination (50+ pages), voice-query matching, low-stock filter, performance caching |
 
 ## Cron Job Setup (Daily Digest)
 
@@ -542,6 +571,7 @@ Save as `/tmp/loyverse_test.py` and run with `python3 /tmp/loyverse_test.py`.
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Report shows wildly wrong total (e.g. RM4,708 instead of RM65) | Server-side date filter ignored | Ensure client-side filtering is in place (see Critical Pitfall) |
+| HTTP 400 | Bad request — wrong param name or datetime format | Use `created_at.gte`/`created_at.lte` (dot notation) with ISO 8601 offset (`+08:00` or `Z`); not `created_at_min`/`created_at_max` |
 | HTTP 401 | Invalid/expired token | Update `LOYVERSE_ACCESS_TOKEN` in `~/.hermes/.env` |
 | HTTP 402 | Receipt older than 31 days | Expected — stop pagination, what you have is fine |
 | "Tiada transaksi" but dashboard shows sales | Timezone mismatch or filter bug | Check `created_at` dates in raw API response |

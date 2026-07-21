@@ -81,7 +81,9 @@ Single tool `hafjet_status`:
   on `~/.hermes/state.db` (count sessions).
 - returns a short **Malay** string (device speaks it with natural xiaozhi TTS).
 - no network call to Hermes yet (proves the MCP link works end-to-end).
-- Phase 2: enable Hermes API server (localhost:8642) to call real Hermes tools.
+- Phase 1.5 (actual): built Loyverse tools (`hafjet_sales`, `hafjet_sales_weekly`, `hafjet_sales_monthly`)
+  directly in the bridge via stdlib-only `urllib` — no Hermes API dependency.
+  See loyverse-sales skill for the I1–I5 pagination invariants.
 
 Skeleton: `templates/hafjet_bridge.py`. Research notes:
 `references/xiaozhi-mcp-endpoint.md`.
@@ -124,6 +126,32 @@ Expected normal log tail when the device asks "apa status Hermes?":
 On token/auth failure the bridge logs `[8] exception in bridge: ... HTTP 401`
 (or `SystemExit` if `XIAOZHI_MCP_TOKEN`/`XIAOZHI_MCP_ENDPOINT` unset).
 
+## `run.env` pre-flight validation (ALWAYS do before load+run)
+The user writes the token himself (agent NEVER writes/dumps/prints it). Before
+the `set -a; . ...; set +a; python3 ...` step, run a SAFE prefix-only check that
+does NOT print the token value:
+```bash
+# Validate prefix format WITHOUT printing the secret value:
+grep -q '^XIAOZHI_MCP_TOKEN=*** ~/hafjet-mcp-bridge/run.env && echo TOKEN_OK
+grep -q '^XIAOZHI_MCP_ENDPOINT=wss://' ~/hafjet-mcp-bridge/run.env && echo URL_OK
+```
+If neither matches, STOP and tell the user the exact required format — do NOT
+load/run (the bridge will SystemExit anyway, but the *shell* will first splat a
+partial token into the terminal via `command not found`, leaking it).
+
+### RECURRING FAILURE MODE (seen 4× in one session — capture it!)
+The user kept writing `run.env` with the **value only**, e.g. a bare
+`eyJhbG...E1ZA` or a bare `wss://api.xiaozhi.me/mcp/?token=...` on line 1, with
+NO `XIAOZHI_MCP_TOKEN=` / `XIAOZHI_MCP_ENDPOINT=` prefix. Each time the shell
+treated the token as a command and printed a partial token in the error:
+- `run.env: line 1: eyJhbG...E1ZA: command not found`
+- `run.env: line 1: wss://api.xiaozhi.me/mcp/?token=eyJhbG...R3oA: No such file or directory`
+The bridge then logged `[8] startup failed: XIAOZHI_MCP_TOKEN / XIAOZHI_MCP_ENDPOINT not set`
+because the variable was never set. **Tell the user the EXACT line to write**
+(`XIAOZHI_MCP_TOKEN=<token>` OR `XIAOZHI_MCP_ENDPOINT=wss://...`), and that `=`
+must be flush (no spaces). Also warn: a token that ever appears in a terminal
+error is LEAKED — rotate it after the PoC.
+
 ## Secret injection: the `run.env` pattern (Option B)
 The bridge needs `XIAOZHI_MCP_TOKEN` in env. The agent's terminal is
 **non-interactive**, so the user cannot `export` mid-session. Settled flow:
@@ -133,12 +161,35 @@ The bridge needs `XIAOZHI_MCP_TOKEN` in env. The agent's terminal is
 2. Agent confirms file exists (safe check, no content read):
    `test -f ~/hafjet-mcp-bridge/run.env && echo OK || echo MISSING`
    If MISSING → STOP, do not load/run, wait for user.
-3. Load + run in one shell:
-   `set -a; . ~/hafjet-mcp-bridge/run.env; set +a; python3 /tmp/hafjet_bridge.py`
+3. Load + run in one shell (artifact lives in the venv dir, NOT /tmp —
+   `/tmp` is cleared on reboot, so relocate first if it is still there:
+   `mv /tmp/hafjet_bridge.py ~/hafjet-mcp-bridge/hafjet_bridge.py`):
+   `set -a; . ~/hafjet-mcp-bridge/run.env; set +a; python3 ~/hafjet-mcp-bridge/hafjet_bridge.py`
 4. Foreground only (no background, no `nohup`). `Ctrl+C` = clean stop.
 Alternative options considered: (A) paste token in chat as a CLI arg
 (leaks in chat log + process args — reject; rotate if ever used), (C) user runs
 the command himself on the VM. Option B chosen as the safe default.
+
+## Adding a second tool — the `hafjet_sales` (Loyverse) pattern
+Once the bridge runs as a service, Tuan approved adding a **second tool**
+(2026-07-20). General recipe for ANY extra tool:
+1. **Design mode first.** Present the revised design for review BEFORE editing
+   code (Tuan's standing rule — observability > speed, and review-before-build
+   applies to every tool, not just the bridge).
+2. `list_tools`: append a `types.Tool(...)` entry. `call_tool`: add an
+   `elif name == "hafjet_sales": result = await hafjet_sales(arguments)` branch.
+3. Keep the 8-point logging; add a `[4]` note that N tools are advertised.
+4. Every tool handler returns `make_tool_result(text, is_error=...)` — NEVER
+   raises into `app.run`. Hard failures → `isError=True` (bridge stays up).
+5. Separate **technical log** (journal) from **TTS text** (spoken). No token /
+   stack trace in TTS text.
+
+Full approved spec + corrected code + bug post-mortem (including the HTTP 400
+param-name fix, limit=50 correction, `+08:00` date format, 402 partial-semantics
+fix, and the I1–I5 pagination invariants): `references/hafjet_sales-tool-pattern.md`.
+As of 2026-07-21 the bridge runs 4 tools (`hafjet_status`, `hafjet_sales`,
+`hafjet_sales_weekly`, `hafjet_sales_monthly`), all fixes applied, systemd
+user service active.
 
 ## Pitfalls
 - **Server role, not client.** The bridge registers tools FOR xiaozhi → it is
@@ -154,11 +205,73 @@ the command himself on the VM. Option B chosen as the safe default.
 - **Don't self-host just to "link"** — the official endpoint already enables
   MCP tools. Keep the device on the official server unless Tuan explicitly
   says otherwise; self-hosting loses xiaozhi.me's natural Malay voice.
+- **`run.env` MUST have a variable prefix** (`XIAOZHI_MCP_TOKEN=` or
+  `XIAOZHI_MCP_ENDPOINT=`). A bare value on line 1 makes the shell run it as a
+  command → `command not found` / `No such file or directory`, which **splats a
+  partial token into the terminal (leak!)** and leaves the var unset so the
+  bridge SystemExits. Seen 4× in one session. Always pre-flight with the
+  `grep -q '^XIAOZHI_MCP_...='` check (see "run.env pre-flight validation").
+  Tell the user the exact line to write; if a token ever shows in a terminal
+  error, rotate it after the PoC.
 - **Phased approval workflow (Tuan's standing rule for this skill).** Build as a
   *design artifact first*: skeleton → review → patch small fixes → install+verify
   (separate approval) → write real main loop → review → only THEN run (separate
   approval). Never run, never connect, never set env, never write `.env` during
   design phase. A BLOCKED command = stop, don't retry/rephrase.
+
+## Make it a systemd user service (after the bridge is proven)
+Once the foreground PoC passes, Tuan chose (2026-07-20) to run it as a
+`systemd --user` service so it auto-restarts and survives reboot.
+
+**Why a USER service, not system:** no root needed, token stays in `run.env`,
+and it never touches the production Hermes gateway. The bridge is a separate
+process from the gateway — enabling/restarting it does NOT restart Hermes.
+
+**Unit file** (copy `templates/hafjet-bridge.service`; paths are absolute):
+```ini
+[Unit]
+Description=HAFJET Hermes MCP Bridge (XiaoZhi official)
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+WorkingDirectory=/home/hafizi145/hafjet-mcp-bridge
+EnvironmentFile=/home/hafizi145/hafjet-mcp-bridge/run.env
+ExecStart=/home/hafizi145/hafjet-mcp-bridge/.venv/bin/python /home/hafizi145/hafjet-mcp-bridge/hafjet_bridge.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+[Install]
+WantedBy=default.target
+```
+Place at `~/.config/systemd/user/hafjet-bridge.service`. Then:
+```bash
+systemctl --user daemon-reload
+systemctl --user enable hafjet-bridge      # auto-start on boot
+systemctl --user start  hafjet-bridge
+systemctl --user status hafjet-bridge
+journalctl --user -u hafjet-bridge -f       # live 8-point logs
+```
+**Verify survival after reboot:**
+```bash
+loginctl enable-linger hafizi145            # user service runs without a login session
+# reboot, then:
+systemctl --user status hafjet-bridge       # expect: active (running)
+journalctl --user -u hafjet-bridge -b       # expect [2] connected, [4] tool ready
+pgrep -f hafjet_bridge.py                    # process alive
+```
+Pitfalls:
+- **Relocate from `/tmp` FIRST** — the unit points at
+  `~/hafjet-mcp-bridge/hafjet_bridge.py`; if the file is still in `/tmp` it
+  vanishes on reboot and the service fails. (Done in step 3 of the secret
+  injection flow above.)
+- **Token in `EnvironmentFile`, never inline `Environment=`** — keeps the secret
+  out of the unit file and `systemctl show` output.
+- **Restart loop risk:** `Restart=on-failure` will spin if the token is wrong.
+  Since the token is pre-validated by the PoC, this is low risk; switch to
+  `Restart=no` for the first week if you want to watch it manually.
+- **Disk 92%:** the unit file is ~1KB; no disk concern.
 
 ## xiaozhi.me UI steps (Tuan does; agent never touches the console)
 1. Login xiaozhi.me → agent that is bound to the seller token.
@@ -175,3 +288,5 @@ the command himself on the VM. Option B chosen as the safe default.
 - `references/xiaozhi-mcp-endpoint.md` — endpoint format, server/client role, docs findings, UI steps.
 - `references/observability-and-runenv-patterns.md` — the 8-point logging layout, expected/failure log signatures, and the `run.env` secret-injection flow (Option B).
 - `templates/hafjet_bridge.py` — Phase-1 working file (server role, `hafjet_status`, `make_tool_result`, and all 8 audit log points already built in).
+- `templates/hafjet-bridge.service` — systemd `--user` unit (auto-restart + survive reboot; token via `EnvironmentFile`).
+- `references/hafjet_sales-tool-pattern.md` — second-tool pattern: approved Loyverse spec (created_at_min/max, limit=250, cursor pagination, MYT tz), the corrected ISO-400 fix, and the honest error-classification fix.

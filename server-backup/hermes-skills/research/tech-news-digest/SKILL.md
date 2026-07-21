@@ -2,7 +2,7 @@
 name: tech-news-digest
 description: Produce structured technology and AI news digest reports in Malay with Kelantan dialect. Covers web searching, article extraction, GitHub trending, and formatted delivery for solo founder/director consumption.
 trigger: top technology news, AI news roundup, open source AI digest, GitHub trending, tech digest, weekly tech report, AI industry news summary, tech news this week
-version: 4
+version: 5
 ---
 
 # Tech News & AI Digest
@@ -32,9 +32,9 @@ Add a 4th query if a specific variant is requested. Run all searches in a single
 
 ### 2. Extract Details from Best Results (3-5 URLs)
 
-**Skip `web_extract` entirely.** In this environment web_extract always fails (DuckDuckGo ddgs is a search-only backend). Go directly to terminal/browser extraction.
+**First — consider Deep Search instead.** When you only need digest-level detail (snippets, dates, headline facts), running 4-6 targeted `web_search` queries per story is faster, lighter, and cron-safe — no extraction tooling needed at all. See `references/deep-search-fallback.md` for the full pattern. Reserve extraction for when you need exact quotes, benchmark numbers, or full paragraphs.
 
-**First step — site type detection (sniff before you commit):**
+**If you do need full extraction — site type detection (sniff before you commit):**
 
 Whether you use terminal (`curl`) or browser, first do a quick sniff to determine if the site is static HTML or JS-rendered:
 
@@ -92,7 +92,13 @@ Structure with clear sections (adapt section names per request):
 
 **Root cause:** Hermes sessions configured with `web_extract_backend=ddgs` cannot fetch article text. This is a hard limitation, not transient.
 
-**Fix immediately:** Switch to browser fallback. Do NOT retry web_extract in a loop. See `references/web-extract-browser-fallback.md` for the extraction sequence.
+**Fix immediately:** Choose one of two fallbacks (prefer the lighter one first):
+
+1. **Deep Search fallback (lightest — cron-safe, zero extraction)** — Run 4-6 targeted web_search queries instead of extracting pages. Search snippets from multiple sources converge into reliable composites. See `references/deep-search-fallback.md` for the full pattern. Prefer this when speed and simplicity matter.
+
+2. **Browser fallback (full extraction)** — Use browser_navigate + browser_snapshot or browser_console. Heavier but gives full article text. See `references/web-extract-browser-fallback.md` for the extraction sequence.
+
+Do NOT retry web_extract in a loop — it will keep failing identically.
 
 Browser fallback summary:
 ```
@@ -227,6 +233,7 @@ terminal('python3 /tmp/extract.py /tmp/page1.html /tmp/page2.html')
 
 ## Pitfall: Terminal Security Scanner Blocks Inline Python
 
+- `references/deep-search-fallback.md` — Lightweight alternative to full article extraction: run targeted web_search queries per story and triangulate facts from multiple source snippets. Preferred when speed matters over verbatim depth.
 - `references/web-extract-browser-fallback.md` — Step-by-step browser extraction sequence when web_extract fails on ddgs backend
 - `references/news-sources.md` — Reliable tech news sources ranked by extractability (which sites work well with browser fallback)
 - `references/terminal-inline-python-workaround.md` — Workaround for Tirith security scanner blocking `python3 -c` and `curl | python3` patterns; use pre-write-to-file-then-execute pattern
