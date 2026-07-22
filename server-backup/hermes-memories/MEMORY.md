@@ -6,7 +6,7 @@ External API defense: never trust resp.json() alone — use _safe_json() returni
 §
 AI licensing: commercial-use clearance needed before customer-facing; cc-by-nc/unlicensed avoided for business. mesolitica TTS approved 2026-07-20 (personal only).
 §
-PC Office (100.121.94.41 TS): i3-2100(no AVX2),16GB,Ubuntu26.04,Python3.14+uv. OCR via RapidOCR/ONNX (~/ocr-env, Python3.13). TTS=huggingface-tts-deploy.
+PC Office (100.121.94.41 TS): i3-2100,16GB,Ubuntu26.04,Python3.14+uv. Skins: OCR via RapidOCR (~/ocr-env), STT via faster-whisper (~/whisper-env), TTS via huggingface-tts-deploy.
 §
 XiaoZhi MCP: Hermes=SERVER. wss://api.xiaozhi.me/mcp/ (official). ~/hafjet-mcp-bridge/, systemd user service. Device on xiaozhi.me. Token leaked→rotate before prod.
 §
@@ -15,3 +15,5 @@ Loyverse API: limit max=50 (confirmed, overrides previous 250), param dot-notati
 Deployment: start.sh (version-controlled) preferred over direct appCommandLine; startup method must be in repo/zip, not hidden Azure config.
 §
 Login endpoint: uses email field (not username). Default admin seeded as hafizi@hafjet.com / admin123 if no staff exists.
+§
+Tuan expects practical usage examples shown immediately after any new tool/skill is installed — "load-and-show" pattern, not just "skill created."

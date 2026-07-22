@@ -49,8 +49,8 @@ AI Settings (status, memory length, creativity, training mode, strict mode, medi
 
 ### Functional gaps (priority order, updated Jul 2026)
 1. AI Knowledge hybrid RAG (FTS5 ✅ done; FAISS vector upgrade still deferred to Ubuntu PC Office microservice)
-2. AI Memory (27 structured profile fields vs 8-msg rolling chat history — next Sprint B task)
-3. Keyword Rules v2 (multi-step sequence + labels — Sprint B Phase 3)
+2. AI Memory (27 structured profile fields — ✅ **Implemented Jul 2026**, Sprint B Phase 2; see `references/sprint-b-ai-backend-implementation.md`)
+3. Keyword Rules v2 (multi-step sequence + labels — ✅ **Implemented Jul 2026**, Sprint B Phase 3; see `references/sprint-b-ai-backend-implementation.md`)
 4. Auto Follow Up (HAFJET has SPX reminder scheduler but NOT sales follow-up; needs 24h WhatsApp rule)
 5. AI Playground (sandbox test panel)
 
@@ -59,22 +59,16 @@ AI Settings (status, memory length, creativity, training mode, strict mode, medi
 ### Phase 2A — Prompt Builder (Jul 2026, implemented)
 HAFJET has moved from manual `system_prompt.txt` to an **auto-compiled prompt builder** that reads from 4 structured SQLite tables. See `references/phase-2a-prompt-builder.md` for full implementation details (schema, seed data, compile function, integration pattern).
 
-### Phase 2B — AI Knowledge Items (Jul 2026, implemented)
-HAFJET now has a lightweight FTS5-based RAG store for product catalog and reference data.
-See `references/phase-2b-ai-knowledge-items.md` for complete implementation details:
+### Phase 2B — AI Knowledge + Customer Memory + Keyword v2 (Jul 2026, implemented)
+HAFJET now has:
+- **FTS5-based RAG store** for product catalog/reference — see `references/sprint-b-ai-backend-implementation.md`
+- **Structured customer memory** with ON CONFLICT DO UPDATE — see `references/sprint-b-ai-backend-implementation.md`
+- **Multi-step keyword v2** with JSON arrays, sequence tracking, per-customer state — see `references/sprint-b-ai-backend-implementation.md`
 
-- `ai_knowledge_items` table + `ai_knowledge_fts` (FTS5 virtual table with sync triggers)
-- 7 CRUD functions in `db_logger.py` (add/get/list/update/delete/search + prompt integration)
-- 6 JWT-protected API endpoints in `webhook_listener.py`
-- 4 seed items (price catalog, repair pricing, ordering guide, installment terms)
-- FTS5 MATCH primary retrieval → LIKE fallback → graceful omission on total failure
-- Section 7 in `build_full_system_prompt()` injects top-3 FTS5 matches
-
-**Key constraint:** FTS5-only for now on Azure 1GB. Hybrid RAG (FTS5 + FAISS) is deferred to a separate microservice on the Ubuntu PC Office (16GB RAM) when Tuan approves.
+All three are lightweight, DB-only, with graceful fallbacks. Hybrid RAG (FTS5 + FAISS) is deferred to Ubuntu PC Office microservice.
 
 ### Prompt Builder Architecture (shared by Phase 2A + 2B)
-- `build_full_system_prompt()` in `db_logger.py` — compiles from `ai_config`, `ai_business_info`, `closing_flow_steps`, `ai_faqs` into 6 sections + section 7 (ai_knowledge_items FTS5)
-- `build_soul_context()` in `hermes_ai.py` — runtime wrapper that calls `build_full_system_prompt()` on each AI call, falls back to static `SOUL_CONTEXT` on DB failure
+- `build_full_system_prompt()` in `db_logger.py` — compiles from `ai_config`, `ai_business_info`, `closing_flow_steps`, `ai_faqs` into 6 sections + section 7 (ai_knowledge_items FTS5) + section 8 (customer_memory)
 - `build_soul_context()` in `hermes_ai.py` — runtime wrapper that calls `build_full_system_prompt()` on each AI call, falls back to static `SOUL_CONTEXT` on DB failure
 - `ask_openrouter()` now calls `build_soul_context()` at runtime (not module-level `SOUL_CONTEXT`)
 - `system_prompt.txt` is now a **FALLBACK only** — used when DB tables are empty or `build_full_system_prompt()` raises. File is NOT deleted.
@@ -100,6 +94,7 @@ See `references/phase-2b-ai-knowledge-items.md` for complete implementation deta
 ## Pitfalls
 - `run_in_executor` passes positional args — order matters: `(ask_hermes, message, sender_name, sender_number)`
 - `run_in_executor` does NOT support `**kwargs`. Use `lambda: func(id, **data)` when the endpoint needs to pass dynamic dict fields to a `**kwargs` function.
+- **Alternative for `**kwargs` in run_in_executor:** When the target function uses `**kwargs` (e.g. `update_knowledge_item(rule_id, **data)`), wrap in `lambda: func(id, **data)`. This avoids passing a raw dict as a positional arg, which would fail because the function expects keyword expansions.
 - `_query_customer` is SYNC (wraps `_get_db`) — safe to call from the executor thread inside `ask_hermes`
 - Memory block should be EMPTY for brand-new customers so Power Question triggers
 - Keep guardrails: no fake promo, no final price without inspection, location = Raub Pahang (never Shah Alam), number = +60 16-980 8736

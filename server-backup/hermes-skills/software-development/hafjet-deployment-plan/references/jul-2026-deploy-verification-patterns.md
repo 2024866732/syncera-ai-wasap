@@ -142,3 +142,89 @@ UPDATE spx_self_collection_orders SET hafjet_reminder_state='Remind3_Sent' WHERE
 - Scheduler fires every 15 min but returns early outside window
 - Log tail at 07:xx MYT shows job ran (no error) but NO send lines — that's CORRECT
 - First in-window cycle = 08:08 MYT (00:08 UTC)
+
+---
+
+## Post-Deploy Smoke Test Template (established Sprint B, Jul 2026)
+
+After every deployment that reaches `RuntimeSuccessful`, run this 5-test
+sequence using the **temp-file pattern** (see `hafjet-command-safety` — never
+`curl | python3`):
+
+```bash
+# 1. HEALTH — unauthenticated, always first
+curl -s --max-time 15 https://.../health -o /tmp/t1_health.json
+# parse and assert status=ok
+
+# 2. LOGIN + CUSTOMERS — auth path + data layer
+curl -s --max-time 15 -X POST https://.../api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"hafizi@hafjet.com","password":"admin123"}' \
+  -o /tmp/t2_login.json
+TOKEN=$(python3 -c "import json; print(json.load(open('/tmp/t2_login.json'))['access_token'])")
+curl -s --max-time 15 "https://.../api/customers?limit=3" \
+  -H "Authorization: Bearer $TOKEN" -o /tmp/t2_customers.json
+# assert 2+ customers returned
+
+# 3. ANALYTICS (prompt compile path) — backend prompt builder
+curl -s --max-time 15 "https://.../api/analytics/overview" \
+  -H "Authorization: Bearer $TOKEN" -o /tmp/t3_analytics.json
+# assert 10+ metric keys
+
+# 4. KNOWLEDGE CRUD — FTS5 search + create + delete
+curl -s --max-time 15 "https://.../api/knowledge/search?q=test" \
+  -H "Authorization: Bearer $TOKEN" -o /tmp/t4_search.json
+curl -s -X POST "https://.../api/knowledge" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"Test","content":"Test","content_type":"text"}' \
+  -o /tmp/t4_create.json
+
+# 5. KEYWORD V2 — multi-step engine
+curl -s -X POST "https://.../api/keywords/v2/test" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"message":"hello world"}' -o /tmp/t5_kw.json
+# assert matched=true or at least no 500 error
+```
+
+### What each test covers
+| # | Test | What it proves |
+|---|------|----------------|
+| 1 | Health | App started, all features loaded |
+| 2 | Auth + Customers | JWT flow works, DB has data |
+| 3 | Analytics | prompt builder compiles, DB queries work |
+| 4 | Knowledge CRUD | FTS5 search, create, delete all working |
+| 5 | Keyword v2 | Multi-step engine loads, no import errors |
+
+### Gotchas
+- **Knowledge returns 0 results on fresh deploy** — seed data only inserts if
+the table was empty at init_db() time. If init_db ran during Oryx build but the
+seed block was added in a later patch, the table has rows = 0. Create a test
+item to verify the CRUD path, then delete it.
+- **Keyword v2 returns matched=false on fresh DB** — no rules exist yet.
+Create one via POST /api/keywords/v2, test it, then delete. This proves the
+CREATE + MATCH + DELETE paths all work.
+- **Import missing at runtime** — a RuntimeSuccessful deploy can still have
+missing imports (NameError on first API call). Always run the import
+cross-reference check BEFORE building the ZIP:
+`references/import-cross-reference-verification.md`
+
+---
+
+## Rollback Readiness Checklist
+
+Before running `az webapp deployment source config-zip`:
+
+1. **Save current app config:**
+   `az webapp config show --name hafjet-whatsapp-bot -g hafjet-bot-rg \
+     --query "{startup:appCommandLine, runtime:linuxFxVersion}" \
+     -o json > /tmp/pre-deploy-config-$(date +%Y%m%d-%H%M).json`
+
+2. **Save current deployment ZIP** (if the previous build still exists):
+   `cp /tmp/hafjet-prod-*.zip /tmp/rollback-$(date +%Y%m%d-%H%M).zip`
+
+3. **Record current git commit:**
+   `git log --oneline -1 > /tmp/pre-deploy-commit.txt`
+
+4. **Rollback command template:**
+   - If old ZIP exists: `az webapp deployment source config-zip --src /tmp/rollback-*.zip ...`
+   - If only git: `git checkout <PREVIOUS_COMMIT> && git archive -o rollback.zip HEAD && az webapp deployment source config-zip --src rollback.zip ...`

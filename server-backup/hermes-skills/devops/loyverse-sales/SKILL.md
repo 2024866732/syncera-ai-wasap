@@ -190,18 +190,23 @@ The script produces:
 2. **CSV file** at `~/.hermes/reports/sales_YYYY-MM-DD.csv` with per-item rows including cost and profit columns
 
 ## Telegram Delivery
+## Telegram Delivery
 
 After running `fetch_sales.py`, send the summary to Hafizi via Telegram.
 
-**Preferred method — use the bundled script:**
+**Preferred method — use the bundled wrapper script (avoids token masking issues):**
 
 ```bash
-python3 scripts/telegram-delivery.py "$(python3 ~/.hermes/skills/fetch_sales.py 2>/dev/null | tail -n +7)"
+python3 /home/hafizi145/.hermes/skills/devops/loyverse-sales/scripts/telegram-delivery.py "$(
+  /home/hafizi145/.hermes/skills/devops/loyverse-sales/scripts/run_sales.py 2>/dev/null
+)"
 ```
 
-Or pipe the summary text:
+**Alternative approach (also avoids token masking):**
+
 ```bash
-python3 ~/.hermes/skills/fetch_sales.py 2>&1 | grep -A 1000 "📊" | python3 scripts/telegram-delivery.py
+python3 /home/hafizi145/.hermes/skills/devops/loyverse-sales/scripts/run_sales.py 2>/dev/null |
+  python3 /home/hafizi145/.hermes/skills/devops/loyverse-sales/scripts/telegram-delivery.py
 ```
 
 The script (`scripts/telegram-delivery.py`) reads `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_USERS` from `~/.hermes/.env` via Python subprocess — avoiding the shell `$(...)` censoring pitfall entirely.
@@ -236,7 +241,6 @@ Or extract the token via Python subprocess **inside** the delivery script (see `
 **⚠️ PITFALL: Do NOT use `python3 -c "..."` for the Telegram send.**
 
 Many execution environments (including Hermes cron jobs) flag `python3 -c` with pattern-based approval blocks, causing `pending_approval` / exit code -1. Instead, write a standalone script file and execute it:
-
 ```python
 # Write to /tmp/send_telegram.py
 import urllib.request, json, subprocess

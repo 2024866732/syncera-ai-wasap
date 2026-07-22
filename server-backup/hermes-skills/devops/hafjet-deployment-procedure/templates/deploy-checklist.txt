@@ -1,0 +1,81 @@
+# HAFJET WhatsApp Bot - Deployment Checklist
+
+## Pre-Deployment
+[ ] Code committed to approved branch (e.g., release/v2.2.0)
+[ ] All tests pass locally (unit, integration, smoke)
+[ ] ZIP artifact built from exact commit: `git archive -o /tmp/hafjet-prod.zip HEAD`
+[ ] ZIP verified to exclude: bot_data.db, .git, __pycache__, node_modules, venv, *.db, *.zip, .env
+[ ] ZIP contains correct start.sh or direct appCommandLine
+[ ] Last known good ZIP retained for rollback (e.g., /tmp/hafjet-prod-v220-final.zip)
+
+## Deployment
+[ ] Current configuration backed up (optional):
+    az webapp config appsettings list > /tmp/pre-deploy-settings.json
+    az webapp config show > /tmp/pre-deploy-config.json
+[ ] Deploy using config-zip method:
+    az webapp deployment source config-zip \
+      --resource-group hafjet-bot-rg \
+      --name hafjet-whatsapp-bot \
+      --src /tmp/hafjet-prod.zip
+[ ] Wait for operation to complete (look for "status": "RuntimeSuccessful")
+
+## Post-Deployment Stabilization
+[ ] Wait 60-120 seconds for site warm-up
+
+## Smoke Tests (ALL MUST PASS)
+[ ] Health endpoint:
+    curl -fsS --max-time 15 https://hafjet-whatsapp-bot.azurewebsites.net/health
+    → status: ok
+
+[ ] Customers endpoint:
+    TOKEN=$(curl -fsS -X POST https://hafjet-whatsapp-bot.azurewebsites.net/api/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{"email":"hafizi@hafjet.com","password":"admin123"}' | python3 -c "import json,sys; print(json.load(sys.stdin).get('access_token',''))")
+    curl -fsS https://hafjet-whatsapp-bot.azurewebsites.net/api/customers?limit=3 \
+      -H "Authorization: Bearer $TOKEN"
+    → 200 + JSON array with customer data
+
+[ ] Handoff state endpoint:
+    curl -fsS https://hafjet-whatsapp-bot.azurewebsites.net/api/handoff/state/60198021500 \
+      -H "Authorization: Bearer $TOKEN"
+    → 200 + JSON with mode field
+
+[ ] Handoff events endpoint:
+    curl -fsS https://hafjet-whatsapp-bot.azurewebsites.net/api/handoff/events/60198021500 \
+      -H "Authorization: Bearer $TOKEN"
+    → 200 + JSON with events array
+
+[ ] Metrics endpoint:
+    curl -fsS https://hafjet-whatsapp-bot.azurewebsites.net/api/handoff/metrics \
+      -H "Authorization: Bearer $TOKEN"
+    → 200 + JSON with handoff_count, handoff_rate_pct, etc.
+
+[ ] Optional: Keyword v2 flow test
+    # Create rule
+    RULE_ID=$(curl -fsS -X POST https://hafjet-whatsapp-bot.azurewebsites.net/api/keywords/v2 \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"keywords":["test","hello"],"match_type":"contains","sequence":[{"msg":"Hi!"}],"next_actions":{"label":"test"}}' | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))")
+    # Test match
+    curl -fsS -X POST https://hafjet-whatsapp-bot.azurewebsites.net/api/keywords/v2/test \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"message":"hello"}' | python3 -c "import json; d=json.load(sys.stdin); assert d.get('matched') == True"
+    # Cleanup
+    [ -n "$RULE_ID" ] && curl -fsS -X DELETE https://hafjet-whatsapp-bot.azurewebsites.net/api/keywords/v2/$RULE_ID \
+      -H "Authorization: Bearer $TOKEN"
+
+## Post-Smoke Test
+[ ] If ALL smoke tests pass: Deployment SUCCESSFUL
+[ ] If ANY smoke test fails: IMMEDIATE ROLLBACK
+    az webapp deployment source config-zip \
+      --resource-group hafjet-bot-rg \
+      --name hafjet-whatsapp-bot \
+      --src /tmp/hafjet-prod-v220-final.zip  # <-- last known good
+[ ] After rollback, rerun smoke tests to confirm recovery
+
+## Verification
+[ ] Confirm app status: Running
+    az webapp show --resource-group hafjet-bot-rg --name hafjet-whatsapp-bot --query "{state:state}"
+[ ] Monitor logs for anomalies:
+    az webapp log tail --resource-group hafjet-bot-rg --name hafjet-whatsapp-bot --lines 50

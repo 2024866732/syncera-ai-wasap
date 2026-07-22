@@ -13,9 +13,17 @@ and wastes a turn. Internalize this before proposing ANY terminal command.
 
 ## BANNED patterns (will be denied — do NOT propose them)
 
-- `curl ... | python3 -c "..."`
-  Pipes network output straight into the interpreter. HIGH risk (injection /
+- `curl ... | python3 -c "..."`  
+  Pipes network output straight into the interpreter. HIGH risk (injection /  
   credential exfiltration). Classed same as `curl | sh`.
+
+  **Security scanner enforcement:** Even if both agent and user approve the
+  command in chat, Hermes' `tirith` security scanner may BLOCK it at runtime
+  with `"[HIGH] Pipe to interpreter: curl | python3"` and the command
+  exits with -1. This is NOT a bypass — do NOT retry, rephrase, or try
+  another pipe variant. The ONLY working pattern (Tuan confirmed Jul 2026):
+  1. `curl -s URL -o /tmp/file.json` (save response to file)
+  2. `python3 /tmp/script.py` (read file, parse JSON) — SEPARATE turn, no pipe.
 
 - `python3 << 'EOF' ... EOF`
   Agent-supplied heredoc script executed on the server. Flagged as arbitrary

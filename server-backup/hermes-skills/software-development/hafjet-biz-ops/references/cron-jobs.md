@@ -18,6 +18,9 @@
 - **Had:** Maksimum satu reminder sehari per customer.
 - **Pre-flight:** Test WhatsApp credential dengan satu send ke OWNER_PHONE dulu. Kalau gagal (code 100/subcode 33), abort terus — jangan batch.
 - **Credential failure escalation:** Jika cron ke-2+ berturut-turut gagal dengan error yang sama, report mesti include langkah Tuan perlu buat (buka Meta Business → WhatsApp → API Setup → dapatkan Phone Number ID baru).
+- **⚠️ Env var gap (known, since Jul 2026):** Script needs 7 env vars but 5 are
+  NOT in `~/.hermes/.env`. See `hafjet-biz-ops` skill → Pitfalls → "Cron job env var gap"
+  for details and hardcoded values. Every agent run must supply them inline.
 - **Skill:** hafjet-biz-ops (software-development)
 
 ## hafjet-low-stock-alert

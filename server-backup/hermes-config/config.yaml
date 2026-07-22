@@ -1,6 +1,6 @@
 model:
-  provider: opencode
-  default: deepseek-v4-flash-free
+  provider: openrouter
+  default: nvidia/nemotron-3-super-120b-a12b:free
 providers:
   cerebras:
     base_url: https://api.cerebras.ai/v1

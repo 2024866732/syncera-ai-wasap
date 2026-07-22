@@ -174,7 +174,15 @@ statuses = Counter((d.get('Status') or '').strip().upper() for d in data)
 print(statuses)
 ```
 
-### Large pending queue causes script timeout
+### Cron job env var gap — missing .env vars cause silent failure
+Several pickup-reminder env vars (`GOOGLE_SHEET_ID`, `GOOGLE_SHEETS_CREDENTIALS`,
+`PICKUP_REMINDER_TAB`, `OWNER_PHONE`, `PICKUP_REMINDER_STATUS_VALUE`) are NOT in
+`~/.hermes/.env`. The cron prompt says "Load from .env" but these aren't there,
+so every cron run relies on the agent supplying them from session history.
+If the agent doesn't know them, the script exits with ❌ Missing env.
+**Mitigation:** Always verify vars exist in .env before relying on cron for this job.
+When running manually via cron prompt, supply all 7 vars inline (see "Export before
+running" in Live Implementation State below).
 With 621 SIAP tickets, the script processes ~230 entries in 120s before timing out — the full 621 would take ~5 minutes, exceeding default cron timeouts.
 **Mitigations:**
 1. Run `DRY_RUN=1` first to check pending count.
@@ -284,18 +292,47 @@ Google Sheet below, NOT the bot DB.
   by `/` (e.g. `601111144636/0104163884`) — `norm_phone()` passes them raw causing send
   failures. Non-MY numbers also present (`917639075994`, `189017751`).
 - Route to CUSTOMER `NO TELEFON` (NOT owner). `OWNER_PHONE=60198021500` → summary only.
-- **Env var mapping:** Script reads `WHATSAPP_CLOUD_PHONE_ID` / `WHATSAPP_CLOUD_ACCESS_TOKEN`,
-  but `.env` stores `WHATSAPP_PHONE_ID` / `WHATSAPP_ACCESS_TOKEN`. Export before running:
+- **⚠️ Env var gap — KEY VARS NOT IN `.env` (observed Jul 22):** Despite being documented
+  here since initial setup (Jul 10), the following env vars are **absent** from
+  `~/.hermes/.env`:
+  - `GOOGLE_SHEET_ID`
+  - `GOOGLE_SHEETS_CREDENTIALS`
+  - `PICKUP_REMINDER_TAB`
+  - `OWNER_PHONE`
+  - `PICKUP_REMINDER_STATUS_VALUE`
+  Meanwhile, the script reads `WHATSAPP_CLOUD_PHONE_ID` / `WHATSAPP_CLOUD_ACCESS_TOKEN`,
+  but `.env` stores `WHATSAPP_PHONE_ID` / `WHATSAPP_ACCESS_TOKEN` (different names).
+  **Consequence:** Every cron run of `hafjet-pickup-reminder` (`ebdae9cc10ab`) requires the
+  agent to supply these values from session history or fail. The cron prompt says
+  "Load from .env" but the vars aren't there. The script exits with
+  `❌ Missing env: GOOGLE_SHEET_ID` if not supplied inline.
+- **Export before running (terminal or test):**
   ```bash
-  export WHATSAPP_CLOUD_PHONE_ID="$WHATSAPP_PHONE_ID"
-  export WHATSAPP_CLOUD_ACCESS_TOKEN="$WHATSAPP_ACCESS_TOKEN"
+  export WHATSAPP_CLOUD_PHONE_ID=\"$WHATSAPP_PHONE_ID\"
+  export WHATSAPP_CLOUD_ACCESS_TOKEN=\"$WHATSAPP_ACCESS_TOKEN\"
+  export GOOGLE_SHEET_ID=\"1T0FzNhkOTgyORFvllsc0pXz2xsZV2nkrwBBvzNYs9KE\"
+  export GOOGLE_SHEETS_CREDENTIALS=\"/home/hafizi145/.hermes/secrets/gsheet_sa.json\"
+  export PICKUP_REMINDER_TAB=\"REPAIR BARU\"
+  export OWNER_PHONE=\"60198021500\"
+  export PICKUP_REMINDER_STATUS_VALUE=\"SIAP DIAMBIL\"
+  export DRY_RUN=0
+  python3 /home/hafizi145/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_pickup_reminder.py
   ```
   **Wrapper script approach:** For terminal runs (not cron), use
   `/home/hafizi145/run_pickup_reminder.py` which reads `.env`, maps the var names, and
-  sets hardcoded values (GOOGLE_SHEET_ID, SA path, OWNER_PHONE). This avoids having to
-  manually export each time. Run with:
+  sets hardcoded values. This avoids having to manually export each time. Run with:
   ```bash
   python3 /home/hafizi145/run_pickup_reminder.py
+  ```
+  **Long-term fix:** Add all vars to `~/.hermes/.env` (Tuan edits via `nano`):
+  ```
+  GOOGLE_SHEET_ID=1T0FzNhkOTgyORFvllsc0pXz2xsZV2nkrwBBvzNYs9KE
+  GOOGLE_SHEETS_CREDENTIALS=/home/hafizi145/.hermes/secrets/gsheet_sa.json
+  PICKUP_REMINDER_TAB=REPAIR BARU
+  OWNER_PHONE=60198021500
+  PICKUP_REMINDER_STATUS_VALUE=SIAP DIAMBIL
+  WHATSAPP_CLOUD_PHONE_ID=107158292462704
+  WHATSAPP_CLOUD_ACCESS_TOKEN=EAAdm...  (copy dari WHATSAPP_ACCESS_TOKEN semasa)
   ```
 - **Pre-flight check (implemented in script v2):** Script now runs GET `/v21.0/{PHONE_ID}` to
   validate credential before any batch send. Aborts with exit code 1 on code 100/subcode 33.
