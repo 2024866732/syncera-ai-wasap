@@ -91,13 +91,17 @@ curl -s -X POST "https://graph.facebook.com/v21.0/${WHATSAPP_CLOUD_PHONE_ID}/mes
 ## Pitfalls
 - **Stale env vars:** Setting COLUMN_NAME_* overrides leaves them in terminal session. Always `unset` before real runs.
 - **Status value mismatch:** Sheet uses `SIAP`, not `SIAP DIAMBIL`. If 0 pending but rows exist, check actual status values with a probe script.
-- **Phone number ID invalid (still stale as of 2026-07-17):** `.env` value `107158292462704` returned "object does not exist" (code 100, subcode 33) on 2026-07-14, 2026-07-15, and 2026-07-17. **This has failed 3 consecutive cron runs.** Tuan must get the correct Phone Number ID from Meta Business (Facebook Business → WhatsApp → API Setup). Until fixed, all batch sends are wasted.
+- **Phone number ID invalid — RESOLVED (2026-07-24):** The main `.env` value `107158292462704` was stale since ~July 2026. The working Phone ID is `1089032617637482`, stored in `~/.hermes/whatsapp-bot/.env` (the Azure bot's env file). The wrapper script `run_pickup_reminder.py` auto-falls back to bot env, but **the wrapper itself has a timeout bug** (see below). Resolution path:
+  1. Run with explicit env exports (not the wrapper) — see "Export test sequence" below
+  2. Long-term: update main `~/.hermes/.env` with the correct Phone ID
+  3. Also update the cron prompt to reference the working credential source
+- **Wrapper script `run_pickup_reminder.py` times out silently:** This script (at `~/run_pickup_reminder.py`) uses `exec(open(script).read())` to run the main pickup reminder. In practice, it produces **no stdout** and exits with code 124 (timeout) after 120s. Root cause TBD — possibly the `exec()` call fails or hangs on import. **Do not rely on the wrapper for cron runs.** Use the direct `export` approach instead (see test sequence below). The wrapper exists as a convenience for interactive terminal runs only.
 - **Repeated credential failure escalation:** If the SAME credential error fires across ≥2 consecutive cron runs, the cron report should abort early (no batch attempt), flag the credentials as the sole blocker, and give precise recovery steps — not just "still broken".
-- **Script timeout with 621 pending:** 621 SIAP tickets cause the script to timeout at ~120s after processing ~230 entries (≈3.5s per message). Full batch would take ~5 min. Mitigation: run `DRY_RUN=1` first, or add `MAX_PER_RUN=50` chunking.
-- **Dual phone numbers:** Some cells have two numbers (e.g. `601111144636/0104163884`). These fail send.
+- **Script timeout with 621 pending:** 621 SIAP tickets cause the script to timeout at ~120s after processing ~230 entries (≈3.5s per message). Full batch takes ~7 minutes. Run with a generous timeout (300s+) in background mode or split into chunks. As of Jul 24, a full 606-message batch completed successfully in ~7 min with exit code 0.
+- **Zero 470 blocks observed (Jul 24):** Despite 606 messages sent to customers with old SIAP tickets (many from 2022), **zero** error-470 (24h window) blocks occurred. Possible explanations: customers may have recently messaged the bot (keeping the 24h window active), or Meta's enforcement is inconsistent for Malaysian accounts. Long-term still plan to use pre-approved templates for reliability.
+- **Dual phone numbers:** Some cells have two numbers (e.g. `601111144636/0104163884`, `60132659486/0132659485`). These fail send with HTTP 400. The script's `norm_phone()` passes them raw — enhancement needed to split or skip.
 - **Very old data:** Most SIAP tickets date from Sept–Nov 2022. May need status cleanup.
 - **Share permission:** 403 → sheet not shared with SA email.
-- **470 errors are expected** for customers who haven't messaged in 24h — not a bug. Long-term fix = pre-approved WhatsApp template.
 
 ## Test sequence (Tuan runs)
 ```bash

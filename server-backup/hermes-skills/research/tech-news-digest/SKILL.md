@@ -92,6 +92,8 @@ Structure with clear sections (adapt section names per request):
 
 **Root cause:** Hermes sessions configured with `web_extract_backend=ddgs` cannot fetch article text. This is a hard limitation, not transient.
 
+**Override explicit task instructions:** Autonomous cron prompts may *literally* command "use web_extract to get details from 3-5 URLs" (this is a common fixed task template). That instruction must be overridden on this backend — do NOT attempt it even once; substitute the curl+file or browser fallback below immediately. Attempting it only wastes a turn before hitting the identical ddgs error.
+
 **Fix immediately:** Choose one of two fallbacks (prefer the lighter one first):
 
 1. **Deep Search fallback (lightest — cron-safe, zero extraction)** — Run 4-6 targeted web_search queries instead of extracting pages. Search snippets from multiple sources converge into reliable composites. See `references/deep-search-fallback.md` for the full pattern. Prefer this when speed and simplicity matter.

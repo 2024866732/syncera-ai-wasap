@@ -44,6 +44,7 @@ External skill installers that target Hermes can fail under `uv tool` or `pipx` 
 - Do NOT use `pip install --user -e <repo>` if `~/.local` is read-only. Use a `/tmp` venv.
 - `uv tool install` can error with `Read-only file system` inside `$HOME/.cache/uv/`. Retrying will not fix it; switch to pip-in-venv.
 - Some installers write rewrite rules (graphify → `AGENTS.md`). If the CWD is wrong, the rules attach to the wrong directory.
+- Do not execute install scripts from untrusted sources without first reviewing their contents for malicious commands.
 
 ## Verification
 

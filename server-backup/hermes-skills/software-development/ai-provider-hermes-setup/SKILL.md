@@ -1,20 +1,34 @@
 ---
 title: Hermes Configuration for this Server
 name: ai-provider-hermes-setup
-description: "Configure Hermes Agent on this server — both LLM model providers and TTS/voice settings. Covers OpenRouter fallback (Groq is IP-banned), secret-key guardrails, Edge TTS Malay voices, ElevenLabs setup, and model recommendations for coding agents. Use whenever the user wants to add/switch/test any Hermes provider (model or TTS)."
+description: "Configure Hermes Agent on this server — both LLM model providers and TTS/voice settings. Covers OpenRouter fallback (Groq + OpenCode Zen IP-banned), secret-key guardrails, Edge TTS Malay voices, ElevenLabs setup, model recommendations for coding agents, and OpenCode CLI diagnostics. Use whenever the user wants to add/switch/test any Hermes provider (model or TTS) or OpenCode CLI."
 ---
 
 # AI Provider Setup for Hermes (this server)
 
 Hermes model config lives in `/home/hafizi145/.hermes/config.yaml` (model dict: provider, base_url, default, api_key, api_mode). Secrets (OpenRouter, etc.) also live in `/home/hafizi145/.hermes/.env`. Set via `hermes config set model.<key> <value>`.
 
-## ⚠️ GROQ IS IP-BANNED FROM THIS SERVER (hard constraint)
+## ⛔ IP-BANNED PROVIDERS FROM THIS SERVER (hard constraint)
 
-`api.groq.com` returns **Cloudflare HTTP 403, error code 1010** from this host — the server's egress IP is banned. A valid Groq key still fails (401/403). **Do NOT waste time trying to use Groq directly from this server.** The user's Groq key is fine; the network is the problem.
+Two providers are **Cloudflare-banned** (HTTP 403, error code 1010) from this host. **Do NOT waste time trying to use either directly from this server.** The user's keys are fine; the network is the problem.
 
-**Symptom:** `hermes chat` → `HTTP 401: Wrong API Key` (or direct curl → `403 error 1010`). The 401 is misleading — it's the IP ban, not a bad key.
+| Provider | Banned Domain | Symptom | Verified |
+|---|---|---|---|
+| **Groq** | `api.groq.com` | `hermes chat` → `HTTP 401: Wrong API Key` (misleading — it's the IP ban) | 2026-07-09 |
+| **OpenCode Zen** | `opencode.ai` | Direct curl → `403 error 1010`; Hermes → `HTTP 401` | 2026-07-24 |
 
-**Fallback that WORKS:** **OpenRouter** (`https://openrouter.ai/api/v1`). The user already has an `OPENROUTER_API_KEY` in `.env`. OpenRouter is NOT IP-banned here and routes to DeepSeek, Llama, Qwen, etc.
+**CRITICAL EXCEPTION — OpenCode Go `/go/v1` is NOT banned:**
+- `opencode.ai/zen/v1` → ❌ IP-banned (403/1010)
+- `opencode.ai/zen/go/v1` → ✅ **WORKS!** (tested 2026-07-24, 19s response)
+
+The Go plan endpoint uses a **different Cloudflare path** that is NOT banned. Use `/go/v1` for Hermes config when user has OpenCode Go subscription.
+
+**Verification pattern:** Test with `Bearer dummy` key first. If dummy → 403/1010, it's an IP ban, not a key problem. Don't waste time re-checking the key.
+
+**Fallbacks that WORK from this server:**
+- **DeepSeek direct** (`https://api.deepseek.com/v1`) — ✅ cheapest, tested 7s response
+- **OpenRouter** (`https://openrouter.ai/api/v1`) — ✅ user has key in `.env`
+- **TokenRouter** (`https://api.tokenrouter.com/v1`) — ✅ reachable but free tier too slow (200s timeout)
 
 ## Recommended setup (verified working 2026-07-09)
 
@@ -38,20 +52,30 @@ Test: `hermes chat -q "reply OK"` → expect a clean reply, no 401/403.
 
 To switch models live: `hermes config set model.default <id>`.
 
-## 🔴 SECRET-KEY HANDLING GUARDRAIL (critical, learned the hard way)
+## 🔴 SECRET-KEY HANDLING GUARDRAIL (CRITICAL — violated 5+ times in 2 sessions)
 
-When configuring a provider with an API key the user pasted into chat, **NEVER truncate the key with `...` in the `hermes config set` command.** Writing `gsk_FY...SIEY` stores the literal 13-char string `gsk_FY...SIEY` (with three real dots) as the key → every call 401s.
+When configuring a provider with an API key the user pasted into chat, **NEVER type the key yourself — always write the full string the user gave you, character by character.**
 
-This happened 4 times in one session. The model auto-abstracts long secrets as `gsk_FY...SIEY` even when the real value is known. **The fix:**
+**WHY THIS KEEPS HAPPENING:** The model auto-abstracts long secrets as `gsk_FY...SIEY` in its internal representation. When you then write a `hermes config set` command, you unknowingly write the **truncated 13-char string** `gsk_FY...SIEY` (with three real dots) instead of the actual 56-char key. This happened **5+ times in one session** with Groq, and again with OpenCode — even AFTER the guardrail existed.
 
-1. **Source the secret from a file, never retype it.** For OpenRouter: `OR_KEY=$(grep -oP 'OPENROUTER_API_KEY\s*[=:]\s*\K\S+' /home/hafizi145/.hermes/.env) && hermes config set model.api_key "$OR_KEY"`.
-2. For a key only available in chat (e.g. Groq), the user MUST paste it and you must write the **full string** with no `...`. To prevent the truncation habit, verify after setting:
-   ```bash
-   python3 -c "import re;s=open('/home/hafizi145/.hermes/config.yaml').read();k=re.search(r'api_key:\s*(\S+)',s).group(1);print('LEN',len(k),'HAS_DOTS', '...' in k)"
-   ```
-   - A correctly-stored Groq key is **56 chars, HAS_DOTS False**. If LEN==13 and HAS_DOTS True → you truncated it again, redo.
-3. **Never use `...` as a placeholder in any config-set command.** The display redaction (`gsk_FY...SIEY` in `hermes config` output) is automatic — you don't need to manually abbreviate, and doing so corrupts the stored value.
-4. **User may set keys manually in `.env` themselves** (e.g. `DEEPSEEK_API_KEY`, `TOKENROUTER_API_KEY`). When they say "I already added the key manually," do NOT ask them to re-paste it. Verify with `hermes config` + a real test call (`hermes chat -q "reply OK"`), then switch `model.provider`/`base_url`/`default` accordingly. Source the key from `.env` if you need it for a direct isolation test.
+**THE RULE — ONE LINE TO REMEMBER:**
+> **Copy-paste the user's EXACT key text into the command. Never abbreviate. Never add `...`. Never let the model rewrite it.**
+
+**Verification after every key set:**
+```bash
+python3 -c "import re;s=open('/home/hafizi145/.hermes/config.yaml').read();k=re.search(r'api_key:\s*(\S+)',s).group(1);print('LEN',len(k),'HAS_DOTS','...' in k,'HEAD',k[:10],'TAIL',k[-6:])"
+```
+- `HAS_DOTS False` + correct length → ✅ stored correctly
+- `HAS_DOTS True` or `LEN < 20` → ❌ you truncated it, redo with full key
+
+**Preferred method (safest):** Source the secret from a file, never retype it.
+```bash
+OR_KEY=$(grep -oP 'OPENROUTER_API_KEY\s*[=:]\s*\K\S+' /home/hafizi145/.hermes/.env) && hermes config set model.api_key "$OR_KEY"
+```
+
+**For keys only available in chat:** The user MUST paste it. You write the **full string** with no `...`. The display redaction (`gsk_FY...SIEY` in `hermes config` output) is automatic — you don't need to manually abbreviate, and doing so corrupts the stored value.
+
+**User may set keys manually in `.env` themselves** (e.g. `DEEPSEEK_API_KEY`, `TOKENROUTER_API_KEY`). When they say "I already added the key manually," do NOT ask them to re-paste it. Verify with `hermes config` + a real test call (`hermes chat -q "reply OK"`), then switch `model.provider`/`base_url`/`default` accordingly.
 
 ## Isolation test pattern (when a provider fails)
 
@@ -185,10 +209,75 @@ No restart needed — `text_to_speech` tool reads config live. For voice message
 
 The `text_to_speech` tool reads config live. For voice messages in gateway conversations, do `/restart` after changing config.
 
-## Other providers (from research, not all tested from this server)
-- **OpenCode Go** ($10/mo): 14 models (DeepSeek V4 Pro, GLM-5.2, Qwen 3.7, MiniMax M3), dollar-based limits ($60/mo, $30/wk, $12/5h), servers US/EU/SG. OpenAI-compatible.
-- **Mimo / Xiaomi MiMo** ($6/mo, 4.1B credits, model `mimo-v2.5`): OpenAI-compatible (`https://api.xiaomimimo.com/v1`), Token Plan uses `tp-xxxxx` key + possibly different base_url.
-- **OpenCode Zen**: free tier, 100 req/day, OpenAI-compatible. Good backup.
+## Other providers (tested from this server, July 2026)
+
+### ✅ WORKS from this server
+| Provider | Base URL | Key Location | Notes |
+|---|---|---|---|
+| **OpenCode Go** | `https://opencode.ai/zen/go/v1` | User pastes key to chat | ✅ Go plan models (Kimi K3, DeepSeek V4 Pro, etc.). 19s response. |
+| **DeepSeek direct** | `https://api.deepseek.com/v1` | `DEEPSEEK_API_KEY` in `.env` | ✅ Cheapest ($0.435/$0.87/M), 7s response. **Best for agent tasks.** |
+| **OpenRouter** | `https://openrouter.ai/api/v1` | `OPENROUTER_API_KEY` in `.env` | ✅ Routes to many models. Best free models below. |
+
+**Verified OpenRouter free models (2026-07-24):**
+| Model | Status | Notes |
+|---|---|---|
+| `nvidia/nemotron-3-ultra-550b-a55b:free` | ✅ Works (~5s) | **550B param, best free option** |
+| `openai/gpt-oss-20b:free` | ✅ Works (~3s) | Smaller, faster |
+| `tencent/hy3:free` | ✅ Works (was default before) | 295B, Apache 2.0 |
+| `nousresearch/hermes-3-llama-3.1-405b:free` | ❌ 429 rate-limited | Too popular, queue congested |
+| `qwen/qwen3-coder:free` | ❌ 429 rate-limited | Coding specialist but congested |
+| `meta-llama/llama-3.3-70b-instruct:free` | ❌ 429 rate-limited | Congested |
+
+### Free model selection strategy:** If primary free model is rate-limited (429), fall back: `nemotron-3-ultra:free` → `gpt-oss-20b:free` → `hy3:free`. Switch with `hermes config set model.default <id>`.
+
+### OpenCode Go setup (verified working 2026-07-24)
+```bash
+hermes config set model.provider opencode-go
+hermes config set model.base_url https://opencode.ai/zen/go/v1
+hermes config set model.default kimi-k3
+hermes config set model.api_mode chat_completions
+hermes config set model.api_key <USER_PASTED_KEY>
+# Test: hermes chat -q "Reply OK" → expect response in ~19s
+```
+
+### ❌ BLOCKED from this server (IP-banned)
+| Provider | Base URL | Error | Note |
+|---|---|---|---|
+| **Groq** | `https://api.groq.com/openai/v1` | 403 error 1010 | Key is fine, IP banned |
+| **OpenCode Zen** | `https://opencode.ai/zen/v1` | 403 error 1010 | Key is fine, IP banned. User's Go subscription can't work here. |
+
+### ⚠️ REACHABLE but impractical
+| Provider | Base URL | Issue |
+|---|---|---|
+| **TokenRouter** | `https://api.tokenrouter.com/v1` | Auth passes but free tier timeout 200s+ |
+
+### Other (research, not tested from server)
+- **Mimo / Xiaomi MiMo** ($6/mo): `https://api.xiaomimimo.com/v1`, OpenAI-compatible. Likely also IP-banned (same pattern as OpenCode).
+
+## OpenCode CLI (separate from Hermes — useful for coding)
+
+**OpenCode CLI partially works from this server.** Install: `npm i -g opencode-ai`. Version tested: 1.18.4.
+
+### Auth mechanism (critical finding)
+- `opencode providers login` → **FAILS** from headless VPS ("fetch() URL is invalid" — IP ban blocks auth metadata fetch)
+- Manual `auth.json` write → **NOT recognized** by CLI (`opencode providers list` shows 0 credentials)
+- CLI's internal auth mechanism differs from manual file writing
+- **Workaround:** User must login from laptop/phone, then sync credentials OR use Hermes directly with `/go/v1`
+
+### Key vs Plan distinction
+- **OpenCode Zen** = API provider (`https://opencode.ai/zen/v1`) — IP-banned from this server
+- **OpenCode Go** = $10/mo subscription that unlocks paid models on Zen
+- **Key from `opencode.ai/auth`** might be **free tier**, not Go plan — even if user subscribed. Verify by testing a paid model: `opencode run --model opencode/deepseek-v4-pro "OK"` → "not supported" = free key.
+
+### Working models (free tier, verified 2026-07-24)
+`big-pickle`, `deepseek-v4-flash-free`, `mimo-v2.5-free`, `nemotron-3-ultra-free`, `laguna-s-2.1-free`, `ling-3.0-flash-free`, `north-mini-code-free`
+
+Paid models listed in `opencode models opencode` but **"not supported"** when run with free key.
+
+### Recommended use
+- **Hermes** with `https://opencode.ai/zen/go/v1` → ✅ Works for agent tasks (Go plan)
+- **OpenCode CLI** for coding tasks (TUI, diff viewer) — free tier only from this server
+- Don't try `opencode providers login` from headless VPS — it won't work
 
 ## TokenRouter (added 2026-07-18, tested from this server)
 
@@ -217,3 +306,4 @@ hermes config set model.api_key <KEY>
 ## Reference files
 - `references/elevenlabs-quota-errors.md` — Error transcripts, credit consumption patterns, and fallback flow from real ElevenLabs session
 - `references/provider-diagnostic-ladder.md` — Reusable urllib probe + result-interpretation table for isolating any provider failure (dummy-key → 401 = network OK; real-key timeout = auth passed but model slow; etc.)
+- `references/opencode-cli-diagnostics.md` — OpenCode CLI install, auth file format, free vs Go plan detection, opencode.json config, useful commands

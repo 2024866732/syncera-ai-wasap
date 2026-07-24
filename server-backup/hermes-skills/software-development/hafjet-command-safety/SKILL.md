@@ -125,6 +125,18 @@ before. That is correct safety behavior; do NOT retry or rephrase it. Instead:
 (2) THEN run the install as a separate command in a later step. Keep destructive
 ops and setup ops in SEPARATE turns.
 
+### Targeted-cleanup rule (extends the destructive-delete gate)
+
+When cleaning test artifacts (snapshots, database files, logs):
+
+1. **NEVER use wildcard deletes** under data directories (`/mnt/cctv/snapshots/*`, `/mnt/cctv/db/*`, `/mnt/cctv/logs/*`). Always specify exact filenames to delete.
+2. **List each file explicitly** in the `rm` command — do not use `*` globs.
+3. **Remove SQLite WAL/SHM siblings** alongside the main `.db` file (`.db-shm`, `.db-wal`).
+4. **Separate delete from create** — do not chain `rm -f` with `mkdir` or service restart in the same command. Each destructive operation needs its own approval turn.
+5. **Report before and after** — show `ls -lh` output both before and after cleanup to confirm only the intended files were removed.
+
+Rationale: Tuan caught and blocked `rm -f /mnt/cctv/snapshots/*.jpg` during a July 2026 session and redirected to explicit-file-only cleanup.
+
 ### READ-ONLY FILESYSTEM — the real "disk full" cause (learned 2026-07-19)
 If `rm`/`touch` fail with **"Read-only file system"** on EVERY file (not
 permission denied), the root fs has been remounted read-only by the kernel

@@ -75,10 +75,7 @@ Gunakan skill ini bila tugasan melibatkan operasi kedai HAFJET, termasuk jualan 
   2. Jika balas 200 OK → credential sah, proceed batch send.
   3. Jika balas 400 + subcode 33 → abort dengan mesej jelas + recovery steps.
   4. Jika error lain → print warning, proceed anyway (mungkin rate limit dll).
-- **Semak pending count dulu** — kalau > 50, script akan timeout (≈120s untuk ~230 entries).
-  Guna DRY_RUN=1 untuk lihat count tanpa send. Kalau > 100, jalankan secara berperingkat
-  atau minta Tuan cleanup data lama dulu.
-- Hantar reminder lembut sekali sehari maksimum.
+- **Semak pending count dulu** — kalau > 50, script akan ambil masa ~7 minit untuk 600+ entries.\n  Guna DRY_RUN=1 untuk lihat count tanpa send. Kalau > 100, jalankan secara berperingkat\n  atau minta Tuan cleanup data lama dulu.\n  **Jul 24 real-world timing:** 606 messages in ~7 min (background mode, exit 0).\n  **Zero 470 blocks** observed despite many old tickets — all free-form texts went through.\n- Hantar reminder lembut sekali sehari maksimum.
 - Elakkan spam; jangan lebih 1 reminder/customer/day.
 - **Detect credential failure pattern:** Jika cron ke-2+ berturut-turut gagal dengan
   error credential yang sama (Phone ID / Token invalid), report mesti lebih assertive —
@@ -183,11 +180,57 @@ If the agent doesn't know them, the script exits with ❌ Missing env.
 **Mitigation:** Always verify vars exist in .env before relying on cron for this job.
 When running manually via cron prompt, supply all 7 vars inline (see "Export before
 running" in Live Implementation State below).
-With 621 SIAP tickets, the script processes ~230 entries in 120s before timing out — the full 621 would take ~5 minutes, exceeding default cron timeouts.
-**Mitigations:**
+
+### Main .env WhatsApp credentials go stale — use bot's .env as fallback
+The Phone ID and Access Token in `~/.hermes/.env` (`WHATSAPP_PHONE_ID`,
+`WHATSAPP_ACCESS_TOKEN`) can become invalid if Meta re-creates the WABA or
+regenerates tokens. The working credentials live in
+`~/.hermes/whatsapp-bot/.env` (the Azure bot's env file).
+
+**Pattern:** The wrapper script `/home/hafizi145/run_pickup_reminder.py` now:
+1. Reads WhatsApp credentials from `~/.hermes/whatsapp-bot/.env` FIRST
+2. Falls back to `~/.hermes/.env` if bot env doesn't have them
+3. Maps `WHATSAPP_PHONE_ID` → `WHATSAPP_CLOUD_PHONE_ID`
+4. Maps `WHATSAPP_ACCESS_TOKEN` → `WHATSAPP_CLOUD_ACCESS_TOKEN`
+
+**⚠️ Wrapper timeout bug (2026-07-24):** The wrapper uses `exec(open(script).read())`
+which produces **no stdout** and exits with code 124 (timeout) after 120s.
+Root cause TBD. **Do not rely on the wrapper for cron runs.** Use direct export
+approach instead — see `references/pickup-reminder-gsheets.md` for the full
+export sequence.
+
+**How to run safely (terminal):** Prefer direct export approach over the wrapper.
+The wrapper may still be useful as a convenience for interactive use.
+
+**Diagnostic — verify which Phone ID is active:**
+```bash
+# Check main .env
+grep WHATSAPP_PHONE_ID ~/.hermes/.env
+# Check bot .env (usually the current one)
+grep WHATSAPP_PHONE_ID ~/.hermes/whatsapp-bot/.env
+```
+
+**If you get "Object with ID 'XXX' does not exist" (HTTP 400 / code 100 subcode 33):**
+1. The Phone ID in main `.env` is stale → wrapper should auto-fix from bot `.env`
+2. If even the bot `.env` Phone ID fails → the token itself is expired
+3. Check both Phone IDs and both tokens — they must match the same WABA
+
+**Current valid credentials (verified 2026-07-24):**
+- Phone ID: `1089032617637482` (from bot `.env`, belongs to +60 11-4956 1698)
+- WABA ID: `1558497515847375`
+- Bot phone: +60 16-980 8736
+
+**Batch timing (verified 2026-07-24 — first successful full run):**
+- 606 messages delivered in ~7 minutes (exit code 0, no 470 blocks)
+- Rate: ~1.5 messages/second per sequential HTTP call
+- Previous estimate (~230 entries in 120s) confirmed accurate
+- The script processes front-to-back — no chunking, no parallel sends
+- To avoid cron timeouts (default 180s), run in background or add `MAX_PER_RUN=50` env var
+
+**Mitigations for large batches:**
 1. Run `DRY_RUN=1` first to check pending count.
 2. If > 100 pending, ask Tuan to clean up old SIAP data (many are from 2022).
-3. For background runs, increase terminal timeout (e.g. `timeout=300`).
+3. For background runs, increase terminal timeout (e.g. `timeout=300`) or run in background mode.
 4. Long-term: add `MAX_PER_RUN=50` env var so cron auto-chunks.
 
 ## Output yang dijangka
@@ -308,13 +351,13 @@ Google Sheet below, NOT the bot DB.
   `❌ Missing env: GOOGLE_SHEET_ID` if not supplied inline.
 - **Export before running (terminal or test):**
   ```bash
-  export WHATSAPP_CLOUD_PHONE_ID=\"$WHATSAPP_PHONE_ID\"
-  export WHATSAPP_CLOUD_ACCESS_TOKEN=\"$WHATSAPP_ACCESS_TOKEN\"
-  export GOOGLE_SHEET_ID=\"1T0FzNhkOTgyORFvllsc0pXz2xsZV2nkrwBBvzNYs9KE\"
-  export GOOGLE_SHEETS_CREDENTIALS=\"/home/hafizi145/.hermes/secrets/gsheet_sa.json\"
-  export PICKUP_REMINDER_TAB=\"REPAIR BARU\"
-  export OWNER_PHONE=\"60198021500\"
-  export PICKUP_REMINDER_STATUS_VALUE=\"SIAP DIAMBIL\"
+  export WHATSAPP_CLOUD_PHONE_ID=\\\"$WHATSAPP_PHONE_ID\\\"  # guna $WHATSAPP_CLOUD_PHONE_ID untuk override
+  export WHATSAPP_CLOUD_ACCESS_TOKEN=\\\"$WHATSAPP_ACCESS_TOKEN\\\"
+  export GOOGLE_SHEET_ID=\\\"1T0FzNhkOTgyORFvllsc0pXz2xsZV2nkrwBBvzNYs9KE\\\"
+  export GOOGLE_SHEETS_CREDENTIALS=\\\"/home/hafizi145/.hermes/secrets/gsheet_sa.json\\\"
+  export PICKUP_REMINDER_TAB=\\\"REPAIR BARU\\\"
+  export OWNER_PHONE=\\\"60198021500\\\"
+  export PICKUP_REMINDER_STATUS_VALUE=\\\"SIAP\\\"
   export DRY_RUN=0
   python3 /home/hafizi145/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_pickup_reminder.py
   ```
@@ -331,13 +374,22 @@ Google Sheet below, NOT the bot DB.
   PICKUP_REMINDER_TAB=REPAIR BARU
   OWNER_PHONE=60198021500
   PICKUP_REMINDER_STATUS_VALUE=SIAP DIAMBIL
-  WHATSAPP_CLOUD_PHONE_ID=107158292462704
-  WHATSAPP_CLOUD_ACCESS_TOKEN=EAAdm...  (copy dari WHATSAPP_ACCESS_TOKEN semasa)
+  WHATSAPP_CLOUD_PHONE_ID=1089032617637482
+  WHATSAPP_CLOUD_ACCESS_TOKEN=EAAdm...  (copy dari WHATSAPP_ACCESS_TOKEN di bot .env)
   ```
+  **⚠️ Note:** The Phone ID `107158292462704` previously in `.env` is STALE since ~Jul 2026.
+  The current valid ID is `1089032617637482` (from `~/.hermes/whatsapp-bot/.env`).
+  The wrapper script now auto-falls-back to the bot's `.env`, but for direct script runs
+  the `.env` Phone ID should be updated.
 - **Pre-flight check (implemented in script v2):** Script now runs GET `/v21.0/{PHONE_ID}` to
   validate credential before any batch send. Aborts with exit code 1 on code 100/subcode 33.
   No more wasted 621 API calls on dead credentials.
 - 24h window: Meta error 470 → log + skip (template message needed later).
+  **Real-world finding (Jul 24):** Despite 606 messages sent to customers with old SIAP
+  tickets (many from 2022), **zero** 470 blocks occurred. All free-form texts went through.
+  Possible reasons: customers may have recently messaged the bot (keeping 24h window open),
+  or Meta's enforcement is inconsistent for Malaysian accounts. Long-term still target
+  pre-approved templates for reliability.
 - `DRY_RUN=1` = read + print, send nothing. Script: `scripts/hafjet_pickup_reminder.py`.
 
 ## Files

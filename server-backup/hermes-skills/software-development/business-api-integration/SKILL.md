@@ -1,6 +1,6 @@
 ---
 name: business-api-integration
-description: Patterns and pitfalls for integrating with business/ERP APIs (POS, accounting, CRM). Activates when building scripts that call business APIs like Loyverse, QuickBooks, Xero, or similar SaaS platforms. Covers auth patterns, pagination quirks, rate limits, credential security, and common HTTP error codes.
+description: Patterns and pitfalls for integrating with business/ERP APIs (POS, accounting, CRM) and AI/creative APIs (image generation, beautification, analysis). Activates when building scripts that call external SaaS APIs like Loyverse, QuickBooks, Xero, YouCam, or similar platforms. Covers auth patterns, pagination quirks, rate limits, credential security, and common HTTP error codes.
 ---
 
 # Business API Integration Patterns
@@ -298,6 +298,7 @@ On systems with PEP 668 (externally-managed-environment):
 - `references/cron-timezone-guide.md` — Server UTC vs MYT timezone conversion for cron jobs
 - `references/shell-token-extraction.md` — Why shell grep|cut fails for token extraction
 - `references/spx-shopee-integration.md` — SPX Shopee endpoint mapping, status codes, reveal pattern
+- `references/youcam-api.md` — YouCam (Perfect Corp) AI beauty/image API — endpoints, auth, call patterns
 - `references/telegram-delivery-pattern.md` — Telegram bot delivery pattern for report summaries
 - `references/remote-oauth-setup.md` — OAuth setup on remote/headless servers (Google Playground, xurl --headless, iPhone workarounds)
 - `scripts/fetch_sales.py` — Working example: Loyverse daily sales report with client-side date filtering, profit calculation, and CSV import

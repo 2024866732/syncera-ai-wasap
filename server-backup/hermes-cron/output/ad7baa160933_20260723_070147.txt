@@ -1,0 +1,58 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+**🔥 Berita Teknologi Paling Panas (Minggu Ini)**  
+- **Kedai Tentera Belanda** – Tentera Belanda nak belanjakan *jutaan euro* untuk tiga tahun bersama syarikat pertahanan lokal **Intelic** supaya kembangkan platform perisian drone serba guna. Sumber: Reuters / MarketScreener.  
+- **OpenAI angkat dua ahli board baru** (21 Jul 2026) selain perkara peletakan saham kepada kerajaan AS yang masih dalam perbincangan dengan OSTP dan Ofis Pengarah Siber Kebangsaan. Sumber: CNBC / TechStartups.  
+- **Apple halukan kemaskiri Siri AI di Europa** etter perbincangan dengan ketua teknologi Uni Eropa, Henna Virkkunen. Sumber: TechStartups (1 Jul).  
+- **Tencent lancar model Hy3** – 295-biliyen parameter, lisensi Apache 2.0, disantai saingan dengan model China seperti GLM‑5.1/5.2. Sumber: TechStartups (7 Jul).  
+- **Data‑pusat AI mengguakan lebih elektrik** – penggunaan elektrik naik 37% kerana perlombahan infrastruktur AI (memori tinggi untuk latihan dan inferens). Sumber: TechStartups (2 Jul).  
+- **Pengeluaran awan dan kerajaan** – ratusan biliwan dollar disumbang ke infrastruktur AI next‑gen (2025‑2026). Sumber: IG‑MGuru blog.
+
+**🤖 Dunia Open‑Source AI Minggu Ni**  
+- **Model Cina berat‑bobot (open‑weight) naik daun** – Moonshot AI *Kimi K3* serta *VibeThinker‑3B* (3B parameter, MIT license) menunjuk pencapaian setara model frontier, walaupun perdebatan di Washington tentang sama ada AS boleh gunakan model China ini. Sumber: CNBC / AI Weekly.  
+- **SpaceX buka‑sumberkan “Grok Build”** – perisian pengkod agen AI nya, menambah gerakan terbukaan di luar sahaja model. Sumber: Axios.  
+- **Minggu Sumber Terbuka Bersama Bangsa‑Bangsa Bersatu (UN Open Source Week 2026)** – fokus ke peranti terbuka, robot terbuka, dan Infrastruktur Awam Digital (DPI) bagi menutup celah digital. Sumber: UN Open Source.  
+- **Mistral (CEO Mensch) tegas** – labnya berada di luar kawalan negara, menjadi “tempat perlindungan” bagi projek sumber terbuka selepas batasan AS. Sumber: AI Weekly.  
+- **Perangkaian framework AS** – pembentangan modello US berdasarkan kelebihan model Cina terbuka sedang dibincangkan oleh pihak kerajaan dan industri AI. Sumber: Washington Post / AI Weekly.  
+- **Peralihan budaya** – sumber terbuka AI tidak lagi sekadar kultura pembangun; ia kini menjadi *infra‑struktur perniagaan* di Eropah, AS, dan dunia founder. Sumber: Mean CEO blog.
+
+**⭐ Projek GitHub Naik Bukit (Jun 2026)**  
+- **tensorflow/tensorflow** – rangkaian ML terbuka yang masih dominant, lagi lagi dengan integrasi MCP, pgvector, dsb.  
+- **ace63rus/architect‑showcase** – “Jarvis Architecture”: contoh AI Agent yang menggunakan semantic search, pgvector, dan Supabase.  
+- **OSSInsight** – platform analisis GitHub secara masa nyata (10+ milliard event), memberi statistik kontributor, pull request, dan kesihatan komuniti.  
+- **Komi Store** – “app store” sumber terbuka untuk GitHub Release; pemasangaan satu‑ketuk, auto‑update, sudah dapat 16K+ bintang.  
+- **Ollama / n8n / Claude Code** – masih dalam senarai trending untuk pengurusan model tempatan, workflow automation, dan kod pembantu AI.
+
+**📌 Apa Kito Patut Tahu (Key Takeaways)**  
+- **AI infrastruktur makin berat** – bukan sahaja model, justeru belanjaan awan, memori tinggi, dan kuasa elektrik naik tajam; negara dan syarikat awak investasi besar‑besar.  
+- **Sumber terbuka AI dari Cina mulai menguasai** – model berat‑bobot seperti Kimi K3 dan VibeThinker‑3B menunjukkan kompetensi taraf frontier, memicu perdebatan tentang keadilan dan keamanan pasokan AS.  
+- **Perusahaan besar turut buka‑sumberkan peralatan** – SpaceX (Grok Build) dan componen lain menunjukkan bahwa “openness” bukan terhad kepada model sahaja.  
+- **Ekosom GitHub makin kaya** – alat seperti OSSInsight dan Komi Store menjalur peng发现an dan penggunaan projek AI/ML secara lebih mudah.  
+- **Untuk HAFJET** – pertimbangkan mengalihkan sebahagian beban AI ke model terbuka (mis. VibeThinker‑3B atau Ollama) untuk mengurangkan ketergantungan pada API tertutup, manfaatkan komuniti GitHub untuk percarian alat (OSSInsight) dan deployment ringan (Komi Store).  
+
+**🔗 Sumber Rujukan**  
+1. https://www.reuters.com/technology/  
+2. https://www.cnbc.com/technology/  
+3. https://techstartups.com/2026/07/02/top-tech-news-today-july-2-2026/  
+4. https://techstartups.com/2026/07/03/top-tech-news-today-july-3-2026/  
+5. https://techstartups.com/2026/06/26/top-tech-news-today-june-26-2026/  
+6. https://techstartups.com/2026/07/01/top-tech-news-today-july-1-2026/  
+7. https://techstartups.com/2026/07/07/top-tech-news-today-july-7-2026/  
+8. https://www.igmguru.com/blog/top-20-new-technology-trends  
+9. https://www.cnbc.com/2026/07/17/moonshot-ai-kimi-k3-model-openai-anthropic-china.html  
+10. https://www.axios.com/2026/07/18/china-ai-open-source-kimi-anthropic-openai  
+11. https://www.unopensource.org/  
+12. https://aiweekly.co/  
+13. https://aiweekly.co/ai-news-today/open-source-ai-news  
+14. https://www.washingtonpost.com/wp-intelligence/ai-tech-brief/2026/07/13/ai-tech-brief-exclusive-an-open-source-framework/  
+15. https://github.com/tensorflow/tensorflow  
+16. https://github.com/ace63rus/architect-showcase  
+17. https://ossinsight.io/  
+18. https://komistore.app/  
+
+*(Ringkasan ini disusun dalam bahasa Malaysia gaya Kelantan — sohor, goni, pacak megah, bersenggoti — supaya mudah difahami dan piace untuk dibaca di Telegram.)*  
+*Semoga bermanfaat, Tuan Hafizi!*
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").

@@ -160,3 +160,9 @@ uv pip install rapidocr-onnxruntime pillow pypdfium2
 ```
 
 Tak perlu PaddlePaddle, torch, atau GPU.
+
+---
+
+## Reference
+
+`references/paddle-crash-to-rapidocr.md` — Full debug log and root cause analysis of the PaddlePaddle SIGILL crash on i3-2100 (Sandy Bridge AVX2 gap), plus the ONNX-backport pattern applicable to any ML framework with hardcoded AVX2 wheels.

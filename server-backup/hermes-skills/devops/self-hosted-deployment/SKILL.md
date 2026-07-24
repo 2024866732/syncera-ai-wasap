@@ -18,6 +18,47 @@ Any of these triggers:
 - User asks to install and configure Tailscale for service access
 - User wants to self-host a **Next.js / Prisma / PostgreSQL** web app (e.g. prompts.chat, or any DB-backed Node app)
 
+## 🚨 Pre-flight resource check (heavy services)
+
+BEFORE deploying a heavy self-hosted service (DataHub, ELK, OpenSearch, Grafana+Loki+Mimir),
+run this quick triage:
+
+```bash
+echo "=== RAM ===" && free -h
+echo "=== DISK ===" && df -h / | tail -1
+echo "=== DOCKER ===" && docker --version 2>/dev/null || echo "Docker: TAKDE"
+echo "=== CPU ===" && nproc
+echo "=== SWAP ===" && swapon --show 2>/dev/null || echo "No swap"
+```
+
+### Threshold guide
+
+| Service tier | RAM | Disk | Docker? | Contoh |
+|---|---|---|---|---|
+| Light (web UI, API) | ≥512MB | ≥1GB | Optional | Hermes WebUI |
+| Medium (DB-backed) | ≥2GB | ≥5GB | Optional | prompts.chat, n8n |
+| **Heavy (data platform)** | **≥6–8GB** | **≥10–15GB** | **Wajib** | **DataHub**, ELK |
+
+If the server fails the threshold — **say so directly**, show the gap in a table, and offer
+alternatives (bigger VPS, different machine, cloud-managed version). Do NOT attempt a heavy
+deploy on a server that clearly can't run it — the Docker images alone will OOM.
+
+### Known heavy-service requirements
+
+| Service | Containers | Min RAM | Min Disk | Docker |
+|---|---|---|---|---|
+| **DataHub** (quickstart) | 13 | **8 GB** | **13 GB** | Wajib |
+| Elasticsearch single | 1 | 4 GB | 10 GB | Optional |
+
+### Alternatives when the server can't run it
+
+1. **Dedicated machine** — PC Office (16GB RAM) or a medium VPS (8GB, RM50-80/mo)
+2. **Cloud-managed** — DataHub Cloud, Elastic Cloud — zero ops, free trial available
+3. **Minimal CLI/ingestion only** — e.g. `pip install acryl-datahub` for metadata CLI
+   without the full backend/UI
+
+See `references/datahub-deployment.md` for DataHub-specific setup notes.
+
 ## Basic setup flow
 
 ```

@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 36
+        "completed": 38
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-07-23T07:00:00+00:00",
-      "last_run_at": "2026-07-22T07:02:43.371552+00:00",
+      "next_run_at": "2026-07-25T07:00:00+00:00",
+      "last_run_at": "2026-07-24T07:02:26.158019+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -63,15 +63,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 32
+        "completed": 34
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-07-23T13:00:00+00:00",
-      "last_run_at": "2026-07-22T13:06:16.336431+00:00",
+      "next_run_at": "2026-07-25T13:00:00+00:00",
+      "last_run_at": "2026-07-24T13:05:46.774723+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -106,17 +106,17 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 27
+        "completed": 29
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-07-23T14:00:00+00:00",
-      "last_run_at": "2026-07-21T14:03:55.751162+00:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-07-25T14:00:00+00:00",
+      "last_run_at": "2026-07-23T14:00:30.856648+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -149,15 +149,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 26
+        "completed": 28
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-07-23T09:00:00+00:00",
-      "last_run_at": "2026-07-22T09:01:58.635289+00:00",
+      "next_run_at": "2026-07-25T09:00:00+00:00",
+      "last_run_at": "2026-07-24T09:00:48.802961+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -192,15 +192,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 20
+        "completed": 22
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-07-23T09:00:00+00:00",
-      "last_run_at": "2026-07-22T09:11:40.456626+00:00",
+      "next_run_at": "2026-07-25T09:00:00+00:00",
+      "last_run_at": "2026-07-24T09:00:40.031625+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -237,15 +237,15 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 12
+        "completed": 14
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-07-23T03:00:00+00:00",
-      "last_run_at": "2026-07-22T03:09:27.040162+00:00",
+      "next_run_at": "2026-07-25T03:00:00+00:00",
+      "last_run_at": "2026-07-24T03:22:46.487250+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -283,15 +283,15 @@
       "schedule_display": "0 15 * * *",
       "repeat": {
         "times": null,
-        "completed": 8
+        "completed": 10
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-14T17:05:27.034793+00:00",
-      "next_run_at": "2026-07-22T15:00:00+00:00",
-      "last_run_at": "2026-07-21T15:00:57.352692+00:00",
+      "next_run_at": "2026-07-24T15:00:00+00:00",
+      "last_run_at": "2026-07-23T15:00:47.736111+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -346,7 +346,99 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null
+    },
+    {
+      "id": "073097a4cc44",
+      "name": "cctv-4h-check",
+      "prompt": "Check the HAFJET CCTV worker on the office PC (100.121.94.41) and report status.\n\nRun these commands via SSH (ssh hafizi145@100.121.94.41) and compile a report:\n\n1. ps aux | grep -v grep | grep 'app.main' \u2192 confirm worker PID and CPU%\n2. curl -s http://127.0.0.1:8091/health \u2192 camera status\n3. curl -s 'http://127.0.0.1:8091/api/events?limit=10' \u2192 events\n4. ls -lh /mnt/cctv/snapshots/ \u2192 snapshots\n5. tail -20 /tmp/cctv-worker.log \u2192 recent logs (check for crashes/reconnects)\n\nAlso check: grep -c 'Worker stopped\\|error\\|exception\\|traceback' /tmp/cctv-worker.log (case insensitive)\n\nReport format:\n=== CCTV Worker Check ===\nTimestamp:\nProcess: [PID] running / NOT RUNNING \u2014 CPU usage\nHealth: OK / ERROR\nEvents: total count\n  - newest event: timestamp, confidence\nSnapshots: count, total size\nLog anomalies: count of error/crash lines\nRecent log excerpt: last 5 lines\n\nIf the worker is NOT running, suggest: cd /home/hafizi145/projects/hafjet-cctv-worker && nohup .venv/bin/python -m app.main >> /tmp/cctv-worker.log 2>&1 & disown",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": "opencode-zen",
+      "model_snapshot": "deepseek-v4-flash-free",
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "once",
+        "run_at": "2026-07-24T07:26:34.362066+00:00",
+        "display": "once in 4h"
+      },
+      "schedule_display": "once in 4h",
+      "repeat": {
+        "times": 6,
+        "completed": 1
+      },
+      "enabled": false,
+      "state": "completed",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-07-24T03:26:34.362117+00:00",
+      "next_run_at": null,
+      "last_run_at": "2026-07-24T07:27:18.436764+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'opencode-zen' -> 'nous'; model 'deepseek-v4-flash-free' -> 'tencent/hy3:free'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=073097a4cc44 provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1485374469",
+        "chat_name": "Hafizi",
+        "thread_id": "27726",
+        "user_id": "1485374469"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "run_claim": null,
+      "fire_claim": null
+    },
+    {
+      "id": "2aeb2f897d8d",
+      "name": "cctv-daily-check",
+      "prompt": "You are a passive monitoring agent for the HAFJET CCTV Worker. Run these checks on the office PC (100.121.94.41) and compile a brief summary.\n\nRun via SSH (ssh hafizi145@100.121.94.41):\n\n1. worker status:\n   - systemctl status cctv-worker --no-pager --lines=5 2>&1\n   \n2. total restarts since last check:\n   - journalctl -u cctv-worker | grep -c 'Started cctv-worker' 2>&1\n   \n3. last 15 lines of worker journal:\n   - journalctl -u cctv-worker -n 15 --no-pager 2>&1\n   \n4. health:\n   - curl -s http://127.0.0.1:8091/health 2>&1\n   \n5. events (last 3):\n   - curl -s 'http://127.0.0.1:8091/api/events?limit=3' 2>&1 | python3 -m json.tool 2>&1\n   \n6. process resource:\n   - ps aux | grep -v grep | grep 'app.main' | awk '{print \"PID=\"\\$2\" CPU=\"\\$3\"% MEM=\"\\$4\"% RSS=\"\\$6\"KB\"}'\n\n7. dashboard count:\n   - curl -s http://127.0.0.1:8091/dashboard | grep -o 'Showing [0-9]* recent'\n\n8. snapshot count:\n   - ls -lh /mnt/cctv/snapshots/ | wc -l\n\nOutput format:\n\n=== CCTV Daily Check ===\nTimestamp:\nSystemd: [running / stopped / restarting]\nUptime: [since when]\nTotal restarts (lifetime): N\nActive PID: [PID]\nCPU: [%]  MEM: [%]  RSS: [KB]\nHealth: OK / ERROR\nDashboard: Showing X recent events\nSnapshots: N files\nLog anomalies: [any ERROR, WARNING, disconnect, Permission denied]\nRecent log tail: [last 5 relevant lines]\n\nIf the worker is NOT running, suggest restart:\nsudo systemctl restart cctv-worker\njournalctl -u cctv-worker -n 30 --no-pager\n\nIMPORTANT SAFETY:\n- Do NOT make any changes to model, threshold, config, dashboard, alerts, or system config\n- Do NOT touch production HAFJET, Azure, WhatsApp, or Telegram\n- Do NOT run destructive commands on CCTV data paths\n- This is a READ-ONLY monitoring task",
+      "skills": [],
+      "skill": null,
+      "model": "deepseek-v4-flash-free",
+      "provider": "opencode",
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "once",
+        "run_at": "2026-07-24T16:08:48.616994+00:00",
+        "display": "once in 6h"
+      },
+      "schedule_display": "once in 6h",
+      "repeat": {
+        "times": 28,
+        "completed": 0
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-07-24T10:08:48.617035+00:00",
+      "next_run_at": "2026-07-24T16:08:48.616994+00:00",
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1485374469",
+        "chat_name": "Hafizi",
+        "thread_id": "27726",
+        "user_id": "1485374469"
+      },
+      "enabled_toolsets": null,
+      "workdir": null
     }
   ],
-  "updated_at": "2026-07-22T14:00:57.672585+00:00"
+  "updated_at": "2026-07-24T14:00:24.522722+00:00"
 }

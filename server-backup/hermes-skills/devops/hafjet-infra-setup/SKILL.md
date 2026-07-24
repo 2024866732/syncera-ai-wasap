@@ -80,15 +80,110 @@ PC Office ships **Python 3.14 system-wide ONLY**; it is PEP 668 externally-manag
   The codec weights live at `IDEA-Emdoor/DistilCodec-v1.0` as `g_00204000` (1.6 GB) + `model_config.json` — separate repo from the TTS model. Both must be downloaded.
 - **Malaysian-TTS-0.6B-v1 working pipeline (Qwen3 LM → DistilCodec decode → 24 kHz MP3):** model is NOT a standard TTS; it's a Qwen3 causal LM that generates `speech_NNN` tokens, then DistilCodec detokenizes to audio. Confirmed generating valid MP3s on PC Office CPU (idayu + husein speakers). Full tested `test_tts.py` + install/download scripts are in `references/pc-office-python-ml-venv.md`. Key gotchas: (a) text MUST be **normalized** (`123` → `one two three`) or output is garbled; (b) prompt format `<s>speaker: text<|speech_start|>`; (c) **license = None on the HF card** — NOT verified for commercial use; Tuan approved **personal-use only** this session. Do NOT wire into the customer-facing WhatsApp bot until license is confirmed.
 - **SCP-to-PC-Office approval trap:** every `scp`/`ssh` to the Tailscale IP `100.121.94.41` triggers a MEDIUM security-scan approval ("raw IP"). It auto-blocks on timeout if Tuan doesn't click approve promptly. Batch the work and ask Tuan to approve fast, or have Tuan run the file copy himself.
-- See `references/pc-office-python-ml-venv.md` for the full tested install/download/run scripts + mesolitica Qwen3-TTS (Malaysian-TTS) specifics (DistilCodec dependency, Xet storage needs `hf download` not `curl`, normalized-text requirement, license caveat).
+- See `references/pc-office-node2-bootstrap.md` for the full tested install/download/run scripts + mesolitica Qwen3-TTS (Malaysian-TTS) specifics (DistilCodec dependency, Xet storage needs `hf download` not `curl`, normalized-text requirement, license caveat).
+- See `references/remote-daemon-deploy-jarvis.md` for the full JARVIS brain+sidecar recipe (JWT auth, brain_domain for remote sidecars, Gemini free-tier, Windows sidecar) and the remote-ops pitfalls (`write_file`≠SSH, `cat|ssh` not `scp`, no `===`/heredoc-in-ssh). Helper `templates/jarvis-token.sh` mints the access token and prints a ready dashboard URL.
+
+## Adding a new logical volume for data storage (e.g., CCTV) on PC Office
+
+When you need additional storage for data such as CCTV footage, AI model files, or backups on the PC Office, and you have free space in the volume group (VG), you can create a new logical volume (LV) without affecting the existing system.
+
+### Prerequisites
+- You have confirmed free space in the VG (run `sudo vgdisplay` and look for "Free PE / Size").
+- You have chosen a name for the new LV (e.g., `cctv-lv`).
+- You have decided on a mount point (e.g., `/mnt/cctv`).
+
+### Steps
+
+1. **Create the logical volume** using all free space (or specify a size with `-L`):
+   ```bash
+   sudo lvcreate -n <lv-name> -l 100%FREE <vg-name>
+   ```
+   Example: `sudo lvcreate -n cctv-lv -l 100%FREE ubuntu-vg`
+
+2. **Format the LV** with a filesystem (ext4 is a good general-purpose choice):
+   ```bash
+   sudo mkfs.ext4 -L <LABEL> /dev/<vg-name>/<lv-name>
+   ```
+   Example: `sudo mkfs.ext4 -L CCTV_SSD /dev/ubuntu-vg/cctv-lv`
+
+3. **Create a mount point**:
+   ```bash
+   sudo mkdir -p <mount-point>
+   ```
+   Example: `sudo mkdir -p /mnt/cctv`
+
+4. **Get the UUID of the new filesystem** for use in `/etc/fstab`:
+   ```bash
+   blkid /dev/<vg-name>/<lv-name>
+   ```
+   Copy the UUID value (e.g., `UUID="..."}`).
+
+5. **Add an entry to `/etc/fstab`** for automatic mounting at boot:
+   - Open the file with `sudo nano /etc/fstab`
+   - Add a line in the format:
+     ```
+     UUID=<your-uuid>  <mount-point>  ext4  defaults,noatime  0  2
+     ```
+   - Example: `UUID=da1cce88-4123-4b31-96ef-f2aa0aa1f18c  /mnt/cctv  ext4  defaults,noatime  0  2`
+   - Save and exit.
+
+6. **Mount the volume** (either reboot or run `sudo mount -a`):
+   ```bash
+   sudo mount -a
+   ```
+
+7. **Verify the mount**:
+   ```bash
+   df -hT | grep <mount-point>
+   ```
+   You should see the new filesystem listed with its size.
+
+8. **Set appropriate ownership** so your user can write to it without sudo:
+   ```bash
+   sudo chown -R $USER:$USER <mount-point>
+   # Optional: set group write access if multiple users need it
+   # sudo chgrp -R <group> <mount-point>
+   # sudo chmod -R 775 <mount-point>
+   ```
+
+9. **Create a directory structure** for your project (optional but recommended):
+   ```bash
+   mkdir -p <mount-point>/{raw,annotated,models,logs,backup}
+   ```
+
+### Notes
+- Always verify the device name (`/dev/<vg-name>/<lv-name>`) before running `mkfs` or `lvremove` to avoid data loss.
+- If you prefer to keep the system partition separate from data, this pattern is ideal. You can also extend an existing LV (like the root LV) using `lvextend` and `resize2fs`, but creating a separate LV for data is safer and more flexible.
+- The steps above assume you are using ext4. For other filesystems (like xfs), adjust the `mkfs` command and fstab type accordingly.
 
 ## Azure VPS read-only filesystem recovery
 - Symptom: bot stuck, `rm` → "Read-only file system", `touch` fails.
 - Cause: ext4 auto remount-ro after FS error (`mount` shows `ro` on `/` or `/root`).
-- Fix needs root console (Azure Serial Console / direct SSH as root): `touch /forcefsck && reboot`,
-  or fsck at boot.
+- Fix needs root console (Azure Serial Console / direct SSH as root): `touch /forcefsck && reboot`, or fsck at boot.
 - Hermes as unprivileged user (sudo blocked, no-new-privileges) CANNOT fix this.
 - After rw restored, safe cleanup: `rm -rf ~/.npm/_cacache`, `rm -rf /tmp/*`. `apt clean` needs root.
+- After rw restored, safe cleanup: `rm -rf ~/.npm/_cacache`, `rm -rf /tmp/*`. `apt clean` needs root.
+
+## Deploying a remote always-on daemon on PC Office (JARVIS case study, 2026-07-24)
+Standing up a third-party daemon (e.g. JARVIS — github.com/vierisid/jarvis, an autonomous
+AI assistant) on `hafjet-pc-office` over SSH from the Azure gateway. Full recipe, JWT auth
+model, `brain_domain` for remote sidecars, and the remote-ops pitfalls below are in
+`references/remote-daemon-deploy-jarvis.md`. A ready `jarvis-token.sh` helper (mints the
+JWT-only access token and prints a working `?token=` dashboard URL) is in `templates/`.
+
+**Remote-ops pitfalls that burned time this session (DO NOT repeat):**
+- `write_file` writes to the AGENT's LOCAL FS (Azure), NOT the SSH target. To push a file
+  to PC Office, use `cat localfile | ssh hafjet-pc-office 'cat > ~/remotefile'`.
+- `scp` of a single file SILENTLY FAILED here; the `cat | ssh` pipe worked. Prefer the pipe.
+- `echo === text ===` breaks bash (parsed as `test`). Never use `===` in echoed headers.
+- `<<PY` heredocs INSIDE `ssh -c '...'` fail with "unexpected EOF". Write the script to a
+  local file, pipe it over (`cat file | ssh 'cat > file'`), then run it remotely.
+- `execute_code` (Hermes tool) is BLOCKED for SSH/remote subprocess — use the `terminal` tool.
+- JARVIS-specific: it is **JWT-only**, no shared dashboard password. `auth.insecure_open_access`
+  is a setup-only escape hatch (remove immediately). For remote laptop sidecars, set
+  `daemon.brain_domain: 100.121.94.41:3142` (Tailscale IP, NOT localhost) and RE-ENROLL —
+  old tokens keep the localhost origin and fail WS connect. Gemini free-tier key works as the
+  LLM provider (OpenCode Go does NOT).
 
 ## Tuan's standing cleanup constraints
 - Destructive commands need EXPLICIT per-command approval. NEVER set "Allow always".
