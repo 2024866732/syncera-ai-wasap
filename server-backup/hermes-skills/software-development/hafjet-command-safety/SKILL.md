@@ -115,6 +115,30 @@ Tuan's rule: no delete without a standalone approval each time, even for
 safe-to-rebuild caches. If the command would have been DENIED anyway, stop
 and wait.
 
+### Office PC sudo gate (learned 2026-07-24)
+
+The HAFJET office PC (Ubuntu 26.04, `hafjet-pc-office` at 100.121.94.41) has a
+different sudo configuration from the Azure VPS:
+
+- **`sudo` requires a terminal (TTY)** for password authentication. Any
+  `sudo ...` command run via non-interactive SSH will fail with:
+  `sudo: A terminal is required to authenticate`
+  
+- **DO NOT retry** sudo commands with `ssh -t` or pipe passwords. Instead,
+  provide the exact commands for Tuan Hafizi to run directly at the office
+  PC terminal.
+
+- This applies to: `sudo systemctl daemon-reload/restart/enable/start`,
+  `sudo tee /etc/systemd/system/...`, `sudo sed -i ...` on system files.
+
+- **Safe pattern:** Agent shows the commands in chat. Tuan runs them at
+  the physical terminal (or via SSH with `-t` flag). Agent then verifies
+  results with read-only checks (`systemctl status`, `journalctl`, `curl`).
+
+- **Distinction from Azure VPS:** Azure VPS blocks sudo via container
+  `no-new-privileges` flag (different root cause). Office PC only blocks
+  it due to TTY requirement — `sudo` works fine when run interactively.
+
 ### Bundled delete + install pitfall (learned 2026-07-20)
 Do NOT chain a destructive delete with a long-running install in ONE command,
 e.g. `rm -rf ~/.cache/pip ~/xiaozhi-server/.venv && python3 -m venv .venv && pip install ...`.

@@ -222,24 +222,28 @@ For 2315 orders at 50/page = 47 pages × 30s = **~23.5 min** order sync + phone 
 - Phone lookups: ~2311 missing × 25/tick × 15s interval ≈ **~23 min**
 - **Total:** ~27 min (was 40-45 min with default settings)
 
-## Scheduler + Pilot
-- `_check_spx_reminders()` runs every 15 min.
-- Pilot cap: `count_spx_reminders_sent_today() >= 60`.
-- Send window: **08:00–21:00 Malaysia time (`Asia/Kuala_Lumpur`)** via `zoneinfo`. Skip outside window with log `[SPX] Outside Malaysia send window: HH:MM MYT (server UTC HH:MM)`.
-- Eligibility filter: `spx_status=ReadyForCollection` AND `inbound_time` within 7 days.
-- `_resolve_next_reminder_state(order)` computes next template based on time thresholds.
-- Templates (BM): `Remind1/2/3/4`, `CollectionFailed`.
-- Live send via `send_whatsapp_message()` (free-form). Each successful send logs `[SPX-PILOT] sent tracking=... phone=... template=... time=...`.
-- Daily cap log: `[SPX-LIMIT] daily cap 60 reached at <UTC timestamp>`.
+## Scheduler + Pilot (REPLACED Jul 2026 — v1.1 status-based)
 
-## Guards (must keep)
-- `recipient_phone IS NULL` → skip
+**⚠️ The old days-based pilot (`_resolve_next_reminder_state`, `_build_reminder_text`, `_REMINDER_TEMPLATES`) has been REPLACED** by `spx_followup.py::determine_followup()` — status-based logic using SPX page status as primary source, collect_by_date as fallback. See `references/spx-followup-rules.md` for full rules, test cases, and integration snippet.
+
+- `_check_spx_reminders()` v1.1 runs every 15 min via APScheduler.
+- Uses **lazy import**: `from spx_followup import determine_followup` is called INSIDE the function with try/except ImportError to prevent startup crash on Azure. Top-level import removed.
+- Maps SPX status + collect_by_date to follow-up stage + template.
+- Send pattern: **WhatsApp FIRST, then update DB** (never update before send succeeds).
+- DB field: `reminder_status` (new column added Jul 2026) — stores canonical stage (remind1/remind2/.../collection_failed).
+- Daily cap (60), send window (08-21 MYT), and phone validation preserved from pilot.
+- **PITFALL**: Deploying ONLY `webhook_listener.py` without also deploying `db_logger.py` when new DB functions are imported causes startup crash (exit code 3 → container fails). Always deploy BOTH files together when imports in webhook_listener reference functions added to db_logger. Same applies for `spx_followup.py`.
+
+## Guards (v1.1 — preserved and extended)
+- `recipient_phone IS NULL OR contains '***'` → skip (masked phone from SPX sync)
 - `is_paused = 1` → skip
-- `spx_status IN (Collected, Return_Outbound, Return_Packing)` → skip
-- `hafjet_reminder_state IN (Completed, CollectionFailed)` → skip
+- `spx_status IN (Collected, Return_Outbound, Return_Packing)` → terminal — no reminders
+- `reminder_status` already at or past target stage → skip (anti-duplicate / anti-downgrade from `determine_followup`)
 - `last_reminder_sent_at` within 12h → skip
-- Daily cap `>= 60` → STOP with `[SPX-LIMIT] daily cap 60 reached at <timestamp utc>`
-- Send window: 08:00–21:00 MYT via `ZoneInfo("Asia/Kuala_Lumpur")`; outside → log and return
+- Daily cap `>= 60` → STOP
+- Send window: 08:00–21:00 MYT via `ZoneInfo("Asia/Kuala_Lumpur")`; outside → return
+- WhatsApp send failed → **do NOT update DB stage** — retry next cycle
+- DB update failed AFTER WhatsApp sent → log CRITICAL, continue (anti-duplicate prevents re-send)
 
 ### Pausing Orders via Raw DB (Kudu VFS)
 
@@ -758,7 +762,9 @@ old_string = "r'[^;\s]+'"     # WRONG — patch sees \s, stores \\s in file
 - `references/spx-show-secret-sap-headers.md` — SAP headers discovery, show_secret payload format, entity_id mapping, troubleshooting.
 - `references/spx-stuck-sync-recovery.md` — stuck-sync empty-cookies diagnosis, prod-DB download + SQL recipe, reset+re-trigger vs fetch-phones recovery.
 - `references/spx-antibot-discovery.md` — **NEW (Jul 2026):** Anti-bot system discovery (`@shopee/secure-fetch-utils` chunk 3421), per-request SAP headers analysis, testing results, decision to abandon show_secret for production.
-- `references/spx-browser-helper.md` — **NEW (Jul 2026):** Tampermonkey userscript for phone capture from SPX portal. Full source, installation guide, and maintenance instructions.
+- `references/spx-browser-helper.md` — Tampermonkey userscript for phone capture from SPX portal. Full source, installation guide, and maintenance instructions.
+- `references/spx-browser-poc-workflow.md` — **NEW (Jul 2026):** PoC-first iterative workflow. Mandatory DOM verification BEFORE full agent deployment. Header-based column mapping (replaces td:nth-child), eye-icon selector priority, Tampermonkey metadata best practices, Telegram file delivery workaround.
+- `references/spx-followup-rules.md` — **NEW (Jul 2026):** SPX follow-up v1.1 rules. Status-based (NOT day-counting), `determine_followup()` function, anti-duplicate/anti-downgrade logic, 20 verified test cases, deploy command pack pattern.
 - `references/status-filter-mismatch.md` — SPX status display-name vs DB value mismatch fix.
 - `references/websocket-pong-format.md` — WS heartbeat format fix.
 - `references/write-file-escape-pitfall.md` — **NEW (Jul 2026):** `write_file()` double-quote escaping breaks Python scripts. Always use single quotes. Kudu scripts, DB verifiers, any Python written via `write_file()`.
@@ -960,6 +966,8 @@ Phone fetch via `show_secret` can fail for several reasons:
 
 ### PRIMARY PATH: Tampermonkey Browser Agent (zero manual work)
 
+**⚠️ MANDATORY: PoC before full deployment.** SPX portal DOM varies per deployment — generic selectors WILL fail. Always verify with minimal PoC (`spx_phone_agent_poc_v2.1.user.js`) first. See `references/spx-browser-poc-workflow.md` for the complete iterative workflow, header-based column mapping patterns, eye-icon selector priority, and validation gates.
+
 **`spx_phone_agent.user.js`** — Runs in Tuan Hafizi's Chrome/Edge via Tampermonkey during 9am-9pm MYT. Monitors SPX Self-Collection portal DOM, clicks eye icons to reveal masked phones, extracts tracking+phone+name+status, and POSTs to `/api/spx/phones/from-agent` (X-API-Key auth). Full implementation: see `references/spx-browser-helper.md` and source at `~/.hermes/whatsapp-bot/spx_phone_agent.user.js`.
 
 **Backend:** `POST /api/spx/phones/from-agent` — accepts single `{tracking, phone, name, status}` or batch `{orders: [...]}`. Uses `_process_agent_phones()` helper:
@@ -1032,6 +1040,8 @@ When presenting analysis and recommendations to Tuan Hafizi:
 - **Audit first, propose second** — "Jelaskan punca paling mungkin... Tunjukkan plan ringkas... Lepas itu baru propose patch code untuk saya semak sebelum deploy."
 - **Additive changes preferred** — new endpoints/functions that don't modify existing behavior are safer for production deploys.
 - **Prefer practicality over technical perfection** — "Saya tak mahu jalan reverse-engineer... Saya nak kita pivot kepada jalan yang lebih practical dan maintainable." When the user rejects a complex technical approach, pivot to simpler alternatives immediately.
+- **PoC-first iterative (NEW Jul 2026)** — For any browser-side automation (Tampermonkey, userscripts): backend sanity check → minimal PoC (NO POST, console only) → real portal test → refine selectors → only when PoC passes → full deployment. Never skip the PoC phase. See `references/spx-browser-poc-workflow.md`.
+- **File delivery over code blocks (NEW Jul 2026)** — For Tampermonkey `.user.js` files: prefer file attachment (.txt or .user.js) over code blocks. Telegram auto-renders URLs in metadata as clickable Markdown links, corrupting `@namespace` and `@match` lines. If code block is the only option, instruct user to `Ctrl+Shift+V` (paste as plain text).
 
 ### ⚠️ Stuck sync with EMPTY cookies — `spx_sync_state.cookies` is the real culprit (Jul 2026)
 

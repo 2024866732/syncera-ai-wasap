@@ -2,7 +2,7 @@
 name: tech-news-digest
 description: Produce structured technology and AI news digest reports in Malay with Kelantan dialect. Covers web searching, article extraction, GitHub trending, and formatted delivery for solo founder/director consumption.
 trigger: top technology news, AI news roundup, open source AI digest, GitHub trending, tech digest, weekly tech report, AI industry news summary, tech news this week
-version: 5
+version: 6
 ---
 
 # Tech News & AI Digest
@@ -117,6 +117,25 @@ Some sources (NYT, WSJ, some Substacks) return bot-detection blocks (e.g., DataD
 ## Pitfall: Looping on Identical Tool Calls
 
 If `web_extract` fails more than once, the agent tends to retry the same call. **Break the loop on the 2nd identical failure** — switch to browser tool immediately. Same applies to any tool failing >2 times in consecutive turns.
+
+## Pitfall: GitHub Trending Listicles Hide Repo Names in Search Snippets
+
+**Symptom:** When researching "top trending AI GitHub repositories &lt;month&gt; &lt;year&gt;", many results are SEO-style listicle articles (Analytics Vidhya, BytePointer, q2bstudio, aissential.tech, geekfence). Their search snippets describe the *theme* of the list (e.g., "AI agents, cybersecurity, trading") but do NOT name the actual repositories. The URL itself is not a GitHub repo — it is an article ABOUT GitHub trending.
+
+**Root cause:** These aggregator sites publish "Top 10 GitHub Trending &lt;topic&gt; &lt;month&gt;" listicles as content marketing. The article body has the repo names, but search engines index the intro/SEO meta — not the list entries. Repeated generic searches (`"trending AI github repositories July 2026 names list"`) just return the same listicle snippets with no additional names surfaced.
+
+**Fix — Two-tier extract strategy for GitHub trending:**
+1. **Prefer official/primary sources first:**
+   - `github.com/trending` (official, live leaderboard)
+   - `ossinsight.io/trending/ai` (real-time rank)
+   Look for these URLs specifically in your Stage 1 search results and prioritize them.
+2. **If you must extract the listicle names** (because official sources came back sparse or generic), these listicle sites are mostly JS-rendered / SEO-optimized content farms. Do **NOT** retry the same generic search query 3+ times expecting different snippets — the search engine has already decided what to show. Instead:
+   - Switch to a **named-repo targeted query**: pair the site domain with a specific repo pattern (`site:bytepointer.com "July 2026" trending github repositories`) — but even this often just re-confirms the article exists without revealing names.
+   - If you cannot extract the actual list (no browser/curl available, snippets insufficient), **fall back to thematic coverage** — describe the *themes* the listicles converge on (coding agents, MCP servers, trading agents, pentesting, AI gateways) and cite the listicle URLs as aggregate sources, without inventing specific repo names.
+3. **Never fabricate repo names or star counts.** If you don't have a specific repo's name from a verified source, do not include it in the GitHub section. Err on the side of listing themes over listing fake entries.
+4. **Alternative path — identify named repos from individual stories in Stage 2 deep search.** Mock the GitHub section by pulling repos that surfaced organically in your story queries (e.g., the Huawei IMO story surfaces the Huawei model; the Grok Build story surfaces `xai-org/grok-build`). These are verified, real, and newsworthy — they make a stronger "GitHub Naik Bukit" section than generic trending names.
+
+## Cron Job Execution Context
 
 ## Pitfall: Terminal Security Scanner Blocks Inline Python
 

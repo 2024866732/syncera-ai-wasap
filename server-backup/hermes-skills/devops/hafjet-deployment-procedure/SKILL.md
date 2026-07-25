@@ -137,9 +137,16 @@ If all smoke tests pass, the deployment is considered successful. Retain the dep
 - ✅ **Do** preserve app settings; never use `az webapp up` or `--clean` flags that overwrite configuration.
 - ✅ **Do** verify the startup command points to Azure paths (e.g., `/home/site/wwwroot/start.sh` or direct `gunicorn` call), not local developer paths.
 - ✅ **Do** keep a recent known-good ZIP artifact handy for fast rollback.
+- ✅ **Do** use Kudu VFS PUT for single-file deployments: `curl -X PUT -H "Authorization: Bearer $TOKEN" -H "If-Match: *" --data-binary @file.txt "https://APP.scm.azurewebsites.net/api/vfs/site/wwwroot/file.py"` — HTTP 412 for existing files is fixed by adding `-H "If-Match: *"`.
+- ✅ **Do** restart via `az webapp stop` → `sleep` → `az webapp start` (not `az webapp restart`) for a clean restart.
+- ✅ **Do** deploy ALL companion files together: when `webhook_listener.py` imports new functions from `db_logger.py` or `spx_followup.py`, deploy BOTH files in the same cycle. Deploying only the listener causes startup crash (exit code 3 — container terminates before scheduler starts).
+- ✅ **Do** use **lazy import** (try/except ImportError inside the function body) for new Python modules on Azure. Top-level `from spx_followup import X` can cause container startup failure even when the module exists; wrapping it in a function-scoped import allows the scheduler to start and logs a clear error instead of crashing.
 - ❌ **Do not** use `az webapp deploy --type zip` on Linux App Service; it often reports success but fails to start the app.
 - ❌ **Do not** modify code or configuration during the deployment window.
 - ❌ **Do not** skip smoke tests; a `RuntimeSuccessful` status does not guarantee the app is responding correctly.
+- ❌ **Do not** pipe `curl` to `python3` for Azure log inspection — use `az webapp log tail` or download log files to disk first.
+- ✅ **Do** use the Azure Management token resource (`https://management.azure.com`) for Kudu auth, not the app-specific resource. Token length typically ~1400 chars for Management vs ~200 for app-specific.
+- ✅ **Do** use the **deploy copilot format** (STEP / ACTION / RESULT, max 3 lines) when Tuan asks you to self-execute a runbook. Tuan expects you to run commands yourself, verify output, and report only the verdict — he does NOT want to paste output back.
 
 ## Post-Deployment
 - Monitor logs for anomalies: `az webapp log tail --resource-group <rg> --name <app>`.

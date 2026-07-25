@@ -297,6 +297,37 @@ ProtectHome=read-only
 ReadWritePaths=/home/<username>/.<app>
 ```
 
+### 🚨 StandardOutput=append: Permission denied (209/STDOUT)
+
+**Symptom**: systemd service fails immediately with exit code `209/STDOUT`, and journal shows:
+```
+cctv-worker.service: Failed to set up standard output: Permission denied
+cctv-worker.service: Failed at step STDOUT spawning .../python: Permission denied
+```
+
+**Root cause**: `StandardOutput=append:/tmp/somefile.log` (or any file path) — systemd runs as root to open the file descriptor, then drops to `User=<username>`. If the target file already exists with non-root ownership AND restrictive permissions, the root-open step fails.
+
+**Fix**: Always use `StandardOutput=journal` and `StandardError=journal` for systemd services. Then access logs via:
+```bash
+journalctl -u <service> -n 50 --no-pager   # last 50 lines
+journalctl -u <service> -f                  # follow live
+```
+
+If file-based logging is required, write to a **new** file path that doesn't pre-exist, or use a directory writable by root like `/var/log/<service>.log`.
+
+**Example (BROKEN → FIXED):**
+```ini
+# ❌ BROKEN — file pre-exists with user:hafizi145 ownership
+StandardOutput=append:/tmp/cctv-worker.log
+StandardError=append:/tmp/cctv-worker.log
+
+# ✅ FIXED — journal handles ownership internally
+StandardOutput=journal
+StandardError=journal
+```
+
+This is especially common when migrating from `nohup ... > /tmp/log 2>&1` (which works fine as the user) to a systemd service (which opens files as root first).
+
 ## Verification
 
 ```bash
@@ -313,3 +344,7 @@ tailscale serve status
 # Logs
 tail -50 /home/<username>/.<app>/app.log
 ```
+
+## Related references
+
+- `references/fastapi-route-ordering.md` — FastAPI route registration order pitfall (literal vs parameterized)

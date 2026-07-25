@@ -64,6 +64,7 @@ ffprobe -rtsp_transport tcp -i "rtsp://user:pass@<camera-ip>:554/stream2"
 - Create a **dedicated camera account** (NOT master TP-Link account)
 - Substream: `.../stream2` (640×360, less CPU)
 - Main stream: `.../stream1` (2880×1620, higher CPU, better detection)
+- **Session timeout (known limitation):** Tapo TC74 firmware terminates RTSP sessions every ~167s regardless of transport (UDP or TCP tested, both exhibit the same behaviour). TCP interleaved mode makes disconnects MORE erratic (49–449s), not better. This is a camera firmware limitation, not a transport issue. **Auto-reconnect** already handles it (5–7s recovery, ~4% detection downtime). See `references/rtsp-transport-diagnostic.md` for full diagnostic procedure and `references/rtsp-keep-alive-investigation.md` for why TCP/environment-variable approaches failed and the keep-alive options analysis.
 
 ### URL encoding for special characters
 | Character | Encode to | Context |
@@ -124,6 +125,10 @@ Type=simple
 User=hafizi145
 WorkingDirectory=/home/hafizi145/projects/hafjet-cctv-worker
 ExecStart=/home/hafizi145/projects/hafjet-cctv-worker/.venv/bin/python -m app.main
+# NOTE: Do NOT add Environment="OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp"
+# — tested and proven ineffective for Tapo TC74 session timeout.
+# The ~167s disconnect is a camera firmware limitation, not a transport issue.
+# Auto-reconnect (in-code, ~5-7s recovery) handles it adequately.
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -144,6 +149,8 @@ journalctl -u cctv-worker -n 30 --no-pager
 
 ## Periodic Monitoring via Hermes Cron
 
+See `references/7-day-monitoring-protocol.md` for the full passive monitoring framework (6-hour checkpoints, 8 escalation triggers, decision proposals).
+
 Create a cron job that:
 1. Checks worker process is running
 2. Calls `/health` API
@@ -157,6 +164,17 @@ hermes cron once-in-4h \
   --deliver origin \
   --prompt "Check HAFJET CCTV worker on 100.121.94.41..."
 ```
+
+## Report Format — MYT Always Included
+
+Tuan Hafizi requires **UTC + MYT (UTC+8) dual time** in all CCTV reports:
+- Text format: `"03:12:33 UTC (11:12:33 MYT)"`
+- Table format: dual columns `Time (UTC)` and `Time (MYT)`
+- Conversion formula: MYT = UTC + 8 hours (Malaysia timezone)
+- **Do NOT change database/log storage** — UTC is the canonical format for storage
+- **Only add MYT conversion during presentation/report** — at the output/presentation layer
+
+Apply to: cron reports, event summaries, disconnect analysis, dashboard references, and all monitoring output to Tuan Hafizi.
 
 ## Safety Boundaries (Kekal)
 - ❌ No production HAFJET code changes
@@ -183,11 +201,29 @@ Or use the `patch_reconnect.py` approach for multi-line changes.
 - **Substream too low resolution** → MobileNet-SSD needs minimum 640×480 for reliable person detection. Use `stream1` if `stream2` fails.
 - **RTSP disconnect on stream1** → main stream may disconnect after ~1.5 min. Add auto-reconnect loop.
 - **Sudo on office PC requires terminal** → cannot use `sudo` commands via non-interactive SSH. Ask Tuan Hafizi to run them directly or use `ssh -t`.
-- **Cron job fails on model drift** → if global inference config changes, cron gets skipped. Check with `cronjob action=list`.
+- **Cron job fails on model drift** → if global inference config changes, cron gets skipped. Check with `cronjob action=list`. **ALWAYS pin model/provider** when creating cron: `model={'provider': 'opencode', 'model': 'specific-model'}`.
 - **Cooldown gap analysis:** When comparing event gaps, ensure all events compared are from a **single continuous worker run**. Cooldown resets on worker restart, so events from different runs may appear closer than the configured cooldown. Always verify with `last_event_time` log lines.
+- **Systemd `StandardOutput=append:` Permission denied:** On some systems (e.g. Ubuntu 26.04), systemd fails to open `/tmp/cctv-worker.log` for append even when the file is user-owned. **Fix:** Use `StandardOutput=journal` and `StandardError=journal` instead. Logs are then readable via `journalctl -u cctv-worker`.
+- **False alarm on systemd restart count:** `journalctl | grep 'Started cctv-worker'` includes initial config-failure restarts (e.g. Permission denied loop). To get **true operational restarts**, filter by date: `--since 'YYYY-MM-DD HH:MM:SS'` or check if the count of `Started` events is concentrated in a single burst at deploy time.
+- **Tapo TC74 RTSP session timeout (camera firmware limitation):** Tapo cameras terminate RTSP sessions at regular intervals due to a firmware-level session limit. **TCP transport does NOT fix this** — tested and proven: TCP interleaved mode (`OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp`) makes disconnects MORE erratic (49–449s), not better. UDP rollback after TCP may improve the pattern (1 disconnect/15min vs 17/6h originally). **Recommended approach: E2 — accept as limitation** with the existing auto-reconnect (5–7s recovery, ~0.5–4% detection gap). See `references/rtsp-transport-diagnostic.md` and `references/rtsp-keep-alive-investigation.md` for full investigation.
 
 ## Related Skills
 
 - **`hafjet-worker-project-setup`** — covers initial project scaffolding, dependency verification, venv bootstrap, and Phase A audit (complementary; this skill covers deployment & sustainment, the setup skill covers project creation)
 - **`whatsapp-bot-health-check`** — similar health-check / monitoring pattern for WhatsApp bot
 - **`self-hosted-deployment`** — systemd and Tailscale exposure for production services (future sprints only)
+
+## Feature Status
+
+| Proposal | Status |
+|----------|--------|
+| D.3 Dashboard Enhancement | ✅ Implemented (2026-07-25) |
+| D.5 Face Crop + Smart Search | ✅ Implemented (2026-07-25) |
+| D.6 Face Attribute Detection | ✅ Models downloaded (HuggingFace 44MB×2), code pending |
+| D.1 Layer 3 Notification | 🟡 Option A confirmed, B/C deferred |
+| D.4 Multi-camera + Behaviour | 🔵 Deferred |
+| D.2 YOLOv8 Nano Upgrade | 🔵 Deferred |
+
+See `references/d3-d6-proposals.md` for full approval details and `references/face-crop-implementation.md` for D.5 implementation architecture.
+
+Also see `references/face-attribute-detection-proposal.md` for D.6: face attribute detection (gender + age) using OpenCV DNN Caffe models — lightweight alternative to DeepFace for CPU-only edge PCs.

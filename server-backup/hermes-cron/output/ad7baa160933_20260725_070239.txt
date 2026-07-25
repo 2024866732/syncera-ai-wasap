@@ -1,0 +1,105 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+Salam Tuan Hafizi! 🫡 Nih report mingguan teknologi & open-source AI, dah kito kumpul yang paling sohor seminggu ni (sekitar 18–24 Julai 2026). Pacak megah sikit, dunia AI tok buat main-main hari ni.
+
+---
+
+# 🗞️ HAFJET Weekly Tech & AI Digest
+### Minggu: 18–24 Julai 2026
+
+---
+
+## 🔥 Berita Teknologi Paling Panas
+
+- **AI scored 100% at International Mathematical Olympiad (IMO)** — Huawei & Xiaohongshu (RedNote) buat sejarah: model AI dorang jawab semua soal IMO 2026 dengan markah penuh 42/42. Same level macam pelajar terbaik dunia. Ini buat AI bukan lagi sekadar "pandai", tapi dah bersenggoti sama manusia dalam domain paling challenging — competitive mathematics.
+  - Sumber: [TechXplore](https://techxplore.com/news/2026-07-ai-humans-score-math-contest.html) · [Malay Mail](https://www.malaymail.com/news/tech-gadgets/2026/07/23/huawei-xiaohongshu-ai-storm-olympiad-join-maths-elite-with-perfect-100pc-score/228720)
+
+- **OpenAI burn duit macam air空调** — Q1 2026, OpenAI bakar USD 3.7 billion ( lebih separuh dari revenue USD 5.7 bilion). Gross margin naik dari 33% → 39%, tapi operating loss makin besar sebab infra & R&D cost bu low. Dorang ada USD 665 bilion computing commitments through 2030. IPO coming soon.
+  - Sumber: [Reuters](https://www.reuters.com/business/openai-burned-37-billion-first-quarter-2026-information-reports-2026-06-16/) · [The Information](https://www.theinformation.com/articles/openai-burned-3-7-billion-first-three-months-2026)
+
+- **Samsung Galaxy Unpacked 2026** — Galaxy Z Fold 8, Z Flip 8, Galaxy Watch Ultra 2 & Watch 9 di launch minggu ni. Watch Ultra 2 bagi free 2 bulan Strava + 2 bulan iFIT (jumlah ~USD 54).
+  - Sumber: [AndroidHeadlines](https://www.androidheadlines.com/) · [Yahoo](https://www.yahoo.com/)
+
+---
+
+## 🤖 Dunia Open-Source AI Minggu Ni
+
+- **xAI open-source Grok Build (15 Julai 2026)** — Elon punya xAI release coding agent "Grok Build" bawah Apache 2.0. ~840,000 lines of Rust code. Boleh run local-first, ada agent loop, MCP servers, plugins, hooks, skills, subagents. GitHub: `xai-org/grok-build` — dah 4,400+ stars dalam seminggu. Ini lepas controversy covert upload data, so dorang buat open-source untuk transparency.
+  - Sumber: [QCode.cc](https://qcode.cc/en/grok-build-open-source) · [sqmagazine](https://sqmagazine.co.uk/xai-open-sources-grok-build/) · [ai-cost-estimator](https://ai-cost-estimator.com/blog/xai-grok-build-open-source-apache-2-rust-coding-agent-cost-impact)
+
+- **"The Open-Source Reckoning" (Washington Post, 24 Julai)** — WA Post highlight yang open-source AI dah jadi business infrastructure, bukan lagi culture developer. Contoh: Siemens guna open-source models untuk agentic AI product baru dorang kat industrial automation. Shift besar: dari hobby → enterprise stack.
+  - Sumber: [Washington Post AI Tech Brief](https://www.washingtonpost.com/wp-intelligence/ai-tech-brief/2026/07/24/ai-tech-brief-open-source-reckoning/)
+
+- **Mistral CEO Arthur Mensch: "We exist outside of state control"** — Lepas US shut down Anthropic punya foreign access, Mistral (France) position diri sebagai open-source refuge. Mensch warn Europe ada 2 tahun lagi sebelum jadi America punya "AI vassal state." Mistral baru release open-weight MoE model "fat but sparse" kat July early access.
+  - Sumber: [Sifted](https://sifted.eu/articles/mistral-arthur-mensch-open-source-anthropic) · [TechTimes](https://www.techtimes.com/articles/319798/20260706/mistral-ai-targets-frontier-gap-open-weight-model-entering-july-early-access.htm)
+
+- **China wage "open-weight insurgency"** — Axios highlight perbezaan strategi: US labs (OpenAI/Anthropic) buat closed models, China (Kimi, Huawei, Weibo) release open-weight macam pemberian. xAI pun ironically join dorang dengan Grok Build.
+
+- **VibeThinker-3B (Weibo/Sina) — frontier reasoning dalam 3B params** — Model 3 billion parameters je (dari Qwen2.5-Coder-3B), MIT license, tapi skor 94.3 pada AIME 2026. Lawan DeepSeek V3.2 (671B), GLM-5 (744B), Gemini 3 Pro kat verifiable reasoning tasks. Bukti: small models + post-training pipeline boleh goni goni naik macam monster.
+  - Sumber: [GitHub WeiboAI/VibeThinker](https://github.com/WeiboAI/VibeThinker) · [Neurohive](https://neurohive.io/en/state-of-the-art/vibethinker-3b-model-reasons-and-codes-at-the-level-of-flagship-models/)
+
+---
+
+## ⭐ Projek GitHub Naik Bukit (July 2026 Trending)
+
+Data dari Analytics Vidhya, BytePointer & ossinsight — trend bulan ni: **bukan lagi model, tapi agent tooling** yang naik:
+
+- **Coding agent harnesses** (macam Grok Build, Kilo, Claude Code) — repo untuk autonomous code generation makin naik
+- **MCP servers** (Model Context Protocol) — official GitHub MCP server & ekosistem MCP.so / mcpmarket sedang naik
+- **Pentesting & trading agents** — autonomous security + financial agent repos makin aktif
+- **AI gateways & infra** — LiteLLM, proxy tools untuk routing & cost management
+- **Voice tools & local inference** — local-first AI, bukan cloud-dependent
+
+Ramai penganalisis cakap: frontier-model race dah sebahagiannya give way kepada **infrastructure race**. Bila dah ada beberapa base models kuat, bottleneck sekarang ialah buat agents yang reliable, efficient, dan safe.
+
+> Monitoring weekly digest: [startupcorners.com/digest](https://startupcorners.com/digest/devtools-digest-2026-07-11) · [ossinsight.io/trending/ai](https://ossinsight.io/trending/ai)
+
+---
+
+## ⚠️ Security Alert: FakeGit Campaign (Penting!)
+
+- **7,600 malicious GitHub repositories** ditanam untuk spread SmartLoader malware
+- 800+ repos pretending jadi "AI skills" atau "MCP servers"
+- Teknik baru dipanggil **"agentbaiting"** — tricks AI agents (macam Claude Code, Cursor) untuk recommend repo malicious ni kat users
+- Lebih 14 million downloads logged sejak March
+- **Untuk HAFJET:** Pastikan verify each MCP server atau AI skill sebelum install. Jangan trust repo semata-mata sebab AI agent cadang. Check star/fork ratio, maintainer credibility, dan guna sandbox untuk execution.
+
+  Sumber: [The Hacker News](https://thehackernews.com/2026/07/fakegit-campaign-uses-7600-github.html) · [BleepingComputer](https://www.bleepingcomputer.com/news/security/fakegit-campaign-uses-7-600-github-repos-to-push-smartloader-malware/)
+
+---
+
+## 📌 Apa Kito Patut Tahu (Key Takeaways)
+
+1. **AI performance dah sapu competitive math** — Huawei/Xiaohongshu IMO 100% bermakna frontier reasoning dah dekat perfect untuk bounded problems. Expect dorang akan masuk code generation & logical reasoning domains pula.
+
+2. **Open-source AI jadi mainstream strategy** — Dari Grok Build (xAI) ke Mistral ke China labs, open-weight dah jadi taktik geopolitik & enterprise. Bagus untuk kito — more choices, lower cost, no vendor lock-in.
+
+3. **MCP ecosystem booming** — Trending GitHub dah pindah dari "model papers" ke "agent infrastructure." MCP servers, coding harnesses, dan AI gateways adalah yang Agile. HAFJET punya LiteLLM + OpenCode setup betul-betul on-trend.
+
+4. **Agent supply-chain security urgent** — FakeGit "agentbaiting" is a new attack vector. Bila AI agents decide repo mana nak guna, dorang boleh kena manipulated. Wajib ada vetting workflow (skill `hf-model-vetting` kito patut extend ke MCP/skill vetting).
+
+5. **Small models (3B) boleh lawan flagship** — VibeThinker-3B proves compact + clever post-training > raw scale. Relevan untuk HAFJET punya low-RAM server setup — models kecil tapi powerful, boleh run local.
+
+---
+
+### 🔗 Sumber Utama
+- [TechXplore — AI at IMO](https://techxplore.com/news/2026-07-ai-humans-score-math-contest.html)
+- [Malay Mail — Huawei/Xiaohongshu](https://www.malaymail.com/news/tech-gadgets/2026/07/23/huawei-xiaohongshu-ai-storm-olympiad-join-maths-elite-with-perfect-100pc-score/228720)
+- [Reuters — OpenAI Q1 2026 burn](https://www.reuters.com/business/openai-burned-37-billion-first-quarter-2026-information-reports-2026-06-16/)
+- [QCode.cc — Grok Build Open Source](https://qcode.cc/en/grok-build-open-source)
+- [Axios — China open-weight insurgency](https://www.axios.com/2026/07/18/china-ai-open-source-kimi-anthropic-openai)
+- [Washington Post — Open-Source Reckoning](https://www.washingtonpost.com/wp-intelligence/ai-tech-brief/2026/07/24/ai-tech-brief-open-source-reckoning/)
+- [Sifted — Mistral CEO](https://sifted.eu/articles/mistral-arthur-mensch-open-source-anthropic)
+- [GitHub — VibeThinker](https://github.com/WeiboAI/VibeThinker)
+- [Analytics Vidhya — Top 10 Trending AI Repos](https://www.analyticsvidhya.com/blog/2026/07/trending-ai-github-repositories/)
+- [BytePointer — Top 10 Trending AI Repos](https://bytepointer.com/top-10-trending-ai-github-repositories-in-july-2026/)
+- [The Hacker News — FakeGit Campaign](https://thehackernews.com/2026/07/fakegit-campaign-uses-7600-github.html)
+- [OSSInsight — Trending AI](https://ossinsight.io/trending/ai)
+
+---
+
+Sekian, Tuan Hafizi. Kalau ado berita spesifik yang Tuan nok kito delve dalam lagi —尤其是 tentang MCP security atau small-model deployment untuk server kito — sila beritahu, ambo explore lebih lanjut. 🙏
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").
