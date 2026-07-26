@@ -185,6 +185,60 @@ JWT-only access token and prints a working `?token=` dashboard URL) is in `templ
   old tokens keep the localhost origin and fail WS connect. Gemini free-tier key works as the
   LLM provider (OpenCode Go does NOT).
 
+## Server Backup to GitHub (Push Protection aware)
+
+Backing up Hermes config/skills/cron to GitHub repo `syncera-ai-wasap`. **GitHub Push Protection scans ALL pushed history** for secrets (OpenRouter keys, API tokens, etc.).
+
+### Redaction BEFORE git commit (mandatory in backup script)
+
+The backup script at `~/syncera-ai-wasap/scripts/backup-server.sh` MUST strip secrets before `git add`:
+```bash
+# Redact API keys from config.yaml
+sed -i -E 's/(api_key: )(.+)/\1[REDACTED]/g' "$BACKUP_DIR/hermes-config/config.yaml"
+sed -i -E 's/(api_key=)(.+)/\1[REDACTED]/g' "$BACKUP_DIR/hermes-config/config.yaml"
+sed -i -E 's/("api_key": *")[^"]+/\1[REDACTED]/g' "$BACKUP_DIR/hermes-config/config.yaml"
+
+# Redact from cron output files (LLM output may contain API keys in plaintext)
+find "$BACKUP_DIR/hermes-cron" -type f \
+  -exec sed -i -E 's/(sk-[a-zA-Z0-9_-]{20,})/[REDACTED_API_KEY]/g' {} \;
+
+# Delete raw secret files entirely
+find "$BACKUP_DIR" -name ".env" -delete
+find "$BACKUP_DIR" -name "auth.json" -delete
+find "$BACKUP_DIR" -name "*.key" -delete
+find "$BACKUP_DIR" -name "hosts.yml" -delete
+```
+
+Cron job `315e1bdcd7fc` runs daily at 14:00 UTC. Full recovery walkthrough + verification steps in `references/server-backup-push-protection.md`.
+
+### Recovering from a blocked push (GH013)
+
+If secrets slipped into history and push is blocked:
+```bash
+# 1. Create replacement file (regex pattern for the secret)
+printf 'regex:api_key: sk-or-[a-zA-Z0-9_-]{30,}==>api_key: [REDACTED]\n' > /tmp/filter.txt
+
+# 2. Clean ALL commits in the branch (rewrites history)
+cd ~/repo && rm -f .git/filter-repo/already_ran
+echo "Y" | git filter-repo --replace-text /tmp/filter.txt --force
+
+# 3. Re-add origin (filter-repo removes it) and force push
+git remote add origin https://github.com/...
+git push origin <branch> --force
+```
+
+**Key pitfalls:**
+- `git filter-repo` removes the `origin` remote and rewrites ALL commit SHAs — force push is mandatory after
+- `git filter-repo --force` prompts "Treat this run as a continuation? Y/N" — pipe `echo "Y" |` or delete `.git/filter-repo/already_ran`
+- GitHub scans the ENTIRE pushed history, not just HEAD — one old commit with a secret blocks the whole push
+- Push Protection won't tell you WHICH key triggered it; check the error message for the commit SHA + line number
+
+### Git identity (cosmetic)
+```bash
+git config --global user.name "HAFJET-Hermes"
+git config --global user.email "hermes@hafjet.com.my"
+```
+
 ## Tuan's standing cleanup constraints
 - Destructive commands need EXPLICIT per-command approval. NEVER set "Allow always".
 - Do NOT touch: npm-global, state.db, whatsapp-bot repo, n8n, state-snapshots.

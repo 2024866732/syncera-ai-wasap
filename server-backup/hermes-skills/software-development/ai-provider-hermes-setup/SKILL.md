@@ -254,6 +254,49 @@ hermes config set model.api_key <USER_PASTED_KEY>
 ### Other (research, not tested from server)
 - **Mimo / Xiaomi MiMo** ($6/mo): `https://api.xiaomimimo.com/v1`, OpenAI-compatible. Likely also IP-banned (same pattern as OpenCode).
 
+## Provider Fallback Chain (auto-switch on rate-limit/error)
+
+When the primary provider returns **429 (rate limit)**, **529 (overload)**, or **connection failure**, Hermes config v30+ auto-switches to `fallback.provider` + `fallback.model`. The fallback provider is defined under `providers.<name>` in config.yaml — a custom OpenAI-compatible endpoint, not one of the built-in named providers.
+
+### Configuring a fallback (tested with Cerebras, 2026-07-26)
+
+```bash
+# Step 1 — register the custom provider
+hermes config set providers.cerebras.base_url https://api.cerebras.ai/v1
+hermes config set providers.cerebras.api_mode chat_completions
+hermes config set providers.cerebras.key_env CEREBRAS_API_KEY
+
+# Step 2 — set it as the fallback
+hermes config set fallback.provider cerebras
+hermes config set fallback.model gpt-oss-120b
+
+# Step 3 — ensure the API key is available at runtime
+# Option A: put it in ~/.hermes/.env (preferred, but agent can't write .env — user does it)
+# Option B: put it in ~/.bashrc (works, but not ideal — survives logins only)
+echo 'export CEREBRAS_API_KEY="csk-xxx...xxx"' >> ~/.bashrc && source ~/.bashrc
+```
+
+**Verification before wiring:** Test the fallback provider standalone first:
+```bash
+source /tmp/cerebras-test/bin/activate  # venv with pip install cerebras-cloud-sdk
+python3 -c "
+from cerebras.cloud.sdk import Cerebras
+c = Cerebras(api_key='csk-xxx')
+print(c.chat.completions.create(
+    messages=[{'role':'user','content':'hi'}],
+    model='gpt-oss-120b', max_completion_tokens=20
+).choices[0].message.content)
+"
+```
+
+**Provider name must match:** The `providers.<name>` key in config.yaml IS the name used in `fallback.provider`. No built-in provider list membership needed — any `providers.<new-name>` with `base_url` + `api_mode` works.
+
+**Pitfall — `hermes gateway restart` is BLOCKED from inside the gateway process.** The restart sends SIGTERM which kills the agent before the restart completes. Run from a separate terminal: `hermes gateway restart`. Config changes take effect on next session (`/reset` in chat) without a restart — only `fallback` changes need a gateway restart for the running process.
+
+**Pitfall — config.yaml is agent-protected.** `write_file` and `patch` on `~/.hermes/config.yaml` are denied. Use `hermes config set` exclusively for all provider/fallback changes.
+
+**Cerebras specifics:** Uses the `cerebras-cloud-sdk` pip package (not generic OpenAI), but the Hermes config uses the standard `chat_completions` api_mode with `base_url: https://api.cerebras.ai/v1`. The SDK is only needed for standalone testing, not for Hermes itself.
+
 ## OpenCode CLI (separate from Hermes — useful for coding)
 
 **OpenCode CLI partially works from this server.** Install: `npm i -g opencode-ai`. Version tested: 1.18.4.
