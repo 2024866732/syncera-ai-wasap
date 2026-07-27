@@ -147,6 +147,31 @@ sudo systemctl status cctv-worker --no-pager
 journalctl -u cctv-worker -n 30 --no-pager
 ```
 
+## Dashboard Visual Refreshes (CSS/HTML Only)
+
+When Tuan Hafizi requests a `/dashboard` redesign, preserve the dashboard contract:
+- **Do not change** endpoint paths, query parameters (`from_date`, `to_date`, `limit`), storage queries, CSV route/content, or `/api/events` JSON.
+- Reuse the already-fetched `all_events` list for visual summary stats; do not add a database query merely for cards.
+- Keep date filter, Clear/quick links, CSV export, full snapshot, face crop, UTC+MYT, `(est.)` labels, and a clear `Showing X of Y` count.
+- Treat gender/age strictly as display-only estimates. Dashboard must visibly retain `(est.)` and the tooltip/disclaimer: `AI estimate, ±5 years accuracy`.
+
+### Safe implementation sequence
+1. Inspect the entire current dashboard function and identify the HTML-only boundaries.
+2. Present the **full diff** plus effort/risk before applying. Explicitly list preserved contracts.
+3. Build stats from `all_events`: total filtered events, face detection rate, mean confidence.
+4. For card layouts: use semantic card classes, confidence badges (`>0.7` green, `0.5–0.7` yellow, `<0.5` red), gender badges (Male blue, Female pink, missing grey), explicit `No Face`/`—`, responsive one-column mobile layout, sticky filter bar, and hover effects.
+5. After approval: syntax/import check, restart only with separate approval if needed, then verify dashboard (unfiltered + date-filtered), CSV header/data, and `/api/events` unchanged.
+6. Capture a rendered before/after view only when a browser/screenshot capability is actually available; never claim a screenshot or hover/tooltip test based solely on `curl` HTML. If unavailable, report the exact HTML evidence and limitation.
+
+**Patching pitfalls:** `references/dashboard-ui-patching-pitfalls.md` covers f-string double-brace escaping, atomic multi-pass write strategy, body-block `return`/`import` preservation, and the clean-backup re-run pattern.
+
+## RTSP Credential Log Hygiene
+
+- Never log a raw RTSP source URL. Before any `logger.*` call, route it through a redactor that emits `rtsp://user:***@host:port/path`.
+- Verify new logs without printing secrets: count RTSP URLs and distinguish `:***@` masked entries from unmasked credential entries. A generic URL regex alone is insufficient because it also matches masked URLs.
+- Do not delete, vacuum, or rotate historical journal entries containing an old credential without explicit approval, even after a camera password rotation.
+- The worker uses `redact_rtsp_url()` in `app/main.py`; ensure both detection-start and detection-end logging use `safe_source` rather than the raw `source`.
+
 ## Periodic Monitoring via Hermes Cron
 
 See `references/7-day-monitoring-protocol.md` for the full passive monitoring framework (6-hour checkpoints, 8 escalation triggers, decision proposals).
@@ -200,7 +225,7 @@ Or use the `patch_reconnect.py` approach for multi-line changes.
 - **Camera on counter, not pointing at entrance** → model detects furniture, not people. Always verify camera view before blaming the model.
 - **Substream too low resolution** → MobileNet-SSD needs minimum 640×480 for reliable person detection. Use `stream1` if `stream2` fails.
 - **RTSP disconnect on stream1** → main stream may disconnect after ~1.5 min. Add auto-reconnect loop.
-- **Sudo on office PC requires terminal** → cannot use `sudo` commands via non-interactive SSH. Ask Tuan Hafizi to run them directly or use `ssh -t`.
+- **Scoped sudo via SSH:** the Office-PC rule is intentionally exact: `/usr/bin/systemctl restart cctv-worker` and `/usr/bin/systemctl status cctv-worker`. Verify using `sudo -n` plus those exact commands with **no extra arguments**. Commands such as `status ... --no-pager --lines=2` do not match and will authenticate. Do not widen the rule without explicit approval; see `references/d3-d6-final-operational.md`.
 - **Cron job fails on model drift** → if global inference config changes, cron gets skipped. Check with `cronjob action=list`. **ALWAYS pin model/provider** when creating cron: `model={'provider': 'opencode', 'model': 'specific-model'}`.
 - **Cooldown gap analysis:** When comparing event gaps, ensure all events compared are from a **single continuous worker run**. Cooldown resets on worker restart, so events from different runs may appear closer than the configured cooldown. Always verify with `last_event_time` log lines.
 - **Systemd `StandardOutput=append:` Permission denied:** On some systems (e.g. Ubuntu 26.04), systemd fails to open `/tmp/cctv-worker.log` for append even when the file is user-owned. **Fix:** Use `StandardOutput=journal` and `StandardError=journal` instead. Logs are then readable via `journalctl -u cctv-worker`.
@@ -217,10 +242,12 @@ Or use the `patch_reconnect.py` approach for multi-line changes.
 
 | Proposal | Status |
 |----------|--------|
-| D.3 Dashboard Enhancement | ✅ Implemented (2026-07-25) |
-| D.5 Face Crop + Smart Search | ✅ Implemented (2026-07-25) |
-| D.6 Face Attribute Detection | ✅ Models downloaded (HuggingFace 44MB×2), code pending |
+| D.3 Dashboard Enhancement | ✅ Closed — date filtering, CSV export, UTC+MYT display |
+| D.5 Face Crop + Smart Search | ✅ Closed — Haar crops, dashboard grid, 30-day retention |
+| D.6 Face Attribute Detection | ✅ Closed — crop-gated OpenCV DNN estimates; dashboard labels `(est.)`; display-only known accuracy limitation |
 | D.1 Layer 3 Notification | 🟡 Option A confirmed, B/C deferred |
+
+See `references/d3-d6-final-operational.md` for closure checks, exact scoped-sudo behaviour, restart-helper requirements, and RTSP credential-log hygiene.
 | D.4 Multi-camera + Behaviour | 🔵 Deferred |
 | D.2 YOLOv8 Nano Upgrade | 🔵 Deferred |
 

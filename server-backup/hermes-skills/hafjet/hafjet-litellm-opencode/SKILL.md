@@ -77,6 +77,23 @@ ssh hafizi145@100.121.94.41 "systemctl --user stop litellm-proxy"
 
 ---
 
+## ⛔ Security — API Key NEVER in Chat
+
+API keys pasted in chat are **instantly compromised**. This session's key was exposed — if a key leaks:
+
+1. **Rotate immediately** at [opencode.ai/go](https://opencode.ai/go) → API Keys → revoke → create new
+2. Update config via `nano ~/litellm-config.yaml` (Tuan edits — agent never writes secrets)
+3. `systemctl --user restart litellm-proxy`
+
+**Safe update flow (ONLY this path):**
+```bash
+ssh hafizi145@100.121.94.41
+nano ~/litellm-config.yaml     # Tuan paste key, agent NEVER writes
+systemctl --user restart litellm-proxy
+```
+
+---
+
 ## Cara Update API Key
 
 Kalau OpenCode Go key expired atau tukar:
@@ -84,7 +101,6 @@ Kalau OpenCode Go key expired atau tukar:
 ```bash
 ssh hafizi145@100.121.94.41
 nano ~/litellm-config.yaml
-# Tukar "sk-MS8..." dekat setiap entry
 systemctl --user restart litellm-proxy
 ```
 
@@ -109,7 +125,9 @@ OpenCode Go API (GLM-5, Qwen3.5+...)
 tailscale ping 100.121.94.41
 ```
 
-**"401 Unauthorized"** — Master key salah. Check `~/litellm-config.yaml` → `master_key`.
+**"401 Unauthorized"** — API key invalid. Two distinct causes:
+- **Proxy 401:** Master key wrong — check `~/litellm-config.yaml` → `master_key`
+- **Hermes 401 (opencode-go provider):** OpenCode Go key expired/invalid for Hermes directly. Fix: `hermes setup` → select `opencode-go` → paste fresh key. The proxy-only key and Hermes provider key are the same — rotate both together.
 
 **Model lambat respon** — OpenCode Go models mungkin high latency. Cuba model lain (`kimi-k2.5` biasanya cepat).
 
@@ -123,6 +141,8 @@ Kemudian update config dengan nama betul.
 ---
 
 ## Install Semula
+
+> 📖 **Config management & placeholder fix:** `references/config-management.md`
 
 ```bash
 # Install

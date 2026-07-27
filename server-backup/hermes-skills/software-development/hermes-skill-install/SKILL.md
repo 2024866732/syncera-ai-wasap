@@ -45,6 +45,18 @@ External skill installers that target Hermes can fail under `uv tool` or `pipx` 
 - `uv tool install` can error with `Read-only file system` inside `$HOME/.cache/uv/`. Retrying will not fix it; switch to pip-in-venv.
 - Some installers write rewrite rules (graphify → `AGENTS.md`). If the CWD is wrong, the rules attach to the wrong directory.
 - Do not execute install scripts from untrusted sources without first reviewing their contents for malicious commands.
+- **`hermes plugins install <local-path>` treats the path as a GitHub repo URL** (even absolute paths like `/tmp/hermes-composio`). It will try to clone `https://github.com/tmp/hermes-composio.git` and fail. Workaround: use a symlink instead:
+  ```bash
+  ln -sfn /path/to/plugin ~/.hermes/plugins/<name>
+  hermes plugins enable <name>
+  ```
+- **Hermes agent venv has no `pip`** — the venv at `~/hermes-agent/venv/` uses uv without pip bundled. Install SDK dependencies with:
+  ```bash
+  uv pip install --python ~/hermes-agent/venv/bin/python3 <package>
+  ```
+  Using `pip install` (system) or `~/hermes-agent/venv/bin/pip` will fail — the correct incantation is `uv pip install --python` targeting the venv's interpreter.
+- **`curl | bash` install patterns are BANNED** under HAFJET SOP. When an upstream guide suggests `curl -fsSL https://example.com/install | bash`, find the pip/uv alternative or the manual MCP/plugin install path instead. See `hafjet-command-safety` for the full banned-patterns list.
+- **Service API keys come in different formats across subdomains** (learned: Composio `dashboard.composio.dev` issues `ak_...` keys; `platform.composio.dev` issues `ck_...` keys). Always check the upstream docs for the exact key format expected by the SDK/plugin being installed — an `ak_` key will be rejected as "Invalid API key format" by a plugin that expects `ck_`.
 
 ## Verification
 

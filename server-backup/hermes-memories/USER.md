@@ -7,3 +7,5 @@ Office PC: hafjet-pc-office (100.121.94.41, i3-2100, 16GB, no GPU, Python 3.14, 
 Workflow: iterative approval gates, sequential step-by-step. Implements layer 1 first, plans layer 2, locks layer 3 until explicit approval. Prefers .env over shell exports. Confirms before and after changes. Dark UI preference.
 §
 Idempotent operations: do NOT append duplicate keys to .env — replace existing value if present, add only if absent. Safe cleanup: delete specific named files, never wildcard under data paths.
+§
+Tuan Hafizi requires audit-grade operational reporting: never present unverified output as fact; clearly distinguish proposed, applied, and verified states; show exact diffs before changes and wait for explicit approval. Scoped sudo must be verified using the exact command and arguments allowed by its rule.

@@ -54,6 +54,9 @@ and wastes a turn. Internalize this before proposing ANY terminal command.
 - **Dotfile config:** tell Tuan the exact key=value to add; he applies it himself.
 - **Test external API:** Tuan can run `curl -X GET ...` himself, or agent writes
   a `.py` file that reads token from env and prints result — Tuan runs it.
+- **API key pasted in chat:** If Tuan pastes a key/token, warn immediately —
+  it's now exposed. Proceed with setup if needed, but after completion
+  instruct Tuan to **rotate/regenerate** the key from the provider dashboard.
 
 ## Why this matters
 

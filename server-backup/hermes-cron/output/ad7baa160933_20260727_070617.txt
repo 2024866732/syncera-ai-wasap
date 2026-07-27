@@ -1,0 +1,162 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+Sekarang ambo dah cukup bahan. Jom susun laporan untuk Tuan Hafizi.
+
+---
+
+# 📡 **HAFJET Tech Brief — Minggu Ni (21–27 Julai 2026)**
+
+_Assalamualaikum Tuan Hafizi! Ni ringkasan berita teknologi & AI paling sohor minggu ni. Ambo dah tapis yang penting-penting sahaja, molek untuk bacaan pantas._
+
+---
+
+## 🔥 **Berita Teknologi Paling Panas**
+
+### 🧠 **AI Skor 100% di Olimpik Matematik Antarabangsa — Pertama Kali Dalam Sejarah!**
+
+Dua model AI dari China — **Huawei** dan **Xiaohongshu** — buat sejarah goni bila kedua-duanya capai **skor sempurna 100%** dalam soalan International Mathematical Olympiad (IMO) 2026 di Shanghai. Ini pertama kali AI mampu setaraf juara manusia dalam pertandingan matematik paling susah dunia.
+
+- Sebelum ni, AI tertinggi cuma capai 28/42 markah (2024)
+- Lompatan ni menunjukkan AI dah pacak megah di tahap "reasoning" setanding manusia
+- Bidang pendidikan & penyelidikan matematik mungkin berubah total lepas ni
+
+> 📎 [CNBC TV18](https://www.cnbctv18.com/technology/two-chinese-ai-models-score-100-at-worlds-toughest-maths-olympiad-19952187.htm) | [Free Malaysia Today](https://www.freemalaysiatoday.com/category/business/2026/07/23/ai-catches-up-with-humans-to-score-100-at-top-maths-contest)
+
+---
+
+### 📱 **Samsung Galaxy Unpacked: Z Fold 8 Ultra, Flip 8 & Agentic AI**
+
+Samsung lancar **Galaxy Z Fold 8 Ultra** — model "Ultra" pertama dalam siri lipat — kat London 22 Julai. Lineup penuh:
+
+- **Galaxy Z Fold 8 Ultra** — format lebar, spesifikasi flagship sepenuh
+- **Galaxy Z Fold 8** — rekaan semula, lebih nipis
+- **Galaxy Z Flip 8** — generasi ke-8 flip
+- **Galaxy Watch baru** + AI agentic terbina dalam One UI
+
+Fokus besar tahun ni: **agentic AI** yang faham konteks pengguna secara proaktif — bukan sekadar pembantu suara biasa.
+
+> 📎 [The Verge](https://www.theverge.com/tech/969208/samsung-galaxy-unpacked-2026-everything-announced) | [Samsung Newsroom](https://news.samsung.com/global/galaxy-unpacked-july-2026-a-first-look-at-galaxy-z-fold8-ultra-galaxy-z-fold8-and-galaxy-z-flip8)
+
+---
+
+### 🖥️ **AMD Advancing AI 2026: Helios Rack, MI400 GPU & Order 12GW!**
+
+AMD buat langkah besar di San Francisco 22-23 Julai:
+
+- **AMD Helios** — sistem rack-scale AI generasi terbaru, dah masuk produksi
+- **MI400 GPU** — cip AI generasi baru
+- **Pelanggan besar**: OpenAI, Meta, dan Anthropic dah buat tempahan
+- **Harga**: ~$5.25 juta setiap rack
+- **Jumlah order**: 12 gigawatt — goni besar!
+
+AMD dah mula mencabar dominasi NVIDIA dalam pasaran cip AI. Pertandingan ni bagus untuk harga & inovasi.
+
+> 📎 [AMD Press Release](https://ir.amd.com/news-events/press-releases/detail/1294/aai-2026-amd-delivers-full-stack-compute-for-the-agentic-ai-era) | [Tech Wire Asia](https://techwireasia.com/2026/07/amd-advancing-ai-2026-helios-openai-meta-anthropic/)
+
+---
+
+### ⚖️ **Anthropic Bayar $1.5 Bilion — Saman Hak Cipta Terbesar Sejarah AS**
+
+Mahkamah persekutuan AS beri kelulusan muktamad 20 Julai untuk penyelesaian **$1.5 bilion (RM7 bilion)** antara Anthropic dan penulis/penerbit. Kes: Anthropic guna "perpustakaan cetak rompak" untuk latih model Claude tanpa kebenaran.
+
+- Penulis & penerbit akan terima pampasan
+- Anthropic tak mengaku salah, tapi bersetuju bayar
+- Jadi _precedent_ besar untuk industri AI — training data bukan "free for all"
+
+> 📎 [Unite.AI](https://www.unite.ai/anthropics-book-piracy-settlement-wins-final-court-approval/) | [Yahoo Finance](https://finance.yahoo.com/technology/ai/articles/anthropic-1-5b-copyright-settlement-181103261.html)
+
+---
+
+## 🤖 **Dunia Open-Source AI Minggu Ni**
+
+### 🚀 **Kimi K3 — Model Open-Source 2.8 Trilion Parameter!**
+
+Ini berita paling sohor dalam dunia open-source AI: **Moonshot AI** (China) umum **Kimi K3** — model dengan **2.8 trilion parameter**, pertama dalam kelas 3-trillion-parameter yang open-source!
+
+- **Context window**: 1 juta token
+- **Diwar-warkan**: 16 Julai 2026 di World AI Conference
+- **Full weights release**: **HARI NI (27 Julai)!** — vLLM dah siap sedia untuk day-0 deployment
+- Boleh jalan atas GPU consumer kelas atas (dengan quantization MXFP4)
+
+Kito patut tengok ni — kalau perform betul-betul, ia boleh ubah landscape inference tempatan.
+
+> 📎 [Hugging Face Blog](https://huggingface.co/blog/ResterChed/kimi-k3-model-overview-mxfp4-quantization-open-wei) | [vLLM Blog](https://vllm.ai/blog/2026-07-22-kimi-k3-preview)
+
+---
+
+### ⚔️ **Perang Besar: Open Source vs Tutup Sempadan AI Cina**
+
+Silicon Valley tengah berpecah dua. **OpenAI & Anthropic** desak kerajaan AS sekat model open-source dari China atas alasan "keselamatan negara". Sebaliknya, **Microsoft, Nvidia & Meta** pertahankan pendekatan terbuka.
+
+- **Zuckerberg**: "Open source is a positive and important force"
+- **Jensen Huang (Nvidia)**: Dunia perlukan kedua-dua — model tertutup DAN terbuka
+- **Ironinya**: Model open-source Cina (seperti Kimi K3, DeepSeek) sekarang dah setanding atau lebih baik dari model AS
+
+Kontroversi ni akan tentukan masa depan AI untuk bertahun-tahun. Kito di Malaysia — yang guna kedua-dua sumber — patut tengok perkembangan ni rapat.
+
+> 📎 [NYT](https://www.nytimes.com/2026/07/25/technology/open-source-silicon-valley-china.html) | [WIRED](https://www.wired.com/story/silicon-valley-is-completely-divided-over-chinese-ai/)
+
+---
+
+### 📊 **Top Open-Source LLM Julai 2026**
+
+Berdasarkan ranking terkini, model open-source terbaik untuk kegunaan sebenar:
+
+| Model | Kelebihan |
+|---|---|
+| **GLM-5.2** | Prestasi reasoning terbaik dalam kelas open |
+| **Kimi K2.7 Code** | Coding & agentic tasks |
+| **DeepSeek V4 Pro** | Kito dah guna — all-rounder padu |
+| **MiniMax M3** | Multimodal kuat, efisyen |
+
+> 📎 [Taskade Ranking](https://www.taskade.com/blog/open-source-llms)
+
+---
+
+## ⭐ **Projek GitHub Naik Bukit**
+
+Beberapa repo yang tengah dapat perhatian:
+
+- **`system_prompts_leaks`** — Koleksi system prompt yang "bocor" dari pelbagai model AI (Perplexity, DeepSeek, dll). Menarik nak study cara prompting.
+
+- **`browser-harness`** — Projek AI agent tempatan (local-first) paling pesat berkembang. Gabungan LLM + browser automation.
+
+- **Ollama, n8n, Claude Code** — Tiga repo AI GitHub paling popular 2026 secara keseluruhan. n8n untuk workflow automation dengan AI, Ollama untuk local inference.
+
+---
+
+## 📌 **Apa Kito Patut Tahu (Key Takeaways)**
+
+1. **AI dah setanding manusia** dalam matematik peringkat Olimpik — reasoning capability dah bukan main-main.
+
+2. **Open-source AI dari China makin gagah** — Kimi K3 (2.8T parameter) release hari ni. Kito kena cuba test bila weights dah available.
+
+3. **Pertarungan open vs closed AI** akan tentukan nasib industri. Malaysia di tengah — boleh manfaat kedua-dua belah.
+
+4. **AMD dah jadi pesaing serius NVIDIA** — Helios + MI400 dengan pelanggan gergasi. Bagus untuk harga GPU jangka panjang.
+
+5. **Isu copyright & training data** makin panas — Anthropic bayar $1.5B. Sesiapa yang train model kena fikir serius pasal data provenance.
+
+6. **Agentic AI di mana-mana** — Samsung bawa ke phone, AMD bina infrastruktur untuknya. 2026 memang tahun "AI agents".
+
+---
+
+### 🔗 **Sumber Rujukan**
+
+- [AI scores 100% at IMO — TechXplore](https://techxplore.com/news/2026-07-ai-humans-score-math-contest.html)
+- [Samsung Galaxy Unpacked July 2026 — The Verge](https://www.theverge.com/tech/969208/samsung-galaxy-unpacked-2026-everything-announced)
+- [AMD Advancing AI 2026 — AMD IR](https://ir.amd.com/news-events/press-releases/detail/1294/aai-2026-amd-delivers-full-stack-compute-for-the-agentic-ai-era)
+- [Anthropic $1.5B Settlement — Unite.AI](https://www.unite.ai/anthropics-book-piracy-settlement-wins-final-court-approval/)
+- [Kimi K3 Model Overview — Hugging Face](https://huggingface.co/blog/ResterChed/kimi-k3-model-overview-mxfp4-quantization-open-wei)
+- [Silicon Valley Splits Over Chinese AI — NYT](https://www.nytimes.com/2026/07/25/technology/open-source-silicon-valley-china.html)
+- [The Great Open Source AI Debate — WIRED](https://www.wired.com/story/silicon-valley-is-completely-divided-over-chinese-ai/)
+- [Best Open-Source LLMs July 2026 — Taskade](https://www.taskade.com/blog/open-source-llms)
+- [GitHub Trending](https://github.com/trending)
+
+---
+
+_Itu sahaja untuk minggu ni, Tuan Hafizi. Dunia AI tengah bersenggoti laju — kito kena sentiasa update. Kalau nak deep-dive mana-mana topik, roger je. 🫡_
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").

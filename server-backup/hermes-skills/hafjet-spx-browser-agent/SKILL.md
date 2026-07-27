@@ -331,6 +331,73 @@ BACKEND_HEADERS: { 'X-Agent-Token': 'REPLACE_ME' },
 
 **Key: browser script only scrapes and POSTs facts. WhatsApp send decisions are made by the backend.**
 
+## v3.2 — Push to HAFJET Backend
+
+```javascript
+function pushHafjet(apiUrl, apiKey) {
+    const payload = window.__spx_poc_results
+        .filter(r => r.tracking && r.phone && !r.phone.includes('***'))
+        .map(r => ({ tracking: r.tracking, phone: r.phone }));
+    fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'X-API-Key': apiKey } : {}) },
+        body: JSON.stringify(payload),
+    }).then(async res => {
+        let body = await res.json().catch(() => ({ raw: 'parse_error' }));
+        console.log('✅ Hafjet response:', res.status, body);
+    });
+}
+window.__spx_poc_push_hafjet = pushHafjet;
+```
+
+**Auth:** Backend endpoint `POST /api/spx/bulk-map-phones` uses `X-API-Key` header validated by middleware against `DASHBOARD_API_KEY`. JWT not required — endpoint signature is `request: Request` (not `Depends(get_current_staff)`). The middleware already handles API-key auth for `POST /api/spx/*`. **Important:** when an endpoint has both middleware (X-API-Key check) AND `Depends(get_current_staff)` (JWT check), the Tampermonkey autopilot can only provide the API key — replace `staff: dict = Depends(...)` with `request: Request` for autopilot endpoints.
+
+**Response:** `{updated, skipped, errors, total, details: [{tracking, reason}]}`
+
+## v4.0 — Autopilot (Balanced/Option B)
+
+Full auto-timer Tampermonkey script at `spx_phone_agent_autopilot_v1.user.js` (1263 lines).
+
+### CONFIG.AUTOPILOT Block
+```javascript
+const AUTOPILOT = {
+    ENABLED: false, INTERVAL_MINUTES: 15, STATUS_FILTER: 'Ready For Collection',
+    DEDUPE: true, BATCH_LIMIT: 5, RETRY_MAX: 3, PUSH_TIMEOUT_MS: 15000, INITIAL_DELAY_MS: 5000,
+    BACKEND_URL: 'https://hafjet-whatsapp-bot.azurewebsites.net/api/spx/bulk-map-phones',
+    API_KEY: 'DASHBOARD_API_KEY_HERE',
+};
+```
+
+### Auto-Timer Flow
+- `setInterval(autopilotTick, 15min)` → `isSessionValid()` → NO → stop + alert
+- `isRunning` guard prevents overlap
+- `runPoC({limit, status, dedupe})` → `pushHafjetAsync(results)` → if 401/403 stop timer
+- Error/timeout → retry queue (max 3 attempts, in-memory)
+
+### `isSessionValid()` — Session Expiry Detection
+```javascript
+function isSessionValid() {
+    const header = document.querySelector('.ant-table-thead, thead, [class*="table-header"]');
+    if (!header) return false;
+    const bodyText = document.body.innerText.substring(0, 500);
+    if (bodyText.includes('Login') || bodyText.includes('Sign in')) return false;
+    return true;
+}
+```
+
+### Rollout-Safe Pattern
+First import: `ENABLED: false`, `BATCH_LIMIT: 5`. Manual `__spx_start_autopilot()` in console. Verify one cycle. Then set `ENABLED: true`. Never run v3.2 and v4.0 simultaneously.
+
+### Global Commands
+```javascript
+__spx_start_autopilot()    // Start auto-timer
+__spx_stop_autopilot()     // Stop immediately
+__spx_autopilot_state()    // → { running, cycle, failures, queue }
+```
+
+### Session Upgrade from v3.2
+1. Disable v3.2 in Tampermonkey 2. Import v4.0 (rollout-safe) 3. Reload SPX page 4. `__spx_start_autopilot()` 5. After smoke test passes: edit `ENABLED: true`
+
 ## Backend Follow-Up Engine — `spx_followup.py`
 
 Production Python function at `~/.hermes/whatsapp-bot/spx_followup.py`.

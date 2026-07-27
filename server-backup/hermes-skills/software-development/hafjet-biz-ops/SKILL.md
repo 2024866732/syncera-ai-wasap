@@ -318,7 +318,7 @@ Google Sheet below, NOT the bot DB.
 |-----|-----|-----|---------|--------|
 | Daily Sales Report | `0 13 * * *` | 9:00 PM | Loyverse digest → Telegram | `9408be4cd593` |
 | Pickup Reminder | `0 3 * * *` | 11:00 AM | GSheet → WhatsApp customer | `ebdae9cc10ab` |
-| Low Stock Alert | `0 0 * * *` | 8:00 AM | Loyverse inventory → owner | pending |
+| Low Stock Alert | `0 0 * * *` | 8:00 AM | Loyverse inventory → owner | `7b74334921e6` |
 | Exception Report | `0 */2 * * *` | every 2h | ops exceptions → owner | pending |
 
 **Pickup Reminder (Google Sheets → WhatsApp Cloud API):** see `references/pickup-reminder-gsheets.md`.
@@ -396,6 +396,7 @@ Google Sheet below, NOT the bot DB.
 
 ### Scripts
 - `scripts/hafjet_pickup_reminder.py` — Main pickup reminder script. Reads GSheet, filters SIAP, sends WhatsApp.
+- `scripts/hafjet_low_stock_alert.py` — Low stock alert. Paginates Loyverse inventory, joins variant→item names, sends WhatsApp alert to owner if items ≤ threshold.
 - External: `~/run_pickup_reminder.py` — Wrapper that bridges env var names and sets hardcoded config for terminal runs (not part of skill directory).
 
 ### References

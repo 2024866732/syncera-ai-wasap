@@ -60,6 +60,9 @@ description: >
 - **Do not** insert top-level `@app.get(...)` decorators inside an existing function body; they must be at module indentation.
 - **Do not** retry the same `patch old_string` more than twice. The matcher is not going to change its mind.
 - **Do not** run a partial multi-step patch sequence when one of the steps already corrupted indentation; restore and re-apply as one block.
+- **f-string double-brace trap:** CSS inside Python `f"""..."""` templates uses `{{ }}`, not `{ }`. When building an `old_string` to match, check the source with `cat -A` or `repr()` to confirm single vs. double braces. Mismatch = silent failure.
+- **Multi-pass atomic write:** When a script applies multiple `.replace()` passes, write the file only at the very end. If an intermediate assert fails, no partial work is saved — fix the failing pass and re-run from a clean baseline. Write-per-pass loses earlier successful passes on a later failure.
+- **Body-block replacement must preserve `return`/`import` lines:** When replacing a `f"""..."""` HTML template block, include any trailing `return HTMLResponse(html)`, `from fastapi.responses import HTMLResponse`, or function-close lines. A naive `content[:start] + new_body` silently drops them.
 
 ## Pre-insertion sanity checks
 
