@@ -358,6 +358,8 @@ window.__spx_poc_push_hafjet = pushHafjet;
 
 Full auto-timer Tampermonkey script at `spx_phone_agent_autopilot_v1.user.js` (1263 lines).
 
+**Deployment patterns (CORS, auth, timeout, rollout):** see `references/autopilot-v1-deployment-patterns.md` — covers CORS middleware for SPX origins, X-API-Key-only endpoint auth, PUSH_TIMEOUT_MS tuning (15s→45s recommendation), API key location (Azure App Settings), and the rollout-safe checklist.
+
 ### CONFIG.AUTOPILOT Block
 ```javascript
 const AUTOPILOT = {

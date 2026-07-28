@@ -1,19 +1,17 @@
-Tuan Hafizi (MD HAFJET, UiTM, Kelantan). Max 3 lines/reply. Format: STEP/ACTION/RESULT. No long patches in chat—use telegram-file-delivery. Deploy: show diff→approve→deploy. Safety BLOCK=stop. No secrets.
+Tuan Hafizi runs HAFJET, Raub. VPS=main controller/orchestrator; PC Office (Tailscale)=least-privilege executor for local backup/sync/monitor/report/internal automation. Max 3 concise lines (STEP/ACTION/RESULT); explicit confirmation before destructive/critical changes; report only verified state.
 §
-Git: origin=github.com/2024866732/hafjet-whatsapp-bot.git. Branch convention: release/vX.Y.Z. Commit format: sprint(vX.Y.Z): description. Strict: no direct push to main, no force-push, no rebase main.
+Git: origin=github.com/2024866732/hafjet-whatsapp-bot.git. Convention: release/vX.Y.Z. Format: sprint(vX.Y.Z): desc. Strict: no direct push/force-push/rebase main.
 §
-PC Office (100.121.94.41 Tailscale): i3-2100/16GB/Ubuntu26.04, Python3.13 (uv). OCR=~/ocr-env RapidOCR. STT=~/whisper-env faster-whisper. LiteLLM=~/litellm-env :4000→OpenCodeGo ($10/bln), systemd user service. All venvs via uv.
+PC Office (100.121.94.41 Tailscale): i3, 16GB RAM, Ubuntu 26.04, CPU-only. Tuan strongly prefers natural Malay TTS; VoxCPM2 (Apache-2.0, Malay, 48kHz) sounded natural in testing. Spell brand as `HAF-JET`/`Haf Jet` in prompts to avoid pronunciation “half-jad”.
 §
-Deployment: start.sh (version-controlled) preferred over direct appCommandLine; startup method must be in repo/zip, not hidden Azure config.
+REPORT FORMAT: MYT (UTC+8) alongside UTC — "HH:MM UTC (HH:MM MYT)". Deploy: start.sh version-controlled, in repo/zip not hidden Azure config.
 §
-Tampermonkey: deliver as .txt via MEDIA:, not inline code. Output: kompleks→satu fail via telegram-file-delivery, chat ringkas 3 ayat. Deployment: copy-paste command blocks with markers (safe/confirm/danger/irreversible), phased, GO/NO-GO, 15-min monitor, rollback.
+PC Office SSH: `hafizi145` key-only; no `hafjet` account unless requested. Workers are allowlisted+SHA-256; VPS logs metadata only. LiteLLM config backups: age only (no GPG absent new approval), encrypted archive only—never plaintext on unencrypted drive; PC has public recipient only, Tuan holds private identity; metadata may include config_sha256 but never secrets.
 §
-REPORT FORMAT: Always include MYT (UTC+8) alongside UTC: "HH:MM UTC (HH:MM MYT)" text or dual table columns. Don't change DB/log storage — only presentation.
+Primary HAFJET operating reference: `/home/hafizi145/HAFJET-Operating-Manual-v1.md`; explicit Tuan approval overrides it.
 §
-Azure: lazy imports (try/except in function) prevent startup exit-code-3. Always health-check BEFORE deploy. 503 root cause was missing db_logger fns, not new import.
+CRITICAL: ALL cctv-worker restarts need explicit Tuan Hafizi approval — no exceptions. Never auto-restart. Especially during monitoring where process state must not reset.
 §
-Composio: ✅ DONE. Plugin kamellperry/hermes-composio. SDK composio==0.18.0 in Hermes venv (~/hermes-agent/venv). Gmail ACTIVE + GitHub ACTIVE. Key format: ak_... from app.composio.dev, sessions=write.
+CCTV UI changes remain pending until actual rendered screenshots verify desktop, tablet, and phone layouts; structural HTML/CSS checks alone are insufficient. CCTV investigations require complete time-series evidence before code changes or process resets.
 §
-D.3+D.5+D.6 CLOSED. Dashboard: date filter+CSV+MYT+face grid+Gender(est.)/Age(est.). Face: Haar cascade, 36% success (conf≥0.7). Attr: cv2.dnn Caffe ~133ms, NO embeddings. UI workflow: implement→verify→"PENDING VISUAL CONFIRMATION" (never "CLOSED" without actual screenshots)→user confirms→CLOSED.
-§
-Responsive checklist: verify at 1440/1024/768/480/390/360px. Touch min 44px WCAG. No horiz overflow. Font ≥13px phone. Stats: auto-fit grid. Cards: desktop 6-col, tablet 5-col, phone 2-col→1-col @480px.
+JANGAN guna Kudu ZIP API utk deploy dashboard — ia wipe seluruh /site/wwwroot/ (backend+start.sh hilang, app 503). Guna upload file-by-file VFS ke path tepat dashboard/dist/<file>, update index.html terakhir sbg atomic switch. DB di /home/data/bot_data.db selamat drpd wipe.

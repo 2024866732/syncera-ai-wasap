@@ -85,6 +85,17 @@ disk exhaustion, port conflicts, model loading, Tailscale IP changes).
 - Always SSH into `hafjet-pc-office` for accurate data.
 - Table format is preferred: clear, scannable, columnar.
 
+### Trusted-host gate for remote audits (mandatory)
+
+Before the first SSH audit from the VPS:
+1. Confirm the intended PC account with Tuan; do not infer or create an automation account during audit.
+2. Ask Tuan to obtain the PC Office ED25519 fingerprint locally with `sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`.
+3. Fetch only the ED25519 host key from the VPS using `ssh-keyscan`, calculate its SHA-256 fingerprint, and compare it exactly to Tuan's value.
+4. Only on an exact match, use `StrictHostKeyChecking=yes` with a **temporary** `UserKnownHostsFile` for the read-only audit. Do not silently accept/store a permanent `known_hosts` entry during audit.
+5. Record the match outcome in the report. On mismatch/unavailability, mark the audit `BLOCKED` and send no remote command.
+
+The audit may collect host/OS, capacity, runtime versions, listeners, active user services, and relevant process names. Do not read service configs or `.env` files, because they may expose credentials.
+
 ## Phase B: Project scaffolding
 
 Once Phase A is approved, follow these rules:

@@ -1,6 +1,6 @@
 ---
 name: hafjet-malaysian-tts
-description: "Deploy & run mesolitica Malaysian-TTS (Qwen3-based 0.6B) + DistilCodec on the HAFJET PC Office CPU-only worker. Covers uv/py3.11 env bootstrap, CUDA→CPU source patches, HF download quirks, and the EOS early-stop fix for post-sentence hallucination. Use whenever Tuan wants a natural Malay TTS running locally (alternative to robotic Edge Yasmin)."
+description: "Evaluate and deploy natural Malay TTS on the HAFJET PC Office worker, including commercial-safe VoxCPM2 and legacy Mesolitica experiments. Covers CPU feasibility, licensing, voice QA, and WhatsApp/media integration boundaries."
 version: 1.0.0
 author: HAFJET (M) SDN BHD
 tags: [tts, malay, huggingface, distilcodec, qwen3, pc-office, cpu-inference]
@@ -14,6 +14,14 @@ Deploy `mesolitica/Malaysian-TTS-0.6B-v1` (a Qwen3 causal-LM that emits `speech_
 ## When to use
 - Tuan wants a natural Malay TTS (less robotic than Edge Yasmin YasminNeural).
 - Running any HF speech/ML model on the PC Office CPU worker.
+- Selecting a customer-facing Malay TTS where explicit commercial licensing matters.
+- Adding audio to the WhatsApp bot or producing HAFJET announcements/content.
+
+## Commercial-safe option: VoxCPM2
+- `openbmb/VoxCPM2` explicitly declares **Apache-2.0** and lists Malay support; it is the preferred customer-facing candidate.
+- It generates high-quality 48 kHz Malay audio and supports voice design with a text prefix.
+- CPU feasibility is the constraint: a short sample took minutes on the PC Office i3. Use it for approved pre-rendered clips/content locally, not synchronous dynamic WhatsApp replies. GPU hosting is required for live dynamic audio.
+- See `references/voxcpm2-commercial-malay.md` for validated facts and the WhatsApp integration design.
 
 ## Architecture
 - `Malaysian-TTS-0.6B-v1` = `Qwen3ForCausalLM` (0.6B). Prompt format:
@@ -40,7 +48,7 @@ Deploy `mesolitica/Malaysian-TTS-0.6B-v1` (a Qwen3 causal-LM that emits `speech_
 5. **DistilCodec hardcodes CUDA** in two spots → patch source (see references). Without it: `AssertionError: Torch not compiled with CUDA enabled`.
 6. **`hf download --include` is IGNORED** when filenames are explicitly set (warning "Ignoring --include since filenames have been explicitly set"). Use `hf_hub_download(repo_id, filename, local_dir=...)` per file. `config.json` and DistilCodec `model_config.json` both got missed this way and broke loading.
 7. **`hf` CLI is NOT on PC Office** (only on Azure gateway). Use `hf_hub_download()` from the venv, not the `hf` binary.
-8. **Post-sentence hallucination**: the model rarely emits `<|endoftext|>` (id 151643), so sampled (temp 0.7) output overran to ~1172 codes of gibberish after the real sentence. Fix: `do_sample=False` (greedy) + `eos_token_id=151643` + trim sequence at first EOS. This cleanly stops at the sentence end.
+8. **Post-sentence hallucination — Mesolitica blocker**: the model rarely emits `<|endoftext|>` (id 151643). Both sampled and greedy tests ran to the token cap; greedy + EOS config did **not** reliably solve it. It can create intelligible speech followed by gibberish. Treat this model as a personal/dev experiment only; do not use it for customer-facing HAFJET audio without a separately validated trim/stop solution.
 9. **Text normalization**: model trained on normalized text. `123` must become `one two three` / `satu dua tiga` or it mispronounces. Use Malaya normalizer for production.
 
 ## Verification

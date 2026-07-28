@@ -50,6 +50,7 @@ Skip any step = lying, not verifying
 | DB write via API | Raw DB query via Kudu download | API response "mapped: 2" |
 | Kudu VFS upload (HTTP 204) | Re-download + sqlite3 query | Upload status code alone |
 | Requirements met | Line-by-line checklist | Tests passing |
+| **UI/CSS \"works\"** | **Rendered screenshot from actual browser** | **HTML grep, curl output, structural analysis** |
 
 ## Red Flags - STOP
 
@@ -62,6 +63,7 @@ Skip any step = lying, not verifying
 - Thinking "just this once"
 - Tired and wanting work over
 - **ANY wording implying success without having run verification**
+- **Claiming visual/CSS/UI work as \"FULLY CLOSED\" or \"DONE\" based solely on `curl` output, `grep` class counts, HTML byte counts, or structural analysis.** Rendered visual work requires rendered visual evidence — a browser screenshot at the actual width/device. Without a browser, the correct status is **\"IMPLEMENTED, PENDING VISUAL CONFIRMATION\"**, never \"CLOSED\". `curl | grep \"event-card\"` proves the HTML structure was emitted; it does NOT prove the CSS rendered correctly, images loaded without broken icons, there was no horizontal overflow, or touch targets are tappable.
 
 ## Rationalization Prevention
 

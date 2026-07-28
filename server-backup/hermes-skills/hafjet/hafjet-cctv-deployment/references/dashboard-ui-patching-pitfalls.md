@@ -88,3 +88,25 @@ A 500 error or `null` body means the template has a Python error — check the j
 
 - `safe-code-insertion` skill — general multi-pass patching and f-string brace trap
 - `hafjet-cctv-deployment` SKILL.md § "Dashboard Visual Refreshes" — high-level workflow contract
+
+## 7. Shell `sed` Wildcard Pitfall — Use Python for f-string HTML
+
+When using `sed` to patch HTML attributes inside Python f-strings, the `.` (period) character is a regex wildcard that matches ANY character. A naive sed command like:
+
+```bash
+sed -i "s|class='event-time'|class='event-time'><span>Label</span>|" routes.py
+```
+
+Will match `class=xevent-timey` (any char before/after). Even escaping with `\.` is fragile inside SSH layers. The result is broken HTML like `class=.event-time.`.
+
+**Always use Python `content.replace()` for f-string/HTML template patches**, not sed. The literal string match avoids regex interpretation entirely.
+
+## 8. FastAPI `uvicorn` Does Not Auto-Reload Without `--reload`
+
+When modifying `app/api/routes.py` (or any imported module), the running `uvicorn` process uses the **already-imported bytecode**. Code changes to the `.py` file do NOT take effect until the worker is restarted. Unlike `--reload` mode (which watches files and restarts uvicorn), the systemd-managed production worker must be explicitly restarted:
+
+```bash
+sudo systemctl restart cctv-worker
+```
+
+**Symptom:** `grep` confirms the patch is in the source file, but `curl` shows the old HTML output. This is expected — the process has the old bytecode loaded.

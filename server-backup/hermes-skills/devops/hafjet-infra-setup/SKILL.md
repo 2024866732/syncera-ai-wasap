@@ -245,6 +245,15 @@ git config --global user.email "hermes@hafjet.com.my"
 - Cache-only deletions (~/.npm/_cacache, /tmp) are safe-to-rebuild.
 - Silence / timeout on approval prompt = NOT consent. Stop and wait.
 
+## Operating-manual change control
+
+When a HAFJET operating manual is designated as the primary reference, treat it as a living **verified-state** document:
+
+1. Draft a unified diff first; do not alter the manual until Tuan explicitly approves that exact diff.
+2. Base each replacement line on fresh tool evidence, not an earlier plan or an in-progress status. If requested wording becomes stale during execution, preserve it as a dated/historical checkpoint and state the later verified result as the current status.
+3. Keep unfinished controls visibly separate from verified work (for example: pending permission hardening, uncreated worker directories, unmounted backup storage, and unapproved listener changes).
+4. After applying an approved diff, re-read the changed section and deliver the updated document. The newest explicit instruction from Tuan still overrides the manual.
+
 ## Hybrid topology (when PC is off most of the time)
 - Azure VPS (small) = public relay/proxy; PC-office = Hermes engine via Cloudflare Tunnel / Tailscale.
 - When PC off, bot "sleeps". No fixed-cost increase if Azure already paid.

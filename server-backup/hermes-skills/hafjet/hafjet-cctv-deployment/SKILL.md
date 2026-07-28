@@ -147,6 +147,17 @@ sudo systemctl status cctv-worker --no-pager
 journalctl -u cctv-worker -n 30 --no-pager
 ```
 
+### Restart approval gate — mandatory
+A restart changes process state, reloads staged code, and resets RSS/uptime evidence. **Never restart `cctv-worker` merely because a patch compiles, a helper script suggests it, or a restart appears to be the logical next step.**
+
+1. During any RSS/leak, crash, reconnect, or state-sensitive investigation: preserve the current process and collect the requested trend first.
+2. Stage code changes and prove syntax/diff without restart.
+3. State exactly what the restart will load and ask for a **separate, explicit approval**.
+4. Only then use the narrow approved command/script; verify health and requested markers afterwards.
+5. If a restart happened unexpectedly, disclose it immediately, record the new baseline, and do not retrospectively describe the lost trend as intact.
+
+This gate applies even to an apparently small dashboard-label or CSS-adjacent Python template fix.
+
 ## Dashboard Visual Refreshes (CSS/HTML Only)
 
 When Tuan Hafizi requests a `/dashboard` redesign, preserve the dashboard contract:
@@ -164,6 +175,39 @@ When Tuan Hafizi requests a `/dashboard` redesign, preserve the dashboard contra
 6. Capture a rendered before/after view only when a browser/screenshot capability is actually available; never claim a screenshot or hover/tooltip test based solely on `curl` HTML. If unavailable, report the exact HTML evidence and limitation.
 
 **Patching pitfalls:** `references/dashboard-ui-patching-pitfalls.md` covers f-string double-brace escaping, atomic multi-pass write strategy, body-block `return`/`import` preservation, and the clean-backup re-run pattern.
+
+## Face Gallery (`/dashboard/faces`)
+
+Added as a separate route reusing the same `get_events_by_date()` query, filtered to events with `face_snapshot_path`. Tab navigation links between `/dashboard` (Event List) and `/dashboard/faces` (Face Gallery).
+
+### Layout
+- CSS Grid: `grid-template-columns: repeat(auto-fill, minmax(110px, 1fr))` with `gap: 6px`.
+- Each face card: `aspect-ratio: 1 / 1.1`, hover lift + cyan border.
+- Click: opens full-size face crop at `/faces/{filename}`. Full event snapshots remain at `/snapshots/{filename}`; these are separate directories/routes. See `references/face-media-serving.md` for the safe serving split and real-asset verification.
+
+### Hover overlay (desktop) vs static overlay (mobile)
+- **Desktop:** overlay (time + gender/age badges) hidden by default, shown on `:hover`.
+- **Tablet/phone (`@media max-width: 768px`):** overlay ALWAYS visible (`opacity: 1; position: static`), stacked below the thumbnail. No hover dependency — touch devices cannot hover.
+- **User requirement:** Tuan Hafizi explicitly specified that touch devices must not rely on hover state. Overlay info must be visible on first tap/view.
+
+### Breakpoints for Face Gallery grid
+| Width | Columns | Thumbnail min | Gap |
+|---:|---|---|---|
+| 1440px+ | 7–8 | 110px | 6px |
+| 1024px | 5–6 | 100px | 6px |
+| 768px | 3–4 | 110px | 6px |
+| 480px | 2–3 | 90px | 4px |
+| 360px | 2 | 90px | 4px |
+
+## Responsive CSS Breakpoints (Shared)
+
+All dashboard views use three breakpoints:
+1. **`@media (max-width: 1024px)`** — tablet/small desktop: 5-column event grid.
+2. **`@media (max-width: 768px)`** — phone/tablet portrait: filter bar stacks vertically, touch targets ≥44px, thumbnails 90px, overlay always visible for Face Gallery.
+3. **`@media (max-width: 480px)`** — small phone: single-column event cards, thumbnails 120px, body padding 8px.
+
+### Touch target requirement
+All filter/action buttons (`Filter`, `Clear`, `Export CSV`, `.tab`) enforce `min-height: 44px` on `≤768px` breakpoint per WCAG touch target guidelines.
 
 ## RTSP Credential Log Hygiene
 
@@ -229,6 +273,7 @@ Or use the `patch_reconnect.py` approach for multi-line changes.
 - **Cron job fails on model drift** → if global inference config changes, cron gets skipped. Check with `cronjob action=list`. **ALWAYS pin model/provider** when creating cron: `model={'provider': 'opencode', 'model': 'specific-model'}`.
 - **Cooldown gap analysis:** When comparing event gaps, ensure all events compared are from a **single continuous worker run**. Cooldown resets on worker restart, so events from different runs may appear closer than the configured cooldown. Always verify with `last_event_time` log lines.
 - **Systemd `StandardOutput=append:` Permission denied:** On some systems (e.g. Ubuntu 26.04), systemd fails to open `/tmp/cctv-worker.log` for append even when the file is user-owned. **Fix:** Use `StandardOutput=journal` and `StandardError=journal` instead. Logs are then readable via `journalctl -u cctv-worker`.
+- **Memory growth / potential leak:** Follow `references/memory-leak-investigation.md`: collect a 30-minute RSS trend for 3–4h with no restart; inspect unbounded references and the numpy slice-view trap; stage `.copy()` for face crops plus safe `del face_array` only after review. A restart reset is process-level evidence only, not proof that the cause is Python rather than OpenCV/C-level. **Never restart prematurely** during trend collection, and do not raise thresholds until a post-fix plateau is measured. If growth persists after the NumPy fix, use `references/opencv-dnn-rss-correlation-and-mitigation.md`: correlate every RSS interval with `Face attr:` journal timestamps; distinguish a one-time DNN working-set allocation from renewed growth after later inference groups; prefer an isolated DNN reproducer before proposing workarounds. A scheduled main-worker restart is emergency containment only and requires a specific policy exception to the explicit-restart gate. For the required three-stage DNN/detector/decode isolation sequence and the separate Haar false-positive audit protocol, see `references/dnn-pipeline-isolation-and-face-audit.md`; correlation is not root-cause proof.
 - **False alarm on systemd restart count:** `journalctl | grep 'Started cctv-worker'` includes initial config-failure restarts (e.g. Permission denied loop). To get **true operational restarts**, filter by date: `--since 'YYYY-MM-DD HH:MM:SS'` or check if the count of `Started` events is concentrated in a single burst at deploy time.
 - **Tapo TC74 RTSP session timeout (camera firmware limitation):** Tapo cameras terminate RTSP sessions at regular intervals due to a firmware-level session limit. **TCP transport does NOT fix this** — tested and proven: TCP interleaved mode (`OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp`) makes disconnects MORE erratic (49–449s), not better. UDP rollback after TCP may improve the pattern (1 disconnect/15min vs 17/6h originally). **Recommended approach: E2 — accept as limitation** with the existing auto-reconnect (5–7s recovery, ~0.5–4% detection gap). See `references/rtsp-transport-diagnostic.md` and `references/rtsp-keep-alive-investigation.md` for full investigation.
 
@@ -245,11 +290,13 @@ Or use the `patch_reconnect.py` approach for multi-line changes.
 | D.3 Dashboard Enhancement | ✅ Closed — date filtering, CSV export, UTC+MYT display |
 | D.5 Face Crop + Smart Search | ✅ Closed — Haar crops, dashboard grid, 30-day retention |
 | D.6 Face Attribute Detection | ✅ Closed — crop-gated OpenCV DNN estimates; dashboard labels `(est.)`; display-only known accuracy limitation |
+| Dashboard UI Redesign (card-style) | 🟡 Implemented, pending rendered visual confirmation — stat cards, sticky filter, badges, responsive 1024/768/480px breakpoints, touch-aware overlay |
+| Face Gallery (`/dashboard/faces`) | 🟡 Implemented, pending rendered visual confirmation — dense `auto-fill` grid, desktop hover/mobile static overlay, tab navigation, and verified `/faces/{filename}` media route |
 | D.1 Layer 3 Notification | 🟡 Option A confirmed, B/C deferred |
-
-See `references/d3-d6-final-operational.md` for closure checks, exact scoped-sudo behaviour, restart-helper requirements, and RTSP credential-log hygiene.
 | D.4 Multi-camera + Behaviour | 🔵 Deferred |
 | D.2 YOLOv8 Nano Upgrade | 🔵 Deferred |
+
+See `references/d3-d6-final-operational.md` for closure checks, exact scoped-sudo behaviour, restart-helper requirements, and RTSP credential-log hygiene.
 
 See `references/d3-d6-proposals.md` for full approval details and `references/face-crop-implementation.md` for D.5 implementation architecture.
 

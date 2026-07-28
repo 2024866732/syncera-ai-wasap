@@ -138,10 +138,12 @@ If all smoke tests pass, the deployment is considered successful. Retain the dep
 - ✅ **Do** verify the startup command points to Azure paths (e.g., `/home/site/wwwroot/start.sh` or direct `gunicorn` call), not local developer paths.
 - ✅ **Do** keep a recent known-good ZIP artifact handy for fast rollback.
 - ✅ **Do** use Kudu VFS PUT for single-file deployments: `curl -X PUT -H "Authorization: Bearer $TOKEN" -H "If-Match: *" --data-binary @file.txt "https://APP.scm.azurewebsites.net/api/vfs/site/wwwroot/file.py"` — HTTP 412 for existing files is fixed by adding `-H "If-Match: *"`.
+- ✅ **Do** use Kudu ZIP API for **single-file** deployments when VFS PUT fails (412/409): create a ZIP with just the target file (`zip /tmp/patch.zip file.py`) and deploy to `/api/zip/site/wwwroot/` — this replaces only that file without touching siblings.
 - ✅ **Do** restart via `az webapp stop` → `sleep` → `az webapp start` (not `az webapp restart`) for a clean restart.
 - ✅ **Do** deploy ALL companion files together: when `webhook_listener.py` imports new functions from `db_logger.py` or `spx_followup.py`, deploy BOTH files in the same cycle. Deploying only the listener causes startup crash (exit code 3 — container terminates before scheduler starts).
 - ✅ **Do** use **lazy import** (try/except ImportError inside the function body) for new Python modules on Azure. Top-level `from spx_followup import X` can cause container startup failure even when the module exists; wrapping it in a function-scoped import allows the scheduler to start and logs a clear error instead of crashing.
 - ❌ **Do not** use `az webapp deploy --type zip` on Linux App Service; it often reports success but fails to start the app.
+- ❌ **Do not** use Kudu ZIP API `PUT /api/zip/site/wwwroot/<subdir>/` for subdirectory deploys — **it overwrites the entire `/site/wwwroot/` root**, deleting all backend files (`webhook_listener.py`, `db_logger.py`, `start.sh`, `requirements.txt`, etc.) and causing immediate 503/Application Error. This happened on 2026-07-28 when deploying `dashboard/dist/` — the ZIP contained only dashboard assets but the API wiped the whole wwwroot. Recovery required manual VFS PUT of 7+ backend files + `start.sh` recreation + app restart.
 - ❌ **Do not** modify code or configuration during the deployment window.
 - ❌ **Do not** skip smoke tests; a `RuntimeSuccessful` status does not guarantee the app is responding correctly.
 - ❌ **Do not** pipe `curl` to `python3` for Azure log inspection — use `az webapp log tail` or download log files to disk first.

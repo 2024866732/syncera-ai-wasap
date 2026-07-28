@@ -67,6 +67,46 @@ and wastes a turn. Internalize this before proposing ANY terminal command.
 - Hermes redacts secrets in tool output by default. Do NOT disable redaction,
   and do NOT paste tokens into chat. Have Tuan run token-bearing commands himself.
 
+## Approval-bounded execution (HAFJET orchestration)
+
+When Tuan approves a numbered command list or a narrowly scoped phase, treat that approval as an immutable execution boundary:
+
+1. Run the approved commands **in order** and keep each command separate so an error has a clear stop point.
+2. Do not add convenience, cleanup, retry, diagnostic, SSH, or follow-up commands that are not explicitly in the approved list.
+3. If any approved command exits non-zero, **stop immediately**. Report the exact command, exit code, and sanitized output; do not attempt an alternative verification/fix until Tuan approves a new plan.
+4. Before applying, reconcile the plan: every required verification or synthetic-record action must appear in the approved command list. If the plan requires an unlisted action, raise the mismatch before implementation rather than silently adding it.
+5. Temporary files are still writes/deletes. Prefer a unique temporary path created only within approved scope; never prepend `rm -f` merely for convenience.
+
+### TDD expected-RED exception
+
+A test-first plan may deliberately include one non-zero **RED** test run before its implementation file exists. Treat it as an allowed continuation point **only when all three conditions are explicit in the approved plan and approval message**:
+
+1. The exact command/order and expected non-zero exit are named.
+2. The expected failure signature/reason is named (for example, verifier script absent).
+3. The user explicitly authorizes continuing to the next numbered command after that RED result.
+
+Report the RED result as evidence, then continue only with the already-approved next command. Any other non-zero exit, wrong failure signature, or verifier result such as `FAILED`, `DATABASE_ERROR`, or `DATABASE_MISSING` remains a hard stop requiring a new plan. Never infer this exception from a generic approval phrase.
+
+### Sanitized remote-audit contract
+
+For an approval-gated **read-only** audit of a remote HAFJET worker:
+
+1. Verify the live ED25519 host key against Tuan's trusted fingerprint **before** SSH. A temporary `known_hosts` file on the VPS is a write and must be explicitly listed/tagged; use `StrictHostKeyChecking=yes` for the audit connection.
+2. Define an allowlist of report fields before running the remote command. Prefer mount UUID/FSTYPE/capacity, file mode/owner/size/mtime, executable path, and package version. Never print config bodies, service `ExecStart`, environment variables, raw stderr, recipient files, or private-key material.
+3. Model missing non-destructive prerequisites (for example absent external mount, encryption binary, or version metadata) as bounded status fields in an otherwise-zero audit command. They are implementation blockers for the next phase, not permission to install, mount, create folders, or recover automatically.
+4. Do **not** infer a service's actual Python runtime solely from `/proc/<pid>/exe`: process supervisors/launchers (such as `uv`) can occupy that path. If it resolves to a launcher rather than a verified Python interpreter containing the service package, report `RUNTIME_PYTHON_UNRESOLVED`; do not expose `ExecStart` just to guess.
+5. When a service-bound runtime resolver is explicitly approved, use a bounded chain only: read `systemctl --user show <service> -p MainPID --value`; read `/proc/<pid>/cwd` without printing it; accept **only** `<service-cwd>/.venv/bin/python` if executable; run `PYTHONDONTWRITEBYTECODE=1 <candidate> -c 'from importlib.metadata import version; print(version("<package>"))'` with stderr suppressed. Print only `RESOLVED`, the absolute candidate path, and distribution version. If any link is absent, return one `UNRESOLVED` status—never scan alternative venvs, use `uv`, or inspect `ExecStart`, command lines, environment, YAML, or logs.
+6. If audited output contains a possible secret marker (`api_key`, `master_key`, `token`, `salt`, `sk-`, `ak_`, `password`), stop. Do not retransmit, redact in-place, delete artifacts, or rerun a broader command without a new approval.
+7. A config-only encrypted backup may explicitly waive an unresolved application runtime/version **only when Tuan approves that exception in the policy**. The backup must then omit runtime/version fields entirely and still verify every non-runtime gate: fixed config path, actual external mount, pinned UUID **and FSTYPE**, non-world-accessible destination, `age`, a public-recipient-only file, and sanitized metadata. Runtime unresolved is never permission to guess a Python path or change the service.
+
+For a reusable systemd unit/start-command classification and conservative service-CWD runtime-pinning method, see `references/sanitized-systemd-runtime-audits.md`. For the config-only encrypted-backup exception/gates, see `references/config-only-encrypted-backup-gate.md`.
+
+## Portable verification and artifact-permission rule
+
+When writing an approval-gated infrastructure plan, verification must be runnable using tools already guaranteed by the plan's runtime. Do not make a core verification gate depend solely on an optional CLI binary. For SQLite-backed Python tooling, the portable default is a **read-only Python `sqlite3` module** check using `file:<absolute-path>?mode=ro` with `uri=True`, followed by `PRAGMA query_only = ON`; it must print to stdout only and create no report/log/database artifact.
+
+For every planned file created by a program (especially SQLite databases), list its final permission explicitly in the approved command set and verify it afterwards. Directory/file creation modes do not automatically govern artifacts created later by another process. Do not silently correct an unexpected mode: report it and obtain a separate approved correction plan.
+
 ## Approval gate summary
 
 | Pattern | Verdict |
@@ -82,6 +122,41 @@ and wastes a turn. Internalize this before proposing ANY terminal command.
 Do not retry, rephrase, or achieve the same outcome another way. Stop the
 workflow, explain what you would have done, and wait for Tuan to apply it
 manually or redirect you.
+
+## Azure VPS safe-cleanup pitfalls (learned 2026-07-19)
+
+Server = Azure Ubuntu, user `hafizi145` (UID 1000), **NOT root**. These bit us:
+
+- **`sudo` is blocked** by the `no-new-privileges` container flag. Any
+  `sudo apt clean` / `sudo rm` is denied. System paths (`/var/cache/apt`,
+  `/var/log`) owned by root CANNOT be cleared from Hermes. Hand those to Tuan
+  to run on the direct VPS terminal as root (Azure provides root access there).
+- **`npm` binary is NOT on PATH** and not in `~/.hermes/npm-global/bin`
+  (only `ctx7` + `n8n` symlinks live there). Do NOT call `npm cache clean`.
+  The real npm cache is at **`~/.npm/_cacache` (~1.4G)**. Safe to `rm -rf`
+  (rebuilds on next npm use) BUT see the delete gate below.
+- **`~/.hermes/npm-cache` (~900M)** is the Hermes-internal npm-global cache —
+  NOT the same as `~/.npm`. Treat per Tuan's "do not touch" list.
+- **`/tmp` is a tmpfs (RAM)** — clearing it frees RAM, NOT root disk. `df -h /`
+  won't move. Still worth doing for swap pressure on the 1GB-RAM box.
+
+### Disk-tight diagnostic recipe (safe, read-only first)
+```
+df -h /                          # root disk
+du -h --max-depth=1 / 2>/dev/null | sort -rh | head   # top dirs
+du -sh ~/.hermes/*               # Hermes breakdown
+du -sh ~/.npm                    # real npm cache
+free -h ; swapon --show          # RAM/swap pressure
+```
+Run these BEFORE proposing any delete. Never delete based on a guess.
+
+### Destructive-delete gate (extends the standing SOP)
+Even a reversible cache delete (`rm -rf ~/.npm/_cacache`) is a destructive
+action. The agent MUST self-block and request **explicit separate approval**
+("yes delete npm cache") BEFORE running it — do not wait for the user to deny.
+Tuan's rule: no delete without a standalone approval each time, even for
+safe-to-rebuild caches. If the command would have been DENIED anyway, stop
+and wait.
 
 ## Azure VPS safe-cleanup pitfalls (learned 2026-07-19)
 
@@ -142,6 +217,27 @@ different sudo configuration from the Azure VPS:
   `no-new-privileges` flag (different root cause). Office PC only blocks
   it due to TTY requirement — `sudo` works fine when run interactively.
 
+### Scheduled service automation scope check
+
+Before proposing or applying a scheduled restart/containment timer on an Office PC:
+
+1. Verify the privilege boundary first: system units under `/etc/systemd/system/` require root for file installation and `systemctl daemon-reload`; a narrow NOPASSWD allowlist for one `systemctl restart` command does **not** grant those setup operations.
+2. Do not bypass an Office-PC TTY sudo requirement with `ssh -t`, password pipes, or a privilege workaround. Stage reviewed artifacts and give Tuan the direct-terminal steps when root installation is required.
+3. A `systemctl --user` timer is not automatically equivalent. Verify whether it survives logout/reboot before presenting it as containment; otherwise label it temporary/non-reliable instead of silently deploying it.
+4. A restart safety valve must log a sanitized timestamp and `MemoryCurrent` **before** restart, use an explicit operation window, and set `Persistent=false` where missed off-hours must not catch up.
+5. Automatic-restart approval is a narrow written exception: record cadence, window, log path, and disable procedure. It does not authorize unrelated restarts.
+
+### CCTV state-sensitive restart gate (learned 2026-07-28)
+
+CCTV-worker restarts are **state-changing operations**, not a routine follow-up to a code edit:
+
+1. **Explicit approval is mandatory for every restart.** Approval to inspect, patch, syntax-check, or save code is never approval to run `restart-cctv.sh`, `systemctl restart`, reload, or an equivalent service reset.
+2. During RSS/leak, time-series, camera-stability, or other state-sensitive monitoring, a restart resets the evidence baseline. Do not restart until the approved observation window is complete, unless Tuan Hafizi explicitly authorizes immediate relief for a confirmed worsening condition.
+3. Separate the workflow into auditable gates: **backup → code edit → syntax/import check → source proof → user review → separate restart approval → one restart → live verification**. A successful `py_compile` only validates source syntax; it does not load the changed service code.
+4. If several approved changes are pending, wait for explicit instruction to perform **one combined restart**; do not restart after each small patch.
+5. Before an approved restart that will end a monitor, capture and report the current tracker samples, start time, elapsed duration, RSS/peak, and relevant event/inference correlation. After restart, start a new tracker with a clearly labelled new baseline; never mix pre- and post-restart samples.
+6. A user may grant a narrow written exception for a temporary scheduled restart. Treat it as containment only: encode its exact cadence/window/log fields, keep it disabled until separately approved for installation, and remove/disable it when the permanent remediation is accepted. It does not create a general auto-restart permission.
+
 ### Bundled delete + install pitfall (learned 2026-07-20)
 Do NOT chain a destructive delete with a long-running install in ONE command,
 e.g. `rm -rf ~/.cache/pip ~/xiaozhi-server/.venv && python3 -m venv .venv && pip install ...`.
@@ -163,6 +259,25 @@ When cleaning test artifacts (snapshots, database files, logs):
 5. **Report before and after** — show `ls -lh` output both before and after cleanup to confirm only the intended files were removed.
 
 Rationale: Tuan caught and blocked `rm -f /mnt/cctv/snapshots/*.jpg` during a July 2026 session and redirected to explicit-file-only cleanup.
+
+### Kudu ZIP API root overwrite (learned 2026-07-28)
+
+**BANNED:** `curl -X PUT "https://APP.scm.azurewebsites.net/api/zip/site/wwwroot/<subdir>/" --data-binary @file.zip`
+
+The Kudu ZIP API at `/api/zip/site/wwwroot/<any-path>/` treats the target as the **extraction root**, not a subdirectory. It deletes everything in `/site/wwwroot/` before extracting the ZIP. Even if the ZIP contains only dashboard assets, the API first clears the entire parent directory.
+
+**Incident (2026-07-28):** Deploying `dashboard/dist/` via ZIP API wiped `webhook_listener.py`, `db_logger.py`, `requirements.txt`, `start.sh`, and all other backend files. App crashed to 503. Recovery required manual VFS PUT of 7 backend files + `start.sh` recreation + restart.
+
+**Safe alternative for dashboard assets:** file-by-file VFS PUT with `If-Match: *`, updating `index.html` last for atomic switch:
+```bash
+for f in dist/index.html dist/assets/*; do
+  rel=${f#dist/}
+  curl -X PUT -H "Authorization: Bearer $TOKEN" -H "If-Match: *" \
+    --data-binary @"$f" "https://APP.scm.azurewebsites.net/api/vfs/site/wwwroot/dashboard/dist/$rel"
+done
+```
+
+**Rule:** ZIP API is for **full-site deploys only** (use `az webapp deployment source config-zip` or the root `/api/zip/site/wwwroot/`). Never target a subdirectory. Dashboard = static assets, deploy via VFS file-by-file.
 
 ### READ-ONLY FILESYSTEM — the real "disk full" cause (learned 2026-07-19)
 If `rm`/`touch` fail with **"Read-only file system"** on EVERY file (not
@@ -198,7 +313,7 @@ Ambo wrongly told Tuan "Ubuntu 26.04 doesn't exist yet" — it was released
 23 Apr 2026 (LTS, "Resolute Raccoon"). Tuan was right. Always confirm
 external facts with a live fetch when there is disagreement.
 
-## Hardware-spec discovery rule (learned 2026-07-19)
+### Hardware-spec discovery rule (learned 2026-07-19)
 When planning a deployment onto user hardware, DO NOT lock assumptions from
 an early off-hand mention. Tuan's PC office spec evolved across the session:
 "i5/8GB/256GB" → "i3" → "512GB SSD + 320GB HDD" → "18GB RAM" →
@@ -206,7 +321,7 @@ an early off-hand mention. Tuan's PC office spec evolved across the session:
 runbook, and re-confirm if the user corrects any detail. Write the FINAL
 confirmed spec at the top of any runbook file.
 
-## Dual-boot / installer safety (learned 2026-07-19)
+### Dual-boot / installer safety (learned 2026-07-19)
 When installing Ubuntu on a machine with existing Windows:
 - In the installer "Storage configuration" screen, **NEVER pick "Use an
   entire disk"** — that formats the whole SSD including Windows. Pick
@@ -219,7 +334,7 @@ When installing Ubuntu on a machine with existing Windows:
   disable ethernet. Select `wlo1` only if connecting via WiFi (needs SSID+pw).
 - Always TICK "Install OpenSSH server" — without it, no remote access.
 
-## Cross-reference
+### Cross-reference
 For the full on-prem PC → Azure replacement plan, Ubuntu 26.04 + Hermes
 compatibility verification, and the on-demand hybrid topology, see
 `hafjet-deployment-plan` → `references/on-prem-pc-replacement.md`.

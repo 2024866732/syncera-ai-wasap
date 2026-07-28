@@ -1,0 +1,100 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+Now I have all the data. Let me compile the final report.
+
+---
+
+# 🔍 HAFJET CCTV Worker — Passive Monitoring Report
+**Target:** `hafjet-pc-office` (100.121.94.41)  
+**Report time:** 2026-07-28 ~05:10 UTC / **13:10 MYT**  
+**Worker uptime:** 14h 40m (since Mon 27 Jul 14:22 UTC)
+
+---
+
+## 1. Worker Status ✅
+- **State:** `active (running)` | **PID:** 9715 | **Uptime:** 14h 40m
+- **systemd Memory:** 605.7M (peak: 606.1M)
+- **CPU consumed:** 6h 43min total
+- No restarts in reporting window.
+
+## 2. API Health ✅
+- `GET /health` → **HTTP 200** | `{"status":"ok"}`
+- Camera: enabled, models present
+- Disk: **348.6 GB free (94.7%)** on `/mnt/cctv`
+
+## 3. Dashboard ⚠️ PARTIAL LABEL MISMATCH
+- `GET /dashboard` → **HTTP 200** (30 KB)
+- Expected labels: `Time (MYT)`, `Gender (est.)`, `Age (est.)`
+- **Found:** `Gender`, `Age` — present but **without `(est.)` suffix**
+- **Missing:** `Time (MYT)` — **not found** anywhere in dashboard HTML
+- Verdict: labels deviated from spec. Not blocking but worth alignment.
+
+## 4. CSV Export ✅
+- `GET /api/events/csv` → **HTTP 200** (62 KB, 331 data rows)
+- Header: `Event ID, Camera, Type, Timestamp (UTC), Confidence, Snapshot, Face Snapshot`
+- **`Face Snapshot` column present ✓**
+- **Note:** CSV has only 7 columns — Gender/Age **not exported** in CSV (available in JSON API only). 331/331 rows have face snapshot path populated.
+
+## 5. Event Data ✅
+- **JSON API** sample (5 most recent): all fresh post-D.6 events
+- **4/5** have `face_snapshot_path` + `gender` + `age_range` populated
+- **1/5** (04:59:25 UTC) has `null` for all three — consistent with no-face-detected scenario (body-only detection, normal)
+- CSV confirms **331/331 events have face snapshots** — no gaps
+- **No post-D.6 gender/age gaps detected** — all events that have face crops also have attributes.
+
+## 6. Face Crops ✅
+- **121 files** | **3.6 MB** total disk usage
+- Light footprint, no concern.
+
+## 7. Resources 🔴 ESCALATION — RSS > 600 MB
+| Metric | Current | Baseline | Status |
+|--------|---------|----------|--------|
+| CPU | **45.8%** | 45–47% | ✅ normal |
+| RSS (ps) | **~612 MB** (626,428 KB) | 296–435 MB | 🔴 **above 600 MB threshold** |
+| MemoryCurrent | **634.9 MB** | — | 🔴 above baseline |
+| MemoryPeak | **636.0 MB** | — | steadily near ceiling |
+| System RAM | 1.4G used / 16G total | — | plenty of headroom |
+
+**ESCALATION TRIGGERED:** RSS at 612 MB exceeds the 600 MB threshold for immediate escalation. MemoryCurrent of ~635 MB is **more than double** the lower baseline of 296 MB and ~46% above the upper baseline of 435 MB. Since this is a single sample, a trend cannot be confirmed yet, but the absolute value warrants attention. Likely causes: model tensor accumulation, Python GC not reclaiming, or image buffer inflation over 14h uptime.
+
+## 8. Security ✅
+- Journal (24h window): **0 RTSP log lines** — no credential exposure risk in recent window
+- Worker hasn't restarted in 24h, so startup RTSP log fell outside window (logged 14h+ ago at service start)
+- **No unmasked credentials detected** in visible journal.
+
+## 9. Errors & Anomalies ✅
+| Category | Count (24h) |
+|----------|-------------|
+| ERROR/Traceback/Exception | **0** |
+| RTSP/decode/disconnect warnings | **0** |
+| Total journal lines | (quiet, healthy stream) |
+
+Clean run. Worker is processing detections continuously with confidence scores ranging 0.73–1.00. No crashes, no decode failures. Tapo TC74 known firmware quirks not manifesting.
+
+## 10. Retention Timer ✅
+- **Next run:** Tue 2026-07-28 **20:00 UTC** / Wed 29 Jul **04:00 MYT** (in ~14h)
+- **Last run:** Mon 2026-07-27 20:00:06 UTC (9h ago, passed)
+- Schedule: daily at 20:00 UTC / 04:00 MYT — **as expected ✓**
+
+---
+
+## ⚠️ OVERALL VERDICT: ESCALATION REQUIRED
+
+| Check | Status |
+|-------|--------|
+| Worker active | ✅ |
+| API health | ✅ |
+| Dashboard labels | ⚠️ Missing `Time (MYT)`, `(est.)` suffix |
+| CSV export | ✅ |
+| Event data | ✅ |
+| Face crops | ✅ |
+| Resources | 🔴 **RSS 612 MB > 600 MB threshold** |
+| Security | ✅ |
+| Errors | ✅ |
+| Retention timer | ✅ |
+
+**Primary escalation:** Worker RSS at 612 MB exceeds the 600 MB absolute threshold and is well above the 296–435 MB baseline. Recommend reviewing memory profile — possible slow leak over 14h uptime, or model holding unreleased tensors. No immediate outage risk (system has 16 GB RAM, only 1.4 GB used), but if RSS continues climbing linearly, it will degrade over multi-day uptime.
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").
