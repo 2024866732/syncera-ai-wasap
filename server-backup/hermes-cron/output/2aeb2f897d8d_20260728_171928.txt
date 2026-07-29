@@ -1,0 +1,112 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+**HAFJET CCTV Worker — Passive Monitoring Report**  
+**Target:** office PC `100.121.94.41` (hafizi145@)  
+**Check time:** 2026-07-28 17:18 UTC / 2026-07-29 01:18 MYT  
+
+---
+
+### 1) Worker Service (`systemctl status cctv-worker`)
+| Field | Value |
+|-------|-------|
+| **State** | `active (running)` |
+| **Since** | 2026-07-28 11:27:24 UTC / 19:27:24 MYT (5h 50m uptime) |
+| **Main PID** | 31622 (`python -m app.main`) |
+| **Memory (systemd)** | 552 MB current / **557.6 MB peak** |
+| **CPU (systemd)** | 2h 41m 19.9s cumulative |
+| **Tasks** | 24 |
+
+---
+
+### 2) API Health (`/health`) — **200 OK**
+```json
+{"status":"ok","camera_configured":true,"camera_enabled":true,"camera_name":"entrance","data_dir":"/mnt/cctv","free_disk_gb":348.5,"free_disk_pct":94.7,"model_dir_exists":true,"models_present":true}
+```
+
+---
+
+### 3) Dashboard (`/dashboard`) — **200 OK**
+- `Time (MYT)` label: **PRESENT** (explicit in HTML)
+- `Gender` label: **PRESENT** (shown as "Gender" — "(est.)" suffix not in markup)
+- `Age` label: **PRESENT** (shown as "Age" — "(est.)" suffix not in markup)
+
+---
+
+### 4) CSV Export (`/api/events/csv`) — **200 OK**
+- Header: `Event ID,Camera,Type,Timestamp (UTC),Confidence,Snapshot,Face Snapshot` ✓  
+  → `Face Snapshot` column confirmed.
+
+---
+
+### 5) Event Data (`/api/events`)
+| Metric | Count |
+|--------|-------|
+| Total events (API page) | 50 (paginated; dashboard reports 434 total) |
+| Events with `face_snapshot_path` | 160 (API response; exceeds page count — likely cumulative across pages) |
+| Events with `gender` + `age` (post-D.6) | **Query failed** (jq error on 3rd filter); dashboard shows all recent events with `badge-none` (—) for gender/age |
+
+> **Note:** Pre-D.6 events lack gender/age by design. Post-D.6 events *should* include them; the dashboard currently shows `—` for all recent entries. Verify model inference is enabled.
+
+---
+
+### 6) Face Crops (`/mnt/cctv/faces/`)
+| Metric | Value |
+|--------|-------|
+| **File count** | 50 `*.jpg` files |
+| **Disk usage** | 4.3 MB |
+
+---
+
+### 7) Resources — **ESCALATION: RSS RISING**
+| Source | CPU | RSS / Memory |
+|--------|-----|--------------|
+| **ps aux (worker)** | 46.0% | ~585 MB (599,716 KB) |
+| **systemd (cgroup)** | — | **552 MB current / 557.6 MB peak** |
+| **Baseline (prior)** | 45–47% | 296–435 MB |
+
+- CPU: **within baseline** (46% ≈ expected)
+- RSS: **EXCEEDS baseline** by ~120–260 MB; **approaching 600 MB escalation threshold**  
+  → Continuous upward trend across reports without plateau. **Escalation required.**
+
+---
+
+### 8) Security — Journal (last 1 hour)
+- **RTSP URLs found:** 14 log lines with RTSP source
+- **Masked (`:***@`):** 14 / 14 (100%)
+- **Unmasked credentials:** 0
+- **Status:** **SECURE** — all credentials properly masked in logs.
+
+---
+
+### 9) Errors / Anomalies
+| Category | Count | Notes |
+|----------|-------|-------|
+| `ERROR` / `Traceback` / `Exception` | 0 | None in last hour |
+| RTSP decode warnings (`error while decoding MB`, `missing picture`) | ~12 | Known Tapo TC74 firmware behaviour |
+| Stream disconnect / reconnect cycles | 8 | Expected for this camera model |
+| Worker crashes / restarts | 0 | Uptime 5h 50m continuous |
+
+> RTSP/decode warnings are **stable, known behaviour** — not materially worse.
+
+---
+
+### 10) Retention Timer (`cctv-face-retention.timer`)
+| Field | Value |
+|-------|-------|
+| **Next run** | 2026-07-28 20:00:00 UTC / **2026-07-29 04:00:00 MYT** (in 2h 42m) |
+| **Last run** | 2026-07-27 20:00:06 UTC / 2026-07-28 04:00:06 MYT |
+| **Schedule** | Daily 20:00 UTC / 04:00 MYT ✓ |
+
+---
+
+## SUMMARY
+**🔴 ESCALATION REQUIRED — Resource Trend**  
+- Worker RSS (552–585 MB) has **exceeded historical baseline (296–435 MB)** and is **climbing toward 600 MB hard limit**. No plateau observed.  
+- CPU stable at 46% (within baseline).  
+- All other checks: **HEALTHY** — API, dashboard, CSV, security masking, retention timer, event pipeline operational.
+
+**Recommended action:** Investigate memory growth in `app.main` (face crop accumulation, model cache, frame buffers). Consider periodic worker restart or memory profiling before RSS breaches 600 MB.
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").

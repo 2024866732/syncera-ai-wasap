@@ -47,9 +47,17 @@ Compare baseline `minNeighbors=5, minSize=(60,60)` against proposed candidates s
 - A: `minNeighbors=8, minSize=(80,80)`;
 - B: `minNeighbors=10, minSize=(80,80)`.
 
-For the same stored snapshots, record detection/no-detection, box count/largest box geometry, elapsed time, and manual-label match. Report:
-- precision = true accepted / all accepted;
-- true-face retention = candidate accepted true faces / baseline accepted true faces;
+For the same stored snapshots, record detection/no-detection, box count/largest box geometry, elapsed time, and manual-label match.
+
+**Path and checkpoint safeguards**
+- Normalize every DB media path before replay. Snapshot paths can be relative to the data root (for example `snapshots/...`), while face-crop paths can be absolute. Validate both paired files exist before sampling; a raw `os.path.isfile(snapshot_path)` can incorrectly yield an empty sample.
+- Run one candidate/configuration at a time at low priority on the edge PC. Persist a per-config result/checkpoint after every completed configuration (and preferably incrementally per sample), then report timeout/failure rather than silently omitting a candidate.
+- Label the crop selected by each candidate, not only the originally stored baseline crop. A stricter Haar setting can select a different box on the same snapshot, so baseline labels alone cannot establish candidate precision or true-face retention.
+
+Report:
+- precision = manually-confirmed candidate true faces / all candidate detections;
+- true-face retention = baseline-true events where the candidate also selected a true face / all baseline-true events;
+- representative baseline false positives eliminated, plus baseline true faces no longer selected as true by the candidate;
 - median and p95 latency.
 
 Suggested approval gate before a production parameter change: precision >=90%, true-face retention >=85% of baseline accepted true faces, and no material cadence/CPU regression on the i3-class edge PC.

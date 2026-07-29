@@ -176,6 +176,8 @@ When Tuan Hafizi requests a `/dashboard` redesign, preserve the dashboard contra
 
 **Patching pitfalls:** `references/dashboard-ui-patching-pitfalls.md` covers f-string double-brace escaping, atomic multi-pass write strategy, body-block `return`/`import` preservation, and the clean-backup re-run pattern.
 
+**When a dashboard card disagrees with `/api/events`:** follow `references/dashboard-field-divergence.md` before attributing the discrepancy to browser cache or D.6. It requires a same-event DB → API → server-rendered HTML comparison and separate verification of dashboard storage-query field mapping.
+
 ## Face Gallery (`/dashboard/faces`)
 
 Added as a separate route reusing the same `get_events_by_date()` query, filtered to events with `face_snapshot_path`. Tab navigation links between `/dashboard` (Event List) and `/dashboard/faces` (Face Gallery).

@@ -4,7 +4,7 @@ Deploy: requires structured pre-deploy report (branch, commit, diff, risks). Onl
 §
 Office PC: hafjet-pc-office (100.121.94.41, i3-2100, 16GB, no GPU, Python 3.14, Ubuntu 26.04). CPU-only inference only.
 §
-Workflow: iterative approval gates, sequential step-by-step. Implements layer 1 first, plans layer 2, locks layer 3 until explicit approval. Prefers .env over shell exports. Confirms before and after changes. Dark UI preference.
+Workflow: iterative approval gates, sequential steps; apply-code and load-via-restart approvals are separate. CCTV patches require scoped backup checksum + read-only RED/GREEN tests. Prefers .env and layered approval.
 §
 Idempotent operations: do NOT append duplicate keys to .env — replace existing value if present, add only if absent. Safe cleanup: delete specific named files, never wildcard under data paths.
 §

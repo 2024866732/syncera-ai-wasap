@@ -1,0 +1,129 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+**HAFJET CCTV Worker — Passive Monitoring Report**  
+**Target:** 100.121.94.41 (office PC) | **Check Time:** 2026-07-29 05:23 UTC / 13:23 MYT
+
+---
+
+### 1. Worker Service (`systemctl status cctv-worker`)
+- **State:** `active (running)` since **2026-07-28 11:27:24 UTC** (17h 56m ago)  
+- **PID:** 31622  
+- **Memory (systemd):** Current **732 MB** / Peak **739 MB**  
+- **CPU (systemd):** 8h 14m 16s total CPU time  
+- **Tasks:** 28 / 17275 limit  
+- **Note:** Unit file changed on disk — `systemctl daemon-reload` pending.
+
+---
+
+### 2. API Health (`/health`)
+```
+HTTP 200 OK
+{"status":"ok","camera_configured":true,"camera_enabled":true,"camera_name":"entrance",
+ "data_dir":"/mnt/cctv","free_disk_gb":348.3,"free_disk_pct":94.7,
+ "model_dir_exists":true,"models_present":true}
+```
+
+---
+
+### 3. Dashboard (`/dashboard`)
+- **HTTP 200** — HTML verified  
+- **Visible labels confirmed:**  
+  - `Time (MYT)` — present in `<span class="media-label">Time (MYT)</span>`  
+  - `Gender` — rendered as `<span class="media-label">Gender</span>` with badge values (Male/Female/—)  
+  - `Age` — rendered as `<span class="media-label">Age</span>` with badge values (age-range/—)  
+- **Stats shown:** 495 total events, 39.2% face detection rate, 0.7563 avg confidence
+
+---
+
+### 4. CSV Export (`/api/events/csv`)
+- **HTTP 200**  
+- **Header verified:** `Event ID,Camera,Type,Timestamp (UTC),Confidence,Snapshot,Face Snapshot`  
+  → **`Face Snapshot` column present** ✓
+
+---
+
+### 5. Event Data (`/api/events?limit=500` → 495 total)
+| Metric | Count |
+|--------|-------|
+| **Total events** | 495 |
+| **Events with `face_snapshot_path` (non-null)** | 194 |
+| **Post-D.6 events (2026-07-29) with `gender` + `age_range`** | 48 of 52 recent events (92%) |
+| **Pre-D.6 events (≤2026-07-28) missing gender/age** | 443 events — **expected historical gap** (pre-D.6 schema) |
+| **Post-D.6 events missing gender/age despite face crop** | 4 events (low-confidence detections where face crop exists but classifier skipped) |
+
+**Assessment:** No unexpected post-D.6 gaps. Pre-D.6 nulls are historical schema limitation.
+
+---
+
+### 6. Face Crops (`/mnt/cctv/faces/`)
+- **Files:** 196 face-crop images (+1 directory entry = 197 lines)  
+- **Disk usage:** **4.6 MB**  
+- **Retention:** Daily timer active (see §10)
+
+---
+
+### 7. Resources (Worker + Systemd)
+| Metric | Current | Baseline | Status |
+|--------|---------|----------|--------|
+| **RSS (systemd MemoryCurrent)** | **732 MB** | 296–435 MB | 🔴 **ESCALATION: >600 MB threshold exceeded** |
+| **Peak RSS (MemoryPeak)** | 739 MB | — | 🔴 Rising trend, no plateau observed |
+| **CPU (systemd CPUUsageNSec)** | 8.25 h cumulative | ~45–47% per core | ~46% equivalent — **within baseline** |
+| **Trend** | Memory climbing steadily over 17h uptime | — | **Continuous rise, no plateau** |
+
+**Verdict:** **ESCALATION REQUIRED** — RSS exceeds 600 MB hard threshold and shows no sign of stabilising. Investigate memory leak in face-crop cache / frame buffer accumulation.
+
+---
+
+### 8. Security — RTSP Credential Masking (Journal, last 1h)
+- **Lines inspected:** 100 most recent journal entries  
+- **RTSP URLs found:** 4 (all reconnect cycles)  
+- **Format observed:** `rtsp://hafizi145%40gmail.com:***@192.168.1.94:554/stream1`  
+- **Masked:** **4 / 4** (100%)  
+- **Unmasked credentials:** **0**  
+- **Status:** ✅ **SECURE** — new masking format `:***@` working correctly.
+
+---
+
+### 9. Errors / Anomalies (Last 1h Journal)
+| Category | Count | Notes |
+|----------|-------|-------|
+| **ERROR / Traceback / Exception** | **0** | No crashes, no Python exceptions |
+| **RTSP / h264 decode warnings** | 42 | `error while decoding MB … bytestream -N` + “End of video stream / Reconnecting” — **known Tapo TC74 firmware behaviour**, not materially worse than baseline |
+| **Worker restarts / inactive** | 0 | Single continuous run (17h) |
+| **API failures** | 0 | All endpoints HTTP 200 |
+
+---
+
+### 10. Retention Timer (`cctv-face-retention.timer`)
+```
+NEXT                        LEFT     LAST                        PASSED  UNIT                      ACTIVATES
+Wed 2026-07-29 20:00:00 UTC  14h left Tue 2026-07-28 20:00:30 UTC 9h ago  cctv-face-retention.timer cctv-face-retention.service
+```
+- **Next run:** 2026-07-29 20:00 UTC / **04:00 MYT (2026-07-30)** ✅ matches expected daily schedule.
+
+---
+
+## 📋 SUMMARY
+| Check | Status |
+|-------|--------|
+| Worker alive | ✅ |
+| API health | ✅ |
+| Dashboard labels | ✅ |
+| CSV header | ✅ |
+| Event data integrity | ✅ (historical gaps expected) |
+| Face crops | ✅ 196 files, 4.6 MB |
+| **Memory (RSS)** | 🔴 **ESCALATION — 732 MB (>600 MB threshold, rising)** |
+| CPU | ✅ ~46% (baseline) |
+| RTSP credential masking | ✅ 100% masked |
+| Errors / crashes | ✅ None |
+| Retention timer | ✅ Next run 20:00 UTC / 04:00 MYT |
+
+### 🚨 ESCALATION REQUIRED
+**Primary:** Worker RSS memory **732 MB** exceeds 600 MB escalation threshold and has grown continuously over 17h uptime (peak 739 MB) with no plateau.  
+**Action:** Investigate face-crop cache / frame buffer retention in `app/main.py` — likely unbounded accumulation. Consider adding memory ceiling or periodic gc / cache eviction.
+
+*No other escalations. All other checks BASELINE STABLE.*
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").
