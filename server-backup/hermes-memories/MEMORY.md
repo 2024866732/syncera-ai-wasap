@@ -1,17 +1,15 @@
-Tuan Hafizi runs HAFJET, Raub. VPS=main controller/orchestrator; PC Office (Tailscale)=least-privilege executor for local backup/sync/monitor/report/internal automation. Max 3 concise lines (STEP/ACTION/RESULT); explicit confirmation before destructive/critical changes; report only verified state.
-§
-Git: origin=github.com/2024866732/hafjet-whatsapp-bot.git. Convention: release/vX.Y.Z. Format: sprint(vX.Y.Z): desc. Strict: no direct push/force-push/rebase main.
-§
-PC Office (100.121.94.41 Tailscale): i3, 16GB RAM, Ubuntu 26.04, CPU-only. Tuan strongly prefers natural Malay TTS; VoxCPM2 (Apache-2.0, Malay, 48kHz) sounded natural in testing. Spell brand as `HAF-JET`/`Haf Jet` in prompts to avoid pronunciation “half-jad”.
-§
-REPORT FORMAT: MYT (UTC+8) alongside UTC — "HH:MM UTC (HH:MM MYT)". Deploy: start.sh version-controlled, in repo/zip not hidden Azure config.
-§
-PC Office SSH: `hafizi145` key-only; no `hafjet` account unless requested. Workers are allowlisted+SHA-256; VPS logs metadata only. LiteLLM config backups: age only (no GPG absent new approval), encrypted archive only—never plaintext on unencrypted drive; PC has public recipient only, Tuan holds private identity; metadata may include config_sha256 but never secrets.
+PC Office (100.121.94.41 Tailscale, i3-2100, 16GB, Ubuntu 26.04): Buzz relay at ~/buzz/deploy/compose RUNNING (ws://100.121.94.41:3000). Hermes v0.19.0 dashboard :9119 password auth. Hermes gateway + Buzz connected. LiteLLM :4000. SOP: no curl|bash, uv not pip (PEP 668), sudo needs password.
 §
 Primary HAFJET operating reference: `/home/hafizi145/HAFJET-Operating-Manual-v1.md`; explicit Tuan approval overrides it.
 §
 CRITICAL: ALL cctv-worker restarts need explicit Tuan Hafizi approval — no exceptions. Never auto-restart. Especially during monitoring where process state must not reset.
 §
-CCTV UI changes remain pending until actual rendered screenshots verify desktop, tablet, and phone layouts; structural HTML/CSS checks alone are insufficient. CCTV investigations require complete time-series evidence before code changes or process resets.
+CCTV: UI changes need rendered desktop/tablet/phone proof; investigations need time-series before code/resets. Camera 2 deferred until RSS leak is stable; it needs code restructuring, not config-only.
 §
-JANGAN guna Kudu ZIP API utk deploy dashboard — ia wipe seluruh /site/wwwroot/ (backend+start.sh hilang, app 503). Guna upload file-by-file VFS ke path tepat dashboard/dist/<file>, update index.html terakhir sbg atomic switch. DB di /home/data/bot_data.db selamat drpd wipe.
+Composio: kamellperry/hermes-composio plugin, Gmail+GitHub ACTIVE, key ak_... (app.composio.dev, sessions:write). Setup saved as hafjet-composio skill. LiteLLM PC Office: 10 models, systemd, OpenCode Go key.
+§
+VPS Azure (1GB+4GB swap, 29GB disk): monitor disk via `df -h /`. Jika >90%, cleanup: `rm -rf ~/.cache/pip && uv cache clean` (+3-4GB). Hermes need >1GB free. Key rotation protocol: if any API key/Nostr privkey/token appears in chat → rotate immediately (Discord portal, regenerate coincurve keys, update .env).
+§
+Buzz: deploy/compose/compose.yml (not root), ./run.sh start/stop. Community DB host must match URL exactly or 404. Nostr keypair via `uv run --with coincurve python3` (coincurve.PrivateKey). `docker compose exec relay buzz-admin add-member --pubkey` to register agents. relay_url uses ws:// for local/Tailscale (no TLS).
+§
+Hermes gateway: can't pkill/restart from within session (security block). Tuan must restart manually on PC Office. Dashboard non-loopback bind = mandatory auth.

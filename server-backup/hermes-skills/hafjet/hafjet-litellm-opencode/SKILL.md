@@ -120,6 +120,18 @@ OpenCode Go API (GLM-5, Qwen3.5+...)
 
 ## Troubleshooting
 
+**"Config kena overwrite dengan placeholder!"** — Bila update config guna `scp` atau `cp` dari `/tmp`, config asal dengan key sebenar boleh tertimpa placeholder. **SIMPTOM:** `grep -c YOUR_OPENCODE_GO_KEY ~/litellm-config.yaml` > 0. **FIX:**  
+```bash
+# Backup dulu SETIAP KALI sebelum ganti config
+cp ~/litellm-config.yaml ~/litellm-config.yaml.bak.$(date +%s)
+
+# JANGAN cp direct. Guna sed utk ganti placeholder dalam file sedia ada:
+REAL_KEY=$(grep 'api_key: "sk-' ~/litellm-config.yaml.bak | head -1 | grep -o 'sk-[^"]*')
+sed -i "s|YOUR_OPENCODE_GO_KEY|$REAL_KEY|g" ~/litellm-config.yaml
+grep -c 'YOUR_OPENCODE_GO_KEY' ~/litellm-config.yaml  # mesti 0
+systemctl --user restart litellm-proxy
+```
+
 **"Connection refused"** — PC Office mungkin offline. Check Tailscale:  
 ```bash
 tailscale ping 100.121.94.41

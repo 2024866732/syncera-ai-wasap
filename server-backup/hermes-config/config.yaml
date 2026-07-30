@@ -507,6 +507,7 @@ sessions:
 onboarding:
   seen:
     busy_input_prompt: true
+    tool_progress_prompt: true
   profile_build: ask
 updates:
   pre_update_backup: false

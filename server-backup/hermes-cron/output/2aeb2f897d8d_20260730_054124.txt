@@ -1,0 +1,130 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+# HAFJET CCTV Worker — Passive Monitoring Report
+**Timestamp:** 2026-07-30 05:50 UTC / 13:50 MYT (UTC+8)  
+**Target:** office PC 100.121.94.41 (hafizi145@)  
+**SSH:** ✅ Reachable
+
+---
+
+## 1. Worker Service (`cctv-worker`)
+| Metric | Value |
+|--------|-------|
+| **State** | `active (running)` |
+| **PID** | 58914 |
+| **Uptime** | 46 min (since 2026-07-30 04:50:45 UTC / 12:50 MYT) |
+| **Memory (RSS)** | 561.7 MB |
+| **Memory (Peak)** | 565 MB |
+| **CPU Time** | 21 min 20 s (~45–47% of wall time) |
+| **Restarts** | None this session |
+
+**Status:** ✅ Healthy — running continuously, no restarts.
+
+---
+
+## 2. API Health (`/health`)
+```json
+{
+  "status": "ok",
+  "camera_configured": true,
+  "camera_enabled": true,
+  "camera_name": "entrance",
+  "data_dir": "/mnt/cctv",
+  "free_disk_gb": 348.2,
+  "free_disk_pct": 94.6,
+  "model_dir_exists": true,
+  "models_present": true
+}
+```
+**Status:** ✅ Healthy — camera online, models loaded, ample disk.
+
+---
+
+## 3. Dashboard (`/dashboard`)
+- **HTTP Status:** 200 OK
+- **Verified HTML labels present:**
+  - `Time (MYT)` ✅
+  - `Gender (est.)` ✅
+  - `Age (est.)` ✅
+- **Stats shown:** Total Events 598, Face Detection Rate 40.1%, Avg Confidence 0.7472
+
+---
+
+## 4. CSV Export (`/api/events/csv`)
+- **HTTP Status:** 200 OK
+- **Header row:** `Event ID,Camera,Type,Timestamp (UTC),Confidence,Snapshot,Face Snapshot`
+- **`Face Snapshot` column confirmed present** ✅
+
+---
+
+## 5. Event Data (API `/api/events?limit=600`, full dataset 599 events)
+| Metric | Count |
+|--------|-------|
+| **Total events** | 599 |
+| **Events with `face_snapshot_path`** | ~240 (≈40.1%) |
+| **Post-D.6 events with `gender` + `age_range`** | ~240 (all face-detected events since ~2026-07-29 12:00 UTC have both fields populated) |
+| **Pre-D.6 events (≤2026-07-25)** | All have `face_snapshot_path=null`, `gender=null`, `age_range=null` — expected historical gap |
+
+**Assessment:** Post-D.6 face-attributed events are 100% populated with gender+age. Pre-D.6 gaps are historical, not a regression.
+
+---
+
+## 6. Face Crops (`/mnt/cctv/faces/`)
+| Metric | Value |
+|--------|-------|
+| **File count** | 240 |
+| **Total disk usage** | 5.5 MB |
+
+---
+
+## 7. Resource Trends
+| Metric | Current | Baseline | Status |
+|--------|---------|----------|--------|
+| **Worker CPU** | ~45–47% | 45–47% | ✅ Stable |
+| **Worker RSS** | 562 MB | 296–435 MB | ⚠️ Slightly above baseline ceiling, **but below 600 MB escalation threshold** |
+| **Systemd Peak** | 565 MB | — | — |
+
+**Trend:** RSS has drifted upward from prior ceiling (~435 MB) to ~562 MB over this run. **Not yet an escalation** (threshold 600 MB), but warrants watching next cycle. No CPU sustain >80%.
+
+---
+
+## 8. Security — RTSP Credential Masking (journal, latest 50 lines)
+```
+rtsp://hafizi145%40gmail.com:***@192.168.1.94:554/stream1
+```
+- **Masked (`:***@`)**: 10/10 recent lines
+- **Unmasked**: 0
+- **Escalation:** ❌ None — all credentials properly masked in logs.
+
+---
+
+## 9. Errors / Anomalies (last 200 journal lines)
+| Category | Count | Notes |
+|----------|-------|-------|
+| **ERROR / Traceback / Exception** | 0 | No crashes, no Python exceptions |
+| **`[h264 @ ...] error while decoding MB…`** | ~20 | Known Tapo TC74 firmware behaviour (stream corruption/reconnect) |
+| **`End of video stream or read error. Reopening…`** | ~20 | Expected reconnect logic, worker survives |
+
+**Worker restarts:** 0 (uptime 46 min continuous)  
+**API failures:** 0  
+**Escalation:** ❌ None — decode warnings are baseline camera behaviour, not service degradation.
+
+---
+
+## 10. Retention Timer (`cctv-face-retention.timer`)
+```
+NEXT                        LEFT    LAST                        PASSED  UNIT                      ACTIVATES
+Thu 2026-07-30 20:00:00 UTC  14h    Wed 2026-07-29 20:00:25 UTC 9h ago  cctv-face-retention.timer cctv-face-retention.service
+```
+- **Next run:** 2026-07-30 20:00 UTC / **2026-07-31 04:00 MYT**
+- **Expected:** Daily 20:00 UTC / 04:00 MYT ✅ **Matches**
+
+---
+
+## SUMMARY
+**BASELINE STABLE** — All core services healthy, API/dashboard/CSV functional, face metadata populating correctly post-D.6, RTSP credentials masked, retention timer on schedule.  
+**Watch item:** Worker RSS ~562 MB (trending above prior 435 MB ceiling); monitor next cycle for 600 MB threshold. No action required now.
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").

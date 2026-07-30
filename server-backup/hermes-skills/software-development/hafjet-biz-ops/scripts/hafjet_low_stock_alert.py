@@ -46,8 +46,19 @@ def loyverse_get(url_suffix: str) -> dict:
         return json.loads(r.read().decode())
 
 
+MAX_WHATSAPP_TEXT_CHARS = 4096
+# Keep a small margin for the per-part marker added by chunk_alert_messages().
+CHUNK_TARGET_CHARS = 3900
+# A WhatsApp owner alert is a triage notification, not an inventory export. This cap
+# prevents a zero-stock data anomaly from flooding the recipient and hitting Meta's
+# same-recipient rate limit. Set explicitly only when a longer shortlist is wanted.
+MAX_ITEMS_PER_STORE = int(os.environ.get("LOW_STOCK_ALERT_MAX_ITEMS_PER_STORE", "25"))
+
+
 def send_whatsapp(to: str, text: str):
-    """Send free-form text via Cloud API."""
+    """Send a Cloud API text message within Meta's 4,096-character body limit."""
+    if len(text) > MAX_WHATSAPP_TEXT_CHARS:
+        raise ValueError(f"WhatsApp body is {len(text)} chars; max is {MAX_WHATSAPP_TEXT_CHARS}")
     url = f"https://graph.facebook.com/v21.0/{PHONE_ID}/messages"
     payload = {
         "messaging_product": "whatsapp",
@@ -59,7 +70,40 @@ def send_whatsapp(to: str, text: str):
         url, data=json.dumps(payload).encode(),
         headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}",
                  "Content-Type": "application/json"}, method="POST")
-    urllib.request.urlopen(req, timeout=15)
+    try:
+        urllib.request.urlopen(req, timeout=15)
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"WhatsApp API HTTP {exc.code}: {detail}") from exc
+
+
+def chunk_alert_messages(header: str, item_lines: list[str], footer: str) -> list[str]:
+    """Split a complete low-stock list into API-safe WhatsApp messages."""
+    chunks, current = [], []
+    current_length = len(header)
+    for line in item_lines:
+        addition = len(line) + 1  # newline before each list line
+        if current and current_length + addition > CHUNK_TARGET_CHARS:
+            chunks.append(current)
+            current, current_length = [], len(header)
+        # A single unexpected oversized item name still cannot break the API limit.
+        if len(line) + len(header) + 1 > CHUNK_TARGET_CHARS:
+            line = line[:CHUNK_TARGET_CHARS - len(header) - 2] + "…"
+            addition = len(line) + 1
+        current.append(line)
+        current_length += addition
+    if current:
+        chunks.append(current)
+
+    total = len(chunks)
+    messages = []
+    for index, lines in enumerate(chunks, start=1):
+        suffix = footer if index == total else ""
+        body = "\n".join([header, f"📄 Bahagian {index}/{total}", *lines, suffix]).rstrip()
+        if len(body) > MAX_WHATSAPP_TEXT_CHARS:
+            raise ValueError(f"Generated WhatsApp chunk {index} is {len(body)} chars")
+        messages.append(body)
+    return messages
 
 
 def paginate_inventory():
@@ -141,30 +185,37 @@ def main():
     for l in low:
         by_store.setdefault(l["store"], []).append(l)
 
-    # Build message
+    # Build a concise, per-store reorder shortlist. The full low-stock count remains
+    # visible so an abnormal inventory baseline can be investigated in Loyverse.
     now = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M")
-    msg_lines = [f"⚠️ *Low Stock Alert — HAFJET*", f"📅 {now} MYT\n"]
-
+    header = f"⚠️ *Low Stock Alert — HAFJET*\n📅 {now} MYT\nJumlah rekod ≤{THRESHOLD}: *{len(low)}*"
+    item_lines = []
     for store_name, items in sorted(by_store.items()):
-        msg_lines.append(f"🏪 *{store_name}* ({len(items)} item)")
-        for it in sorted(items, key=lambda x: x["qty"]):
-            msg_lines.append(f"  • {it['name']} ({it['sku']}): *{it['qty']} unit*")
-        msg_lines.append("")
-
-    msg_lines.append("Saranan: semak reorder sebelum hujung minggu.")
-
-    msg = "\n".join(msg_lines)
+        ranked_items = sorted(items, key=lambda x: x["qty"])
+        shown_items = ranked_items[:MAX_ITEMS_PER_STORE]
+        item_lines.append(f"🏪 *{store_name}* ({len(items)} item)")
+        for it in shown_items:
+            item_lines.append(f"  • {it['name']} ({it['sku']}): *{it['qty']} unit*")
+        remaining = len(ranked_items) - len(shown_items)
+        if remaining:
+            item_lines.append(f"  … +{remaining} lagi (semak dalam Loyverse)")
+        item_lines.append("")
+    messages = chunk_alert_messages(
+        header, item_lines, "Saranan: semak reorder sebelum hujung minggu."
+    )
+    print(f"   Alert split into {len(messages)} WhatsApp message(s)")
 
     # Send to OWNER
     if OWNER:
         OWNER_N = OWNER.strip().replace(" ", "").replace("+", "")
         if OWNER_N.startswith("0"):
             OWNER_N = "6" + OWNER_N
-        send_whatsapp(OWNER_N, msg)
-        print(f"📱 Low stock alert sent to {OWNER_N}")
+        for index, message in enumerate(messages, start=1):
+            send_whatsapp(OWNER_N, message)
+            print(f"📱 Alert part {index}/{len(messages)} sent to {OWNER_N}")
     else:
         print("⚠️ OWNER_PHONE not set — printing alert here:\n")
-        print(msg)
+        print("\n\n".join(messages))
 
     print(f"🏁 Done. {len(low)} low-stock items reported.")
 
