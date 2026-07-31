@@ -81,10 +81,14 @@ Gunakan skill ini bila tugasan melibatkan operasi kedai HAFJET, termasuk jualan 
   error credential yang sama (Phone ID / Token invalid), report mesti lebih assertive —
   sertakan langkah Tuan perlu buat dengan jelas, bukan sekadar "still broken".
 
-### cron.low-stock
-- Senaraikan item di bawah threshold.
-- Susun ikut kategori dan tahap kritikal.
-- Cadangkan reorder shortlist.
+### cron.low-stock (IMPLEMENTED 2026-07-31)
+- Script: `scripts/hafjet_low_stock_alert.py`
+- Paginates Loyverse `/v1.0/inventory` + `/v1.0/items` to join variant→item names
+- Filters `in_stock <= LOW_STOCK_THRESHOLD` (default 5, env `LOW_STOCK_THRESHOLD`)
+- Groups by store (HAFJET Raub / HAFJET LORI)
+- Sends WhatsApp alert to OWNER_PHONE only if items found
+- Cron: `0 0 * * *` (8:00 AM MYT), Job ID: `7b74334921e6`
+- If no low stock items: prints "all healthy", no alert sent
 
 ## Format mesej
 
@@ -180,6 +184,14 @@ If the agent doesn't know them, the script exits with ❌ Missing env.
 **Mitigation:** Always verify vars exist in .env before relying on cron for this job.
 When running manually via cron prompt, supply all 7 vars inline (see "Export before
 running" in Live Implementation State below).
+**Verified cron pattern (2026-07-31):** A temp runner script that (1) parses
+`~/.hermes/.env` + `~/.hermes/whatsapp-bot/.env`, (2) prefers bot .env WhatsApp creds
+(WHATSAPP_PHONE_ID/WHATSAPP_ACCESS_TOKEN → WHATSAPP_CLOUD_*), (3) injects the known-good
+constants (sheet ID, SA path, tab, owner, `PICKUP_REMINDER_STATUS_VALUE=SIAP`), then
+executes the pickup script with the venv python works reliably for cron. Real batch
+completed: 606 sent / 15 failed (13 no-phone + 2 HTTP 400 from `/`-multi-number cells),
+exit 0, zero 470 blocks. Long-term fix remains: add all vars to `~/.hermes/.env`
+(Tuan edits via nano).
 
 ### Main .env WhatsApp credentials go stale — use bot's .env as fallback
 The Phone ID and Access Token in `~/.hermes/.env` (`WHATSAPP_PHONE_ID`,
@@ -328,9 +340,17 @@ Google Sheet below, NOT the bot DB.
 - **Actual sheet headers (verified 2026-07-14):** `NAMA CUSTOMER`, `NO TELEFON`, `Status`,
   `Repair ID`, `TARIKH AMBIL`, ... Script defaults match these. Only set `COLUMN_NAME_*`
   overrides if headers change.
-- **Filter:** `Status == SIAP` (NOT `SIAP DIAMBIL` as previously documented). Set
+**Status filter:** `Status == SIAP` (NOT `SIAP DIAMBIL` as previously documented). Set
   `PICKUP_REMINDER_STATUS_VALUE=SIAP`. Variant `SEDIA DI AMBIL` (7 rows) exists but
   single-value filter won't catch it — data cleanup or script enhancement needed.
+
+- **Column mapping (verified 2026-07-31):** Actual AppSheet headers used:
+  - `NAMA CUSTOMER` (customer name)
+  - `NO TELEFON` (customer phone)  
+  - `Status` (repair status)
+  - `Repair ID` (ticket number)
+  - `TARIKH AMBIL` (pickup date)
+  - Script defaults match these exactly. Only override `COLUMN_NAME_*` env vars if headers change.
 - **Phone format issues found:** some `NO TELEFON` cells contain two numbers separated
   by `/` (e.g. `601111144636/0104163884`) — `norm_phone()` passes them raw causing send
   failures. Non-MY numbers also present (`917639075994`, `189017751`).

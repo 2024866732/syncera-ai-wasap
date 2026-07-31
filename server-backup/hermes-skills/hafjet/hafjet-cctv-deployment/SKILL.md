@@ -75,6 +75,18 @@ ffprobe -rtsp_transport tcp -i "rtsp://user:pass@<camera-ip>:554/stream2"
 
 **Simplest:** Create camera account with alphanumeric-only username/password to avoid encoding entirely.
 
+### Pre-purchase evaluation of AI cameras (e.g. Tapo C560WS)
+
+See `references/tapo-c560ws.md` for condensed notes from e-commerce screenshots and feature claims (4K 8MP local AI facial recognition with familiars vs strangers, 18× digital zoom + F1.6, pan/tilt, privacy claims "local processing only", app reporting/activity center, RM224.40 pricing).
+
+When Tuan Hafizi shares camera product listings or app screenshots:
+- Extract resolution, zoom/aperture, AI type (facial rec, local vs cloud, person/pet/vehicle), coverage, storage.
+- Note privacy/processing details and familiar/stranger management.
+- Capture current MYR price, discounts, and seller info.
+- Assess RTSP/integration potential vs current TC74 (auto-reconnect patterns, stream1/2).
+- Record reporting features that could complement the worker (recognition reports, activity timelines).
+- Append post-purchase test results (RTSP URLs, face data access, real accuracy) to the reference file.
+
 ## Project Structure
 
 ```

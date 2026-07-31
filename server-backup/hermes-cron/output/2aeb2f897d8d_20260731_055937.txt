@@ -1,0 +1,80 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+Semua check siap, Tuan Hafizi. Laporan penuh di bawah — semua masa dalam UTC + MYT (UTC+8). Check dijalankan 2026-07-31 05:55 UTC (13:55 MYT).
+
+---
+
+# 📋 Laporan Pemantauan CCTV Worker — 31 Julai 2026
+
+## Verdict: ✅ BASELINE STABLE
+Tiada isu kritikal. Ada **2 nota** (bukan escalation) untuk perhatian Tuan — restart worker 05:27 UTC & label dashboard tak tepat spec.
+
+---
+
+## 1) Worker Service
+- **Status:** `active (running)` — PID **1217555**
+- **Uptime:** sejak **2026-07-31 05:27:54 UTC (13:27:54 MYT)** — ~28 min
+- **Memory (systemd):** 292.8M (peak **295.2M**)
+- ⚠️ **Nota:** ada **satu restart bersih** pada 05:27:54 UTC — pola `Stopped` → `Started` dalam saat sama, **tiada** tanda crash (tiada OOM/SIGKILL/Main process exited, tiada restart loop). Nampak macam restart manual operator (privilege NOPASSWD restart wujud untuk hafizi145). Per MEMORY.md, restart perlu kelulusan Tuan — sekadar untuk kesedaran.
+
+## 2) API Health — ✅ OK
+`HTTP 200` — `{"status":"ok","camera_configured":true,"camera_enabled":true,"camera_name":"entrance","free_disk_gb":347.8,"free_disk_pct":94.5,"models_present":true}`
+
+## 3) Dashboard — ⚠️ Nota Label
+- HTTP **200**
+- `Time (MYT)` — ✅ **wujud** (20 kemunculan)
+- `Gender (est.)` — ❌ **tidak wujud verbatim**; label sebenar cuma `Gender`
+- `Age (est.)` — ❌ **tidak wujud verbatim**; label sebenar `Age` (dengan tooltip `AI estimate, ±5 years accuracy; display only`)
+- *Label Gender/Age ada secara fungsi, tapi tak sepadan spec yang diminta — mungkin spec lama.*
+
+## 4) CSV — ✅ OK
+- HTTP **200**; header: `Event ID,Camera,Type,Timestamp (UTC),Confidence,Snapshot,Face Snapshot` → **mengandungi "Face Snapshot"** ✓
+
+## 5) Event Data (813 jumlah)
+| Metrik | Bilangan |
+|---|---|
+| Jumlah event | **813** |
+| Dengan `face_snapshot_path` | **347** (padan tepat dgn 347 fail crop) |
+| Dengan gender+age | **272** (semua selepas D.6) |
+| Transisi D.6 (event gender pertama) | **2026-07-27 04:16 UTC** |
+| Post-D.6: jumlah | 560 |
+| Post-D.6: missing gender+age+face | **289 (51.6%)** |
+
+- **Analisis gap:** Missing attributes **selalu bergabung dengan face tak dikesan** (tiada event dengan face tapi tanpa gender/age — `face-but-no-gender=0`). Kadar miss konsisten ~50% setiap hari (Jul27: 22/53, Jul28: 75/128, Jul29: 74/149, Jul30: 114/223, Jul31: 4/7) — **bukan regression post-D.6**, cuma kadar pengecaman muka biasa (orang lalu membelakangi/jauh).
+- 👀 **Observasi:** Tiada event `person_detected` sejak **01:24 UTC (09:24 MYT)** — 4.5 jam senyap. Pipeline aktif (127× "Detection started" dalam 6 jam), jadi kemungkinan memang tiada orang lalu. Bukan escalation, sekadar nota.
+
+## 6) Face Crops — ✅ OK
+- **347 fail**, jumlah **7.8 MB** (7,335,117 bytes) di `/mnt/cctv/faces/`
+
+## 7) Resources — ✅ Dalam Baseline
+- CPU: **46.0%** (baseline 45–47%) — dalam julat
+- RSS (ps): **306.9 MB** (baseline 296–435 MB) — hujung bawah, tiada trend menaik
+- systemd mem: 292.8M / peak 295.2M
+- **Tiada escalation** — RAM stabil, jauh bawah 600 MB.
+
+## 8) Security — ✅ Bersih
+- 6 jam: **253** URL rtsp, **253 masked** (`:***@`), **0 unmasked**
+- 24 jam: **991** URL rtsp, **991 masked**, **0 unmasked**
+- **Tiada kredential terdedah.** Format baru `:***@` konsisten. (Journal diperiksa tanpa sudo — sudo hanya dibenarkan utk `systemctl restart/status cctv-worker` sahaja.)
+
+## 9) Errors/Anomalies — ✅ Tiada Crash
+- **ERROR/Traceback/Exception: 0** (6 jam & 24 jam)
+- Decode warnings: **118** dalam 6 jam (`error while decoding MB... bytestream`)
+- Disconnect/reconnect: **252** dalam 6 jam (127× "Detection started" semula)
+- Ini **konsisten dengan gelagat firmware Tapo TC74 yang diketahui** — kitaran disconnect/reconnect biasa, tidak material lebih teruk.
+
+## 10) Retention — ✅ On Schedule
+- **Next:** Fri 2026-07-31 **20:00 UTC** = Sat **04:00 MYT** (14 jam lagi)
+- **Last:** Thu 2026-07-30 20:00:40 UTC (09:00:40... eh, 04:00:40 MYT Jumaat)
+- Jadual harian 20:00 UTC / 04:00 MYT — **tepat** ✓
+
+---
+
+## Kesimpulan
+**BASELINE STABLE** — worker sihat, API sihat, security bersih, resource stabil, retention on-schedule. **Tiada escalation diperlukan.**
+
+Nota ringan: (1) restart bersih 05:27 UTC hari ini — kalau bukan Tuan yang trigger, boleh semak; (2) label dashboard `Gender`/`Age` tak ada suffix `(est.)` macam spec — mungkin perlu kemas kini spec atau UI. Kalau Tuan nak, ambo boleh siasat lanjut bila ada arahan. 🤝
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").

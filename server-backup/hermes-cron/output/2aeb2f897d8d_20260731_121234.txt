@@ -1,0 +1,81 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+All checks complete. Here is the full report.
+
+---
+
+# 📋 HAFJET CCTV Worker — Monitoring Report
+**Host:** hafjet-pc-office (100.121.94.41) · **Run:** 2026-07-31 12:07 UTC = **20:07 MYT** · Read-only checks only · No changes made
+
+## ⚠️ VERDICT: ESCALATION REQUIRED
+
+**Sebab utama:** ada **pendedahan kredential RTSP dalam journal history** (tempoh 24 Jul – 27 Jul), walaupun format semasa dah bertukar kepada masked. Satu lagi **watch item**: RSS naik tinggi (597 MB, dekat garis 600 MB).
+
+---
+
+## 1) Worker Status — ✅ ACTIVE
+| Item | Nilai |
+|---|---|
+| State | `active (running)` — Main PID **1217555** (python) |
+| Uptime | Sejak **2026-07-31 05:27:54 UTC = 13:27:54 MYT** (6j 38m) |
+| Restart | **Clean restart** (`Stopping… Deactivated successfully… Started`) — bukan crash, tiada OOM. Instance sebelum berjalan 1d 37min, peak 956.9M |
+| Memory (systemd) | 698.7M (peak 705M) — termasuk page cache |
+| CPU | 3j 01m 59s total ≈ **45.6% purata** — dalam baseline (45–47%) ✓ |
+
+## 2) API Health — ✅ OK
+`GET /health` → **200**: `status=ok`, camera `entrance` configured+enabled, models present, **347.8 GB free (94.5%)**.
+
+## 3) Dashboard — ⚠️ Label wording berbeza
+`/dashboard` → **HTTP 200**.
+- `Time (MYT)` — ✅ **ada**, 20× dalam HTML
+- `Gender (est.)` — ❌ **string tepat tak wujud**; label sebenar `Gender` sahaja
+- `Age (est.)` — ❌ **string tepat tak wujud**; label sebenar `Age` sahaja
+- `(est.)` muncul dalam nilai badge (`Male (est.)`, `8-12 (est.)`) dan `title='AI estimate, ±5 years accuracy; display only'`
+
+Fungsional OK, cuma wording label berbeza daripada senarai semak.
+
+## 4) CSV — ✅ OK
+`/api/events/csv` → **200**. Header: `Event ID,Camera,Type,Timestamp (UTC),Confidence,Snapshot,Face Snapshot` — **`Face Snapshot` ✓ hadir**. 847 baris data: 364 berisi, 483 kosong (padan dengan DB).
+
+## 5) Event Data — ✅ Tiada gap post-D.6
+- Jumlah: **847** (23 Jul 11:38 → 31 Jul 11:00 UTC)
+- Dengan `face_snapshot_path`: **364**
+- Sempadan D.6 (event gender+age terawal): **2026-07-27 04:16:49 UTC = 12:16 MYT**
+- **Post-D.6** (595): 289 ada gender+age (semua ada face crop), **306 tak ada face crop → tak ada attrs (normal, muka tak dikesan)**, **0** event ada face crop tapi gender/age hilang → **tiada gap data**
+- **Pre-D.6** (252): semua 252 tanpa gender/age — **historical, dijangka**
+
+## 6) Face Crops — ✅ OK
+`/mnt/cctv/faces/` → **364 fail, 8.0 MB** (konsisten dengan DB).
+
+## 7) Resources — ⚠️ WATCH (memori tinggi, tapi plateau)
+- RSS: **597 MB** (VmRSS 611,364 kB) — **VmHWM = VmRSS**, 2 sampel 15s serupa → **stable/plateaued, bukan naik berterusan**
+- Banding baseline (296–435 MB): naik **~37–100%** — dekat garis 600 MB tapi **belum melebihi**
+- CPU: 45.6% purata — normal; instant 0% (idle antara deteksi)
+- Tiada OOM dalam dmesg/kernel log
+
+## 8) Security — 🚨 PENEMUAN PENTING
+- Format baru `:***@` **berfungsi penuh**: **905 baris masked dalam 24 jam terakhir, 0 unmasked** ✓
+- **TAPI**: journal history ada **2,496 baris unmasked** dengan password RTSP sebenar (8 aksara) dalam tempoh:
+  - **Mula:** 2026-07-24 12:12 UTC = 20:12 MYT
+  - **Tamat:** 2026-07-27 10:49 UTC = 18:49 MYT (~2j 22.5j)
+- Kredential **tidak dipaparkan dalam laporan ini**. Journal history **tidak disentuh** (ikut arahan).
+
+## 9) Errors / Anomalies — ✅ Tiada crash
+- ERROR/Traceback/Exception (24j): **0**
+- H.264 decode warning: 392 · End-of-stream: 452 · Disconnect: 452 (24j) — ~19–31 sejam, **stabil**, konsisten dengan **known Tapo TC74 firmware behaviour** — bukan lebih teruk
+- Tiada worker restart mengejut; restart 05:27 UTC = restart bersih
+
+## 10) Retention — ✅ On schedule
+`cctv-face-retention.timer`: **next Fri 2026-07-31 20:00:00 UTC = 04:00 MYT (Sabtu)** — tepat seperti dijangka (7j lagi).
+
+---
+
+## 🚨 Tindakan dicadangkan (untuk Tuan — bukan saya)
+1. **Rotate password RTSP camera Tapo** — ia telah wujud plaintext dalam journal selama ~3 hari (24–27 Jul). Walaupun log kini masked, sesiapa dengan akses journal boleh tarik kredential lama. Selepas tukar, update `.env` (rw------- ✓).
+2. **Pantau memori** — RSS 597 MB dekat garis 600 MB; walaupun plateau sekarang, jika laporan seterusnya naik melebihi 600 MB atau naik berterusan, perlu siasat leak/konfigurasi.
+
+**Status ringkas:** semua fungsi sihat (API, dashboard, CSV, retention, tiada crash, tiada gap data) — tetapi pendedahan kredential bersejarah + memori tinggi menjadikan laporan ini **ESCALATION REQUIRED**.
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").

@@ -107,6 +107,11 @@ async def send_whatsapp_message(to_number: str, message: str, token: str, phone_
         return resp.status_code == 200
 ```
 
+## Audio / Voice Messages (v2.2.1+)
+
+To send pre-rendered voice clips alongside text replies, see `references/whatsapp-voice-audio.md` for the complete pattern: `type: audio` payload, FastAPI `StaticFiles` serving, `build_whatsapp_audio_payload()` helper, static clip routing, and the offline VoxCPM2 generation workflow. Key env var: `VOICE_PUBLIC_BASE_URL`.
+
+```
 ## Message Types to Handle
 
 | Type | Field | Notes |

@@ -17,6 +17,8 @@ Any of these triggers:
 - User mentions `systemctl start` being blocked or "cannot restart gateway"
 - User asks to install and configure Tailscale for service access
 - User wants to self-host a **Next.js / Prisma / PostgreSQL** web app (e.g. prompts.chat, or any DB-backed Node app)
+- User needs a **public HTTPS URL** for a local service (Telegram webhooks, n8n, OAuth callbacks) via Cloudflare Tunnel
+- User mentions `cloudflared`, `trycloudflare`, `ngrok`, or \"expose localhost to internet\"
 
 ## 🚨 Pre-flight resource check (heavy services)
 
@@ -161,6 +163,32 @@ tailscale serve --bg http://127.0.0.1:<port>
 ```
 
 > ⚠️ **Security**: Never set `HOST=0.0.0.0` without password auth active. Verify the `.env` has `PASSWORD` set before switching from loopback.
+
+### 6. Cloudflare Tunnel (public HTTPS — no domain needed)
+
+For services that need a real public HTTPS URL (Telegram webhooks, OAuth callbacks, Meta API):
+
+```bash
+# Install
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+  -o /tmp/cloudflared && sudo mv /tmp/cloudflared /usr/local/bin/cloudflared && sudo chmod +x /usr/local/bin/cloudflared
+
+# Quick Tunnel
+cloudflared tunnel --url http://localhost:5678
+# → https://<random>.trycloudflare.com
+
+# Persistent background
+nohup cloudflared tunnel --url http://localhost:5678 > /tmp/cloudflared.log 2>&1 &
+```
+
+Full guide (named tunnels, n8n-specific N8N_PROXY_HOPS, verification): `references/cloudflare-tunnel.md`
+
+**Critical for n8n behind any reverse proxy:**
+- `WEBHOOK_URL=<tunnel-url>` (NO trailing `/webhook`)
+- `N8N_PROXY_HOPS=1` (mandatory)
+- Restart after env changes: `docker-compose down && docker-compose up -d`
+
+**Docker pitfall**: After `sudo usermod -aG docker $USER`, use `sg docker -c "command"` — `newgrp docker` does NOT work in Hermes Agent terminal sessions.
 
 ## Heavy npm installs (ENOSPC, timeouts, cleanup)
 For large npm packages (1000+ deps), see `references/heavy-npm-installs.md` — covers disk requirements, ENOSPC recovery, background install patterns, and OmniRoute specifics.
@@ -341,10 +369,15 @@ sudo service <name> status
 tailscale status
 tailscale serve status
 
+# Cloudflare Tunnel
+curl -sf https://<name>.trycloudflare.com/healthz && echo " ✓ Tunnel OK"
+nohup cloudflared tunnel --url http://localhost:5678 > /tmp/cloudflared.log 2>&1 &
+
 # Logs
 tail -50 /home/<username>/.<app>/app.log
 ```
 
 ## Related references
 
+- `references/cloudflare-tunnel.md` — Cloudflare Tunnel Quick + Named tunnel setup for public HTTPS
 - `references/fastapi-route-ordering.md` — FastAPI route registration order pitfall (literal vs parameterized)

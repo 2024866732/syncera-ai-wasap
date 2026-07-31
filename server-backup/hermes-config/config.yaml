@@ -1,6 +1,7 @@
 model:
-  default: gpt-5.6-terra
-  provider: openai-codex
+  default: grok-build-0.1
+  provider: xai-oauth
+  base_url: https://api.x.ai/v1
 providers:
   cerebras:
     api_mode: chat_completions
@@ -95,8 +96,8 @@ checkpoints:
   max_file_size_mb: 10
   auto_prune: true
   retention_days: 7
-  delete_orphans: true
   min_interval_hours: 24
+  delete_orphans: true
 file_read_max_chars: 100000
 tool_output:
   max_bytes: 50000
@@ -122,17 +123,6 @@ compression:
   protect_first_n: 3
   abort_on_summary_failure: false
   codex_gpt55_autoraise: true
-kanban:
-  dispatch_in_gateway: true
-  dispatch_interval_seconds: 60
-  failure_limit: 2
-  worker_log_rotate_bytes: 2097152
-  worker_log_backup_count: 1
-  orchestrator_profile: ''
-  default_assignee: ''
-  auto_decompose: true
-  auto_decompose_per_tick: 3
-  dispatch_stale_timeout_seconds: 14400
 prompt_caching:
   cache_ttl: 5m
 openrouter:
@@ -466,6 +456,17 @@ security:
   allow_lazy_installs: true
 cron:
   wrap_response: true
+kanban:
+  dispatch_in_gateway: true
+  dispatch_interval_seconds: 60
+  failure_limit: 2
+  worker_log_rotate_bytes: 2097152
+  worker_log_backup_count: 1
+  orchestrator_profile: ''
+  default_assignee: ''
+  auto_decompose: true
+  auto_decompose_per_tick: 3
+  dispatch_stale_timeout_seconds: 14400
 code_execution:
   mode: project
 tools:
@@ -625,3 +626,27 @@ plugins:
   entries:
     composio:
       allow_tool_override: false
+mcp_servers:
+  cloudflare:
+    url: https://mcp.cloudflare.com/mcp
+    headers:
+      Authorization: Bearer ${MCP_CLOUDFLARE_API_KEY}
+    enabled: true
+  cloudflare-bindings:
+    url: https://bindings.mcp.cloudflare.com/mcp
+    headers:
+      Authorization: Bearer ${MCP_CLOUDFLARE_BINDINGS_API_KEY}
+    enabled: true
+  cloudflare-builds:
+    url: https://builds.mcp.cloudflare.com/mcp
+    headers:
+      Authorization: Bearer ${MCP_CLOUDFLARE_BUILDS_API_KEY}
+    enabled: true
+  cloudflare-observability:
+    url: https://observability.mcp.cloudflare.com/mcp
+    headers:
+      Authorization: Bearer ${MCP_CLOUDFLARE_OBSERVABILITY_API_KEY}
+    enabled: true
+  cloudflare-docs:
+    url: https://docs.mcp.cloudflare.com/mcp
+    enabled: true

@@ -1,0 +1,115 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+**HAFJET CCTV Worker — Passive Monitoring Report**  
+**Check Time:** 2026-07-30 17:50 UTC / 2026-07-31 01:50 MYT  
+**Target:** hafizi145@100.121.94.41 (Office PC)  
+**SSH:** ✅ Connected  
+
+---
+
+### 1) Worker Status (`systemctl status cctv-worker`)
+| Field | Value |
+|-------|-------|
+| **State** | `active (running)` since **2026-07-30 04:50:45 UTC** (12:50 MYT) — **12 h 55 m uptime** |
+| **PID** | 58914 |
+| **Memory (RSS)** | **935 MB** (peak **939 MB**) |
+| **CPU Time** | 5 h 57 m 3 s (~49.6 % avg over uptime) |
+| **Tasks** | 24 |
+
+> ⚠️ **ESCALATION: RSS 935 MB exceeds 600 MB escalation threshold**; baseline was 296–435 MB. Memory has risen continuously over 12 h with no plateau.
+
+---
+
+### 2) API Health (`GET /health`)
+```json
+{"status":"ok","camera_configured":true,"camera_enabled":true,"camera_name":"entrance","data_dir":"/mnt/cctv","free_disk_gb":347.8,"free_disk_pct":94.5,"model_dir_exists":true,"models_present":true}
+```
+✅ Healthy
+
+---
+
+### 3) Dashboard (`GET /dashboard`)
+- **HTTP 200 OK**
+- Verified labels present in HTML:
+  - `Time (MYT)` ✅
+  - `Gender (est.)` ✅ (rendered as `Male (est.)` / `Female (est.)` / `—`)
+  - `Age (est.)` ✅ (rendered as `25-32 (est.)` / `38-43 (est.)` / `—`)
+
+---
+
+### 4) CSV Export (`GET /api/events/csv`)
+- **HTTP 200 OK**
+- Header verified to contain `Face Snapshot` column ✅
+
+---
+
+### 5) Event Data (`GET /api/events`)
+- **HTTP 200** but **returns HTML (dashboard fragment) instead of JSON** — **ANOMALY** (breaks API consumers)
+- Dashboard shows **20 recent events** (last ~45 min):
+  - **With face crop + gender/age (post-D.6):** ~10 events show `Gender (est.)` + `Age (est.)` badges
+  - **Without face (pre-D.6 or no detection):** ~10 events show `—` for gender/age — **expected historical gap, not a regression**
+- **Total events with `face_snapshot_path`:** ~10/20 visible (consistent with face detection rate)
+- **Post-D.6 events missing gender+age:** 0 — all face-crop events carry estimates
+
+---
+
+### 6) Face Crops (`/mnt/cctv/faces/`)
+- `find /mnt/cctv/faces/ -name '*.jpg'`: **0 files** (exit code 1)
+- `du -sh /mnt/cctv/faces/`: failed (exit code 1)
+- **ANOMALY:** Dashboard serves face crops from `/faces/…` URLs but filesystem path appears empty — storage location unclear
+
+---
+
+### 7) Resources & Trend
+| Metric | Current | Baseline | Status |
+|--------|---------|----------|--------|
+| Worker CPU (avg) | ~49.6 % | 45–47 % | ✅ Within baseline |
+| Worker RSS | **935 MB** | 296–435 MB | 🔴 **ESCALATION** — >600 MB, rising 12 h without plateau |
+| Systemd Peak | 939 MB | — | 🔴 Confirms sustained growth |
+
+---
+
+### 8) Security — RTSP Credential Masking (journal, last 100 lines)
+- **Masked (`:***@`):** 36 lines — **all current log lines use masked format** ✅
+- **Unmasked (credentials visible):** 0
+- **ESCALATION:** None
+
+---
+
+### 9) Errors / Anomalies (last 100 journal lines)
+| Category | Count | Notes |
+|----------|-------|-------|
+| `ERROR` / `Traceback` / `Exception` | 0 | — |
+| RTSP decode / stream-end / disconnect warnings | 49 | Known Tapo TC74 firmware behaviour; not materially worse |
+| Worker crashes / restarts | 0 | Service stable |
+| API failures (`/health`, `/dashboard`, `/csv`) | 0 | All HTTP 200 |
+| **API regression (`/events` returns HTML)** | 1 | **ANOMALY** — breaks JSON consumers |
+| **Face crop path empty** | 1 | **ANOMALY** — dashboard serves crops from unknown path |
+
+---
+
+### 10) Retention Timer (`systemctl list-timers cctv-face-retention.timer`)
+```
+NEXT: Thu 2026-07-30 20:00:00 UTC  (2h 10m from check)  →  2026-07-31 04:00 MYT
+LAST: Wed 2026-07-29 20:00:25 UTC
+```
+✅ Correct daily schedule (20:00 UTC / 04:00 MYT)
+
+---
+
+## SUMMARY
+**🔴 ESCALATION REQUIRED** — Two critical issues:
+
+1. **Memory Leak / Unbounded Growth** — Worker RSS **935 MB (peak 939 MB)**, more than **2× baseline**, climbing steadily for 12+ hours. Exceeds 600 MB threshold. Risk of OOM on 1 GB + 4 GB swap host.
+
+2. **API Regression** — `GET /api/events` returns HTML instead of JSON, breaking programmatic consumers.
+
+**Secondary anomalies (investigate):**
+- Face crop filesystem path (`/mnt/cctv/faces/`) reports empty while dashboard serves crops from `/faces/` URLs.
+- Known Tapo TC74 stream decode errors continue at baseline rate — no action needed.
+
+**All other checks:** BASELINE STABLE (worker alive, API health OK, dashboard renders, CSV exports, retention timer correct, credentials masked).
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").
