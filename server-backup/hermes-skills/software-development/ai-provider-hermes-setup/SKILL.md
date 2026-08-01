@@ -273,7 +273,7 @@ hermes config set fallback.model gpt-oss-120b
 # Step 3 — ensure the API key is available at runtime
 # Option A: put it in ~/.hermes/.env (preferred, but agent can't write .env — user does it)
 # Option B: put it in ~/.bashrc (works, but not ideal — survives logins only)
-echo 'export CEREBRAS_API_KEY="csk-xxx...xxx"' >> ~/.bashrc && source ~/.bashrc
+echo 'export CEREBRAS_API_KEY="[REDACTED_CEREBRAS]...xxx"' >> ~/.bashrc && source ~/.bashrc
 ```
 
 **Verification before wiring:** Test the fallback provider standalone first:
@@ -281,7 +281,7 @@ echo 'export CEREBRAS_API_KEY="csk-xxx...xxx"' >> ~/.bashrc && source ~/.bashrc
 source /tmp/cerebras-test/bin/activate  # venv with pip install cerebras-cloud-sdk
 python3 -c "
 from cerebras.cloud.sdk import Cerebras
-c = Cerebras(api_key='csk-xxx')
+c = Cerebras(api_key='[REDACTED_CEREBRAS]')
 print(c.chat.completions.create(
     messages=[{'role':'user','content':'hi'}],
     model='gpt-oss-120b', max_completion_tokens=20

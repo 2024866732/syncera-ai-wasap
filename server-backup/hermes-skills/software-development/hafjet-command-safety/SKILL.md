@@ -101,7 +101,38 @@ For an approval-gated **read-only** audit of a remote HAFJET worker:
 
 For a reusable systemd unit/start-command classification and conservative service-CWD runtime-pinning method, see `references/sanitized-systemd-runtime-audits.md`. For the config-only encrypted-backup exception/gates, see `references/config-only-encrypted-backup-gate.md`.
 
-## Portable verification and artifact-permission rule
+### Multi-node job orchestration (VPS + light/heavy workers)
+
+VPS = always-on gateway + job registry + API. Workers (PC Office light, GPU node heavy) = on-demand pollers.
+
+**Core pattern (2026-07-31 session):**
+- VPS exposes:
+  - `POST /register-node` (heartbeat with capabilities/resources).
+  - `GET /jobs?node_id=...&tag=light|heavy&status=pending`.
+  - `POST /jobs` (create job from trigger; supports explicit target_node + tags).
+  - `POST /jobs/{job_id}/result` (worker submits outputs/metrics/error).
+- Workers poll the VPS API (Tailscale). Never push from VPS to sleeping nodes.
+- File-based verification only: `curl -s -o /tmp/xxx.json URL` then separate `python3 -c 'import json; ... Path("/tmp/xxx.json")'` (avoids `curl | python3` blocks).
+- Classify at create time (task_name + payload keywords → tag + target_node). Heavy jobs only to GPU node when online.
+- Health: VPS timer curls remote `/health` (e.g. PC Office :9090) → updates workers.status (online/offline/degraded). Do not route to offline nodes.
+- Systemd on VPS:
+  - `hafjet-orchestrator-api.service` (Restart=always) for the polling API.
+  - `xxx.timer` + `xxx.service` for monitors (health every 2m, retention daily).
+- Retention: `retention_cleanup.py` deletes completed/failed jobs + events after RETENTION_DAYS (default 30). Run via timer.
+- Real vs sim: Keep `simulate_*.py` for local testing. Deploy `real_*_poller.py` (or equivalent) inside the target Hermes worker on the node. The poller must handle dispatch → run → submit_result, with graceful degradation if VPS unreachable.
+
+**Job record minimum fields (SQLite):**
+job_id, type, tags, target_node, task_name, payload, status (pending/dispatched/running/success/failed), created_utc, completed_utc, result (JSON), error, node_id, retry_count, last_error.
+
+**Approval & safety gates (extends existing):**
+- Every new service/timer requires separate approval.
+- New worker script on remote node: review + explicit "deploy to <node>" approval.
+- When creating heavy job while GPU node offline: job is created as pending but routing is blocked; log "BLOCKED_NODE_OFFLINE".
+- Always verify worker status (mark_offline_if_stale) before returning jobs in GET /jobs.
+
+See `references/multi-node-job-orchestration.md` for exact API examples, poller skeleton, systemd units, and retention script.
+
+### Portable verification and artifact-permission rule
 
 When writing an approval-gated infrastructure plan, verification must be runnable using tools already guaranteed by the plan's runtime. Do not make a core verification gate depend solely on an optional CLI binary. For SQLite-backed Python tooling, the portable default is a **read-only Python `sqlite3` module** check using `file:<absolute-path>?mode=ro` with `uri=True`, followed by `PRAGMA query_only = ON`; it must print to stdout only and create no report/log/database artifact.
 

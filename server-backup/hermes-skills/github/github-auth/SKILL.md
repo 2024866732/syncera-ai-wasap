@@ -255,9 +255,9 @@ fi
 
 When a user shares a personal access token, **never repeat it back in chat output**. Tokens are secrets — treat them like passwords.
 
-- If you need to reference the token, use a truncated form: `ghp_9O...0GfD`
+- If you need to reference the token, use a truncated form: `[REDACTED_GITHUB]...0GfD`
 - If the user asks you to write the token to a file, do it silently and confirm only that the operation succeeded
-- If the token must be used in a terminal command, prefer reading from a file/env var rather than inline: `echo "$GITHUB_TOKEN" | gh auth login --with-token` instead of `echo "ghp_abc123..." | gh auth login --with-token`
+- If the token must be used in a terminal command, prefer reading from a file/env var rather than inline: `echo "$GITHUB_TOKEN" | gh auth login --with-token` instead of `echo "[REDACTED_GITHUB]..." | gh auth login --with-token`
 - Warn the user if they paste a token in plain text — advise them to regenerate it if it was exposed in a shared channel
 - **Do NOT write tokens to `.env` or other config files via agent tools.** The user should do this themselves in their terminal. This avoids the token appearing in agent logs, chat history, or tool output.
 

@@ -1,0 +1,66 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+All checks complete — data cross-verified (CSV ↔ JSON counts match exactly). Final report:
+
+---
+
+# 📋 HAFJET CCTV Worker — Monitoring Report
+**Host:** 100.121.94.41 (hafjet-pc-office) · **Check time:** 2026-08-01 00:18 UTC / **08:18 MYT**
+**SSH:** ✅ Connected as hafizi145 · All checks read-only
+
+## 1) Worker — ✅ ACTIVE
+- `sudo -n /usr/bin/systemctl status cctv-worker` → **active (running)** since **2026-07-31 05:27:54 UTC / 13:27:54 MYT** (uptime 18h 51m)
+- PID **1217555** (`python -m app.main`) · NRestarts=**0** · Tasks 24
+
+## 2) API Health — ✅ HTTP 200
+`{"status":"ok","camera_configured":true,"camera_enabled":true,"camera_name":"entrance","free_disk_gb":347.7,"free_disk_pct":94.5,"models_present":true}`
+
+## 3) Dashboard — ✅ HTTP 200 (labels verified in served HTML)
+- `Time (MYT)` — present **20×** (exact string)
+- `Gender` — present 20×, values render as `Female (est.)` / `Male (est.)`
+- `Age` — present 20×, values render as `38-43 (est.)` etc.
+- ⚠️ Note: the literal contiguous strings `Gender (est.)` / `Age (est.)` do **not** exist; the label is `Gender`/`Age` and the `(est.)` suffix sits on the value badge (`title='AI estimate, ±5 years accuracy; display only'`). Labels confirmed visible — do not claim the exact literal form.
+
+## 4) CSV — ✅ HTTP 200
+Header: `Event ID,Camera,Type,Timestamp (UTC),Confidence,Snapshot,Face Snapshot` → contains **`Face Snapshot`** ✅ · 854 data rows
+
+## 5) Event Data (full set, API+CSV cross-verified)
+| Metric | Count |
+|---|---|
+| Total events (Jul 23 11:38Z → Jul 31 13:14Z) | **854** |
+| With `face_snapshot_path` | **367** |
+| With gender+age | **292** |
+
+- **D.6 boundary** (earliest event with gender/age): **2026-07-27 04:16:49 UTC**. Post-D.6: 602 events → 292 have gender+age, 310 lack attrs **but all 310 have NO face crop** (`post-D.6 face-but-no-attrs = 0`). ✅ **Zero post-D.6 gaps** — missing attrs only ever = legit "No Face" detection.
+- **Pre-D.6 (252 events):** 75 with face crops but no attrs, 177 with neither → historical schema limitation, expected, clearly distinct from post-D.6.
+
+## 6) Face Crops — ✅ 367 files, **8.1 MB** (`/mnt/cctv/faces/`) — matches with-face count exactly
+
+## 7) Resources — ⚠️ WATCH ITEM (see verdict)
+- CPU **45.8%** (baseline 45–47% ✅) · ps RSS **597 MB** (611,368 KB) · systemd MemoryCurrent **708.0 MiB** / MemoryPeak **712.5 MiB**
+- RSS 597 MB is **above** documented baseline (296–435 MB) but **below** the 600 MB escalation threshold by only **3 MB**. Current ≈ peak → plateaued this cycle, not actively climbing.
+
+## 8) Security — ✅ CLEAN (last 24h journal)
+- RTSP URL occurrences: **857** · masked (`:***@`): **857** · **unmasked: 0** — no credential exposure. Journal history untouched.
+
+## 9) Errors / Anomalies — ✅ No crashes
+- App-level `[ERROR]`: **0** · `Traceback`/`Exception`: **0** · h264 decode errors: 390
+- Stream churn (known Tapo TC74 firmware behaviour): 429 × "End of video stream / read error", 429 × "Stream disconnected", 430 × "Detection started" → ~1 reconnect every **~3.3 min**, each auto-recovering successfully; events still flowing. Flagged as known firmware issue, not escalated.
+- Restarts: exactly **1** cycle (Jul 31 05:27:54 UTC, Stopping→Stopped→Started), NRestarts=0 since — no crash loop. Free disk 347.7 GB (94.5%) healthy.
+
+## 10) Retention — ✅ On schedule
+Next run **Sat 2026-08-01 20:00 UTC / Aug 02 04:00 MYT** (last ran Jul 31 20:00:10 UTC) — matches expected daily schedule.
+
+---
+
+## 🏁 Verdict: **NO FORMAL ESCALATION — 1 WATCH ITEM (memory)**
+
+All functional, security, data-integrity, and retention checks are green. Formal escalation criteria (RSS > 600 MB, CPU > 80%, continuous RAM rise without plateau, crashes, API failure, credential exposure) are **not met**: RSS 597 MB < 600 MB, CPU 45.8%, current ≈ peak (plateaued).
+
+**⚠️ Watch:** RSS sits at 597 MB — ~37–100% above the documented 296–435 MB baseline and only **3 MB under the hard threshold**. Recommend confirming next report: if RSS exceeds **600 MB** or keeps rising report-over-report, escalate immediately.
+
+*Laporan kemas, Tuan Hafizi — sistem pacak megah, cuma memori kito kena jaga mata sika. 🎥*
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").

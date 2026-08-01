@@ -29,7 +29,7 @@ async def ask_hermes(user_message: str, sender_name: str) -> Optional[str]:
 ### Required Environment Variables
 | Variable | Example | Purpose |
 |---|---|---|
-| `OPENROUTER_API_KEY` | `sk-or-v1-...` | OpenRouter auth key |
+| `OPENROUTER_API_KEY` | `[REDACTED_OPENROUTER]...` | OpenRouter auth key |
 | `OPENROUTER_MODEL` | `openrouter/owl-alpha` | Model to use |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | API base URL |
 | `AI_TIMEOUT` | `30` | Timeout in seconds |

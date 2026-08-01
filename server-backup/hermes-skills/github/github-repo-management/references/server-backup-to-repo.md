@@ -33,8 +33,8 @@ The `gh` CLI stores OAuth tokens in `~/.config/gh/hosts.yml`:
 github.com:
     users:
         "12345":
-            oauth_token: gho_XXXXX
-    oauth_token: gho_XXXXX
+            oauth_token: [REDACTED_GITHUB]
+    oauth_token: [REDACTED_GITHUB]
 ```
 
 GitHub's **Push Protection** (secret scanning) will **block the push** if this file is in any commit in the branch history. Error:

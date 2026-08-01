@@ -1,0 +1,66 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+# HAFJET CCTV Worker — Monitoring Report
+**Time of check:** 2026-07-31 ~18:16 UTC / **2026-08-01 02:16 MYT** · Host: 100.121.94.41 (office PC) · SSH: OK
+
+## ⚠️ VERDICT: ESCALATION REQUIRED — Memory spike (worker RAM far above baseline, breaches 600 MB threshold on systemd measure). All other checks stable.
+
+---
+
+## 1) Worker service
+- **Note:** exact scoped `sudo -n /usr/bin/systemctl status cctv-worker` **failed** (`sudo: interactive authentication is required` — no passwordless sudo for hafizi145). Equivalent read-only data obtained via `systemctl show` (same source, no sudo needed).
+- State: **active / running** · PID **1217555** · Started 2026-07-31 05:27:54 UTC (13:27 MYT) · Uptime **12h 46m** · **NRestarts = 0**
+
+## 2) API health
+- `GET /health` → **HTTP 200** · `{"status":"ok","camera_configured":true,"camera_enabled":true,"camera_name":"entrance"}` · models present · free disk **347.7 GB (94.5%)**
+
+## 3) Dashboard
+- `/dashboard` → **HTTP 200** · Labels verified in rendered HTML (split across spans, confirmed by text extraction):
+  - `Time (MYT)` ✓ (20 rows) · `Gender (est.)` ✓ (rendered e.g. "Gender Female (est.)") · `Age (est.)` ✓ (rendered e.g. "Age 38-43 (est.)")
+- Note: rows with no detection render "Gender —" / "Age —" (expected for no-face events).
+
+## 4) CSV export
+- `/api/events/csv` → **HTTP 200** · Header verified: `Event ID,Camera,Type,Timestamp (UTC),Confidence,Snapshot,Face Snapshot` ✓
+
+## 5) Event data (`camera_events`, read-only SQLite)
+| Metric | Count |
+|---|---|
+| Total events | **854** |
+| With `face_snapshot_path` | **367** (matches 367 files on disk ✓) |
+| With gender + age | **292** |
+| Pre-D.6 (before 2026-07-27T04:16 UTC) | 252 — all lack gender/age (75 had face snaps; **historical, expected**) |
+| Post-D.6 | 602 — 292 have face snaps → **ALL have gender+age (0 true gaps)**; 310 have no face snap (no face ⇒ no attributes, expected) |
+| Last 24h | 271 events, 132 with gender+age |
+
+**No post-D.6 attribute gaps detected.**
+
+## 6) Face crops
+- `/mnt/cctv/faces/` → **367 files**, **7,616,807 bytes ≈ 7.27 MiB** ✓
+
+## 7) Resources — ⚠️ ESCALATION
+- CPU: **45.8%** (baseline 45–47% — in band ✓)
+- **RSS (ps): 597 MB** (611,368 KB) · **systemd MemoryCurrent: 708 MiB** · **MemoryPeak: 711.7 MiB**
+- **Baseline was 296–435 MB → now 597–708 MB (+40% to +100%)**; systemd measure **exceeds the 600 MB threshold**
+- Trend this session: two samples ~2 min apart identical (597 MB), Peak ≈ Current → appears **plateaued, not runaway** this session — but level itself breaches escalation criteria
+- ⚠️ **Action: monitor next report for continued climb. If RSS/systemd memory keeps rising across reports → immediate review (possible leak). No restart performed (read-only mandate).**
+
+## 8) Security — RTSP credentials (last 24h journal)
+- RTSP lines: **839** · **Masked (`:***@`): 839** · **Unmasked: 0** ✓ — no credentials printed or exposed
+
+## 9) Errors / anomalies
+- ERROR/Traceback/Exception: **0** in last 24h ✓
+- Warnings (known Tapo TC74 firmware behaviour, no escalation): **419** "disconnected. Reconnecting…" + 419 reconnect lines, **20** "decode of qscale diff failed" (benign H.264 qscale) ✓
+- Restarts: **0** (3 journal lines at 05:27:54/55 = single service start; NRestarts=0) ✓
+
+## 10) Retention timer (read-only)
+- Next run: **2026-07-31 20:00:00 UTC = 2026-08-01 04:00 MYT** ✓ (matches expected daily 20:00 UTC / 04:00 MYT) · Last run 2026-07-30 20:00:40 UTC ✓
+
+---
+
+**Privacy note:** read-only monitoring only; no facial recognition, identity matching, embeddings, or biometric tracking performed. Gender/age remain display-only AI estimates (~75% accuracy), not facts.
+
+**Bottom line:** Infrastructure, API, dashboard, CSV, events, retention, security — all **BASELINE STABLE**. **ESCALATION REQUIRED solely for worker memory** (597–708 MB vs 296–435 MB baseline; >600 MB threshold on systemd measure; plateaued this session, no crash, no restart, no leak runaway yet). Recommend observing next scheduled report before any intervention.
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").
