@@ -1,71 +1,96 @@
-# Server Backup — GitHub Push Protection Recovery
+# Server Backup — GitHub Push Protection
 
-Reference: 2026-07-26 session where `GH013` push protection blocked the backup
-because `config.yaml` contained an OpenRouter API key (`sk-or-...74f7`) at line 287.
+Repo: `2024866732/syncera-ai-wasap` · Branch: `feat/hafjet-azure-whatsapp-bot`  
+Script: `~/syncera-ai-wasap/scripts/backup-server.sh` · Cron: `315e1bdcd7fc` daily 14:00 UTC
+
+Sessions: 2026-07-26 (first GH013) · 2026-08-01 (sed false-confidence + GITHUB_TOKEN + successful push `9bc7199`)
 
 ## Root cause
 
-The backup script copied raw `~/.hermes/config.yaml` → `server-backup/hermes-config/config.yaml`.
-This file contains 6+ `api_key:` entries for various providers (OpenRouter, DeepSeek, etc.).
-GitHub Push Protection scanned the ENTIRE commit and found `sk-or-` on line 287.
+Backup copies live `~/.hermes/config.yaml` which contains multiple `api_key:` lines (OpenRouter `sk-or-…`, DeepSeek, etc.). GitHub Push Protection (`GH013`) rejects the push when **any commit in the pushed set** still contains a recognized secret — not just HEAD.
 
-## Fix applied (2026-07-26)
+## Required backup pipeline
 
-### 1. Updated backup script to redact BEFORE git commit
-
-Added to `scripts/backup-server.sh`:
-```bash
-# Redact API keys from config.yaml before committing
-if [ -f "$BACKUP_DIR/hermes-config/config.yaml" ]; then
-    echo "🔒 Redacting API keys from config.yaml..."
-    sed -i -E 's/(api_key: )(.+)/\1[REDACTED]/g' "$BACKUP_DIR/hermes-config/config.yaml"
-    sed -i -E 's/(api_key=)(.+)/\1[REDACTED]/g' "$BACKUP_DIR/hermes-config/config.yaml"
-    sed -i -E 's/("api_key": *")[^"]+/\1[REDACTED]/g' "$BACKUP_DIR/hermes-config/config.yaml"
-fi
-
-# Redact secrets from cron output files (LLM may have included keys in output)
-find "$BACKUP_DIR/hermes-cron" -type f -exec sed -i -E 's/(sk-[a-zA-Z0-9_-]{20,})/[REDACTED_API_KEY]/g' {} \; 2>/dev/null || true
+```
+cp live → server-backup/
+  → Python redact api_key + known prefixes (backup copy only)
+  → delete .env / auth.json / hosts.yml / *.key / *.pem
+  → abort if grep still finds sk-or-
+  → git add + commit + push
 ```
 
-This runs AFTER `cp` but BEFORE `git add`. The raw config.yaml on disk stays intact — only the backed-up copy is redacted.
+### Python redaction (preferred over sed)
 
-### 2. Cleaned existing git history with filter-repo
+```python
+import re
+from pathlib import Path
+p = Path.home() / "syncera-ai-wasap/server-backup/hermes-config/config.yaml"
+text = p.read_text(errors="replace")
+text = re.sub(r"(api_key\s*:\s*)(.+)", r"\1[REDACTED]", text)
+for pat in [
+    r"[REDACTED_OPENROUTER][A-Za-z0-9_-]+",
+    r"sk-or-[A-Za-z0-9_-]+",
+    r"ghp_[A-Za-z0-9_]+",
+    r"gho_[A-Za-z0-9_]+",
+    r"csk-[A-Za-z0-9_-]+",
+]:
+    text = re.sub(pat, "[REDACTED]", text)
+p.write_text(text)
+```
 
-The secret existed in commits going back to `d8b5735` (2026-07-24). `git commit --amend` on the latest commit wasn't enough because GitHub scans all pushed history.
+Also walk `server-backup/**/*.{yaml,yml,json,md,txt}` for the same prefixes (cron LLM output can leak keys).
+
+### Abort gate (before commit)
 
 ```bash
-# Replacement pattern
-printf 'regex:api_key: sk-or-[a-zA-Z0-9_-]{30,}==>api_key: [REDACTED]\n' > /tmp/filter-replace.txt
+if grep -RInE '[REDACTED_OPENROUTER][A-Za-z0-9]{8,}|sk-or-[A-Za-z0-9_-]{16,}' "$BACKUP_DIR" \
+  | grep -v REDACTED; then
+  echo "Abort: secrets remain"; exit 2
+fi
+```
 
-# Run filter-repo (auto-answers continuation prompt)
+## GH013 recovery (history rewrite)
+
+```bash
+unset GITHUB_TOKEN GH_TOKEN
+printf 'regex:api_key: sk-or-[a-zA-Z0-9_-]{20,}==>api_key: [REDACTED]\n' > /tmp/filter.txt
+printf 'regex:[REDACTED_OPENROUTER][A-Za-z0-9_-]+==>[REDACTED_OPENROUTER]\n' >> /tmp/filter.txt
 cd ~/syncera-ai-wasap
 rm -f .git/filter-repo/already_ran
-echo "Y" | git filter-repo --replace-text /tmp/filter-replace.txt --force
-
-# filter-repo removes origin, re-add it
+echo "Y" | git filter-repo --replace-text /tmp/filter.txt --force
 git remote add origin https://github.com/2024866732/syncera-ai-wasap.git
-git push origin feat/hafjet-azure-whatsapp-bot --force
+git push -u origin feat/hafjet-azure-whatsapp-bot --force   # Tuan approval required
 ```
 
-Result: All 37 commits rewritten, every `api_key: sk-or-...` → `api_key: [REDACTED]`.
+Then ensure `scripts/backup-server.sh` has the Python redact + abort gate, and run it once.
 
-## Verification
+## Auth prerequisites
 
 ```bash
-# Check that latest commit has no real keys
-git show HEAD:server-backup/hermes-config/config.yaml | grep "api_key"
-# Should show: api_key: [REDACTED]
-
-# Check the specific commit that triggered the block
-git show e5d4421:server-backup/hermes-config/config.yaml | grep -n "api_key" | head
-# Should all show [REDACTED]
+gh auth status
+# If "Failed … GITHUB_TOKEN" is Active while hosts.yml looks OK:
+unset GITHUB_TOKEN GH_TOKEN
+# Classic PAT scopes: repo + workflow + read:org (+ optional gist)
+gh auth login   # or: echo "$PAT" | gh auth login --with-token
+gh auth setup-git
 ```
 
-## Lessons
+Never paste full tokens into Telegram. Do not commit tokens.
 
-1. **Redact before commit, not after.** Amending after the fact is harder.
-2. **GitHub scans all pushed commits**, not just HEAD. One old commit with a secret blocks everything.
-3. **`git filter-repo --replace-text` is the right tool** for bulk history cleanup. `git commit --amend` alone is insufficient.
-4. **Always include cron output files** in the redaction — LLM-generated text can contain API keys verbatim.
-5. **The origin remote is removed** after `filter-repo`. Always re-add before pushing.
-6. **Force push must be user-approved.** The timeout on approval = "not consent." Don't retry without the user.
+## Dangerous ordering mistakes
+
+1. **Edit script → `git reset --hard`** — hard reset restores old script from HEAD and **deletes** the redact fix. Use `git reset --soft HEAD~1` for a local-only bad backup commit, or rewrite the script **after** any hard reset.
+2. **Trust tool output truncation** — Hermes may display `sk-or-...74f7` while the on-disk backup file still has the full secret. Always run the abort gate on files, not on human-readable tool output.
+3. **`git commit --amend` only** — Push Protection still sees older commits with secrets.
+4. **Force-push without approval** — timeout = not consent; stop and wait for Tuan.
+
+## Verification after success
+
+```bash
+git show HEAD:server-backup/hermes-config/config.yaml | grep api_key
+# expect only: api_key: [REDACTED]
+git status -sb
+# expect clean tracking of origin/feat/hafjet-azure-whatsapp-bot
+```
+
+Known good: commit `9bc7199` (2026-08-01) after Python redact + abort gate.

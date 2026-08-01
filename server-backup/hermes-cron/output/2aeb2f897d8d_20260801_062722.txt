@@ -1,0 +1,68 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+All checks complete. Compiling the report.
+
+---
+
+# HAFJET CCTV Worker — Monitoring Report
+**Host:** `hafjet-pc-office` (100.121.94.41) · **Check time:** 2026-08-01 06:24 UTC / **14:24 MYT** · Read-only checks only, no changes made.
+
+## ⚠️ ESCALATION REQUIRED — Worker memory exceeds threshold
+
+**Reason:** RSS = **600.5 MB** (> 600 MB limit) and systemd cgroup memory = **816.8 MB** (peak 817.1 MB) — roughly **2× the prior baseline (296–435 MB)**. CPU is fine; no crash, no restart, no OOM. See §7 for nuance.
+
+---
+
+### 1) Worker status
+- `sudo -n /usr/bin/systemctl status cctv-worker` **could not run**: `sudo: interactive authentication is required` (no passwordless sudo for hafizi145). Fell back to the equivalent read-only `systemctl status cctv-worker` — same data source, nothing modified.
+- **Active: active (running)** since **2026-07-31 05:27:54 UTC / 13:27:54 MYT** (uptime ~24 h 56 m)
+- Main PID `1217555`, Tasks 24, **NRestarts = 0**
+
+### 2) API health — ✅ OK
+`http://127.0.0.1:8091/health` → **HTTP 200** `{"status":"ok","camera_configured":true,"camera_enabled":true,"camera_name":"entrance","free_disk_gb":347.3,"models_present":true}`
+
+### 3) Dashboard — ✅ 200, ⚠️ label wording differs
+- `/dashboard` → **HTTP 200**
+- `Time (MYT)` — **present (exact)**
+- `Gender (est.)` / `Age (est.)` — **NOT present as literal strings**. Actual UI: labels are `Gender` / `Age`, and "(est.)" is appended to the **value badges** (e.g., `Male (est.)`, `25-32 (est.)`, tooltip "AI estimate, ±5 years accuracy; display only"). Functionality present; wording differs from spec. Flagging for accuracy only — not an escalation.
+
+### 4) CSV — ✅ OK
+`/api/events/csv` → **HTTP 200**; header contains **`Face Snapshot`** ✓
+
+### 5) Event data — ✅ no post-D.6 gaps observed
+- API window (`/api/events`): **50 events**, all `person_detected`, all **2026-08-01** (post-D.6 era)
+- **25 with face_snapshot_path** and **25 with gender+age** — and they are **the exact same 25 events** (face ⟺ gender+age, 0 mismatches). The other 25 are person-only detections with no face crop → expected, **not a data gap**
+- Gender (AI est., display-only, ~75% accuracy): Male 16, Female 9; age ranges 0-2 … 60+
+- CSV (909 rows, 2026-07-23 → 2026-08-01): **397 rows with Face Snapshot**, matching the 397 face crop files — consistent
+- No D.6 marker found in MEMORY.md/git; pre-D.6 historical attributes not distinguishable from the read-only window, but within the observable post-D.6 data there are **zero missing-attribute anomalies**
+
+### 6) Face crops — ✅ OK
+`/mnt/cctv/faces/`: **397 files**, **9.1 MB** total
+
+### 7) Resources — ⚠️ memory above threshold (escalation trigger)
+| Metric | Value | Baseline | Verdict |
+|---|---|---|---|
+| CPU (ps) | **45.9%** | 45–47% | ✅ normal |
+| RSS (VmRSS) | **614,920 kB ≈ 600.5 MB** | 296–435 MB | ⚠️ **> 600 MB limit** |
+| systemd MemoryCurrent / Peak | **816.8M / 817.1M** | — | ⚠️ ~2× baseline |
+- **Trend nuance:** two samples 25 s apart were identical (614,920 kB) → **plateaued at this instant**, not actively climbing; no OOM hits; no restarts. Host has ample headroom (17.4 GB RAM, 5.4 GB free; 8 GB swap, 5.5 MB used) — no system pressure.
+- Per standing rule, RSS > 600 MB **triggers escalation**. Likely a slow leak since process start (~24 h ago); needs Tuan Hafizi's attention / next-report trend confirmation.
+
+### 8) Security — ✅ clean
+- Journal since process start: **883 RTSP lines, 0 unmasked** — all use masked format `:***@` (e.g., `rtsp://hafizi145%40gmail.com:***@192.168.1.94:554/stream1`)
+- No password/secret/token patterns leaked. Journal history untouched.
+
+### 9) Errors / anomalies — ✅ no crashes
+- **ERROR: 0 · Traceback: 0 · Exception: 0** since start
+- Known Tapo TC74 behaviour: **441×** `Stream disconnected` / `Reconnecting in 5 seconds` / `End of video stream or read error` (~18/h) + **3×** h264 decode warnings (`no frame!`, `missing picture in access unit`). Frequent but worker auto-recovers every time; **not materially worse** — no crash, no restart.
+
+### 10) Retention timer — ✅ on schedule
+- `cctv-face-retention.timer`: **next Sat 2026-08-01 20:00:00 UTC / Sun 04:00 MYT** (13 h left) · last run 2026-07-31 20:00:10 UTC — matches expected daily 20:00 UTC / 04:00 MYT ✓
+
+---
+
+**Bottom line:** Infrastructure is healthy — API, dashboard, CSV, retention, security all clean, zero crashes. **Escalation required solely for worker memory:** RSS 600.5 MB exceeds the 600 MB limit and systemd memory (816.8 MB) is ~2× the 296–435 MB baseline, though currently plateaued with no OOM/restart. Recommend monitoring the next 1–2 reports for a continuing rise (leak) vs. a new stable plateau before deciding on action. Gender/age remain display-only AI estimates (~75% accuracy) — no identity matching performed.
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").

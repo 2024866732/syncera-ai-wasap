@@ -187,51 +187,50 @@ JWT-only access token and prints a working `?token=` dashboard URL) is in `templ
 
 ## Server Backup to GitHub (Push Protection aware)
 
-Backing up Hermes config/skills/cron to GitHub repo `syncera-ai-wasap`. **GitHub Push Protection scans ALL pushed history** for secrets (OpenRouter keys, API tokens, etc.).
+Backing up Hermes config/skills/cron → GitHub `2024866732/syncera-ai-wasap` branch `feat/hafjet-azure-whatsapp-bot`.  
+Script: `~/syncera-ai-wasap/scripts/backup-server.sh`. Daily cron: `315e1bdcd7fc` @ 14:00 UTC.
 
-### Redaction BEFORE git commit (mandatory in backup script)
+**Push Protection scans ALL history**, not just HEAD. OpenRouter keys (`sk-or-…`), PATs (`ghp_`/`gho_`), Cerebras (`csk-…`) all trigger `GH013`.
 
-The backup script at `~/syncera-ai-wasap/scripts/backup-server.sh` MUST strip secrets before `git add`:
+### Mandatory pipeline (order matters)
+
+1. `cp` live files into `server-backup/` — **never mutate** live `~/.hermes/config.yaml`
+2. **Python redact** every `api_key:` value + known prefixes across the backup tree (`sed`-only failed 2026-08)
+3. Delete secret files: `.env`, `auth.json`, `*.key`, `*.pem`, `hosts.yml`, `credentials`
+4. **Abort gate** before commit: grep must find zero live `sk-or-` strings (exit 2 if any)
+5. `git add` + commit + normal push; force push only after `filter-repo` recovery
+
+Include: redacted config, SOUL.md, skills/, memories/, cron/, scripts/.  
+Exclude: secrets, `state.db`, venv/node_modules.
+
+Full patterns + GH013 recovery playbook: `references/server-backup-push-protection.md`.
+
+### Recovering from blocked push (GH013)
+
 ```bash
-# Redact API keys from config.yaml
-sed -i -E 's/(api_key: )(.+)/\1[REDACTED]/g' "$BACKUP_DIR/hermes-config/config.yaml"
-sed -i -E 's/(api_key=)(.+)/\1[REDACTED]/g' "$BACKUP_DIR/hermes-config/config.yaml"
-sed -i -E 's/("api_key": *")[^"]+/\1[REDACTED]/g' "$BACKUP_DIR/hermes-config/config.yaml"
-
-# Redact from cron output files (LLM output may contain API keys in plaintext)
-find "$BACKUP_DIR/hermes-cron" -type f \
-  -exec sed -i -E 's/(sk-[a-zA-Z0-9_-]{20,})/[REDACTED_API_KEY]/g' {} \;
-
-# Delete raw secret files entirely
-find "$BACKUP_DIR" -name ".env" -delete
-find "$BACKUP_DIR" -name "auth.json" -delete
-find "$BACKUP_DIR" -name "*.key" -delete
-find "$BACKUP_DIR" -name "hosts.yml" -delete
-```
-
-Cron job `315e1bdcd7fc` runs daily at 14:00 UTC. Full recovery walkthrough + verification steps in `references/server-backup-push-protection.md`.
-
-### Recovering from a blocked push (GH013)
-
-If secrets slipped into history and push is blocked:
-```bash
-# 1. Create replacement file (regex pattern for the secret)
-printf 'regex:api_key: sk-or-[a-zA-Z0-9_-]{30,}==>api_key: [REDACTED]\n' > /tmp/filter.txt
-
-# 2. Clean ALL commits in the branch (rewrites history)
-cd ~/repo && rm -f .git/filter-repo/already_ran
+unset GITHUB_TOKEN GH_TOKEN   # invalid env token overrides good gh hosts.yml
+printf 'regex:api_key: sk-or-[a-zA-Z0-9_-]{20,}==>api_key: [REDACTED]\n' > /tmp/filter.txt
+printf 'regex:[REDACTED_OPENROUTER][A-Za-z0-9_-]+==>[REDACTED_OPENROUTER]\n' >> /tmp/filter.txt
+cd ~/syncera-ai-wasap
+rm -f .git/filter-repo/already_ran
 echo "Y" | git filter-repo --replace-text /tmp/filter.txt --force
-
-# 3. Re-add origin (filter-repo removes it) and force push
-git remote add origin https://github.com/...
-git push origin <branch> --force
+git remote add origin https://github.com/2024866732/syncera-ai-wasap.git  # filter-repo drops origin
+git push -u origin feat/hafjet-azure-whatsapp-bot --force                 # needs Tuan approval
+bash scripts/backup-server.sh   # script must already have redact + abort gate
 ```
 
-**Key pitfalls:**
-- `git filter-repo` removes the `origin` remote and rewrites ALL commit SHAs — force push is mandatory after
-- `git filter-repo --force` prompts "Treat this run as a continuation? Y/N" — pipe `echo "Y" |` or delete `.git/filter-repo/already_ran`
-- GitHub scans the ENTIRE pushed history, not just HEAD — one old commit with a secret blocks the whole push
-- Push Protection won't tell you WHICH key triggered it; check the error message for the commit SHA + line number
+### Pitfalls (2026-07 → 2026-08)
+
+| Pitfall | Rule |
+|---------|------|
+| Tool output shows `sk-or-...74f7` | Hermes **display-redacts** secrets. File may still hold full key — never trust visual truncation as proof of redact |
+| `sed` only on `api_key:` | Still got GH013 on OpenRouter line. Prefer **Python `re.sub`** + abort grep |
+| `git reset --hard` after editing `backup-server.sh` | Restores **old script from HEAD**, wiping the redact fix. Order: reset bad commit → rewrite script → run. Prefer `git reset --soft HEAD~1` for local-only bad commits |
+| `git commit --amend` alone | Insufficient — entire history is scanned |
+| `git filter-repo` | Drops `origin`, rewrites SHAs, needs force push; continuation prompt needs `echo Y \|` or delete `.git/filter-repo/already_ran` |
+| Force-push approval timeout | Silence ≠ consent. Stop; ask Tuan to approve or run push himself |
+| Invalid `GITHUB_TOKEN` env | Overrides valid `gh` hosts.yml (`Active account: true` on the broken env). `unset GITHUB_TOKEN` before push; PAT scopes for backup: `repo` + `workflow` + `read:org` (+ optional `gist`) |
+| Improved script not committed | Cron reuses repo script — commit `scripts/backup-server.sh` in the same successful backup push |
 
 ### Git identity (cosmetic)
 ```bash

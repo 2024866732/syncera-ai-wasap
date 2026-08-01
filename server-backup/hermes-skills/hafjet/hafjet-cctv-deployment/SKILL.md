@@ -28,6 +28,8 @@ Tapo TC74 ──RTSP──→ OpenCV DNN ──→ SQLite events
                                                   /health, /api/events, /snapshots/{fn}
 ```
 
+**Storage boundary:** Tapo does **not** write SMB “NAS” like Xiaomi. App options = microSD / Tapo Care / Storage Hub (skip if budget). HAFJET free path = RTSP pull → this worker → `/mnt/cctv`. Prefer **event clips** before continuous record. Xiaomi Samba + file ingest = skill `hafjet-camera-nas-storage` (sibling service `:8092`, not this process). Details: `references/tapo-storage-paths.md`.
+
 ## Testing Methodology (sequential)
 
 **Rule:** Change ONE variable at a time. Never jump directly to model replacement before verifying camera positioning and stream source.
@@ -296,6 +298,7 @@ Or use the `patch_reconnect.py` approach for multi-line changes.
 - **`hafjet-worker-project-setup`** — covers initial project scaffolding, dependency verification, venv bootstrap, and Phase A audit (complementary; this skill covers deployment & sustainment, the setup skill covers project creation)
 - **`whatsapp-bot-health-check`** — similar health-check / monitoring pattern for WhatsApp bot
 - **`self-hosted-deployment`** — systemd and Tailscale exposure for production services (future sprints only)
+- **`hafjet-camera-nas-storage`** — Xiaomi/Mi Home SMB NAS, Oray X1 USB, Samba PC Office, approved sibling ingest P1 (`:8092`, meta+thumb, `xiaomi_ingest.db`). Different stack from this RTSP worker. Prefer `/mnt/cctv/xiaomi-nas` not `snapshots/`/`faces/`. Samba/ingest must not restart `cctv-worker` or write `cctv_events.db` in P1.
 
 ## Feature Status
 

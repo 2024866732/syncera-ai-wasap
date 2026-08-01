@@ -111,20 +111,46 @@ Hermes TTS lives under the `tts.*` config keys and uses `ELEVENLABS_API_KEY` fro
 
 | Provider | Setup | Cost | Malay support |
 |----------|-------|------|---------------|
-| **Edge TTS** | Built-in, no API key | **Free** | ✅ Native Malay voices |
+| **Edge TTS** | Built-in, no API key | **Free** | ✅ Native Malay (`ms-MY-*`) |
 | **ElevenLabs** | `ELEVENLABS_API_KEY` in `.env` | Free tier (10k chars/mo) | ✅ Multilingual v2 model |
+| **xAI Grok TTS** | OAuth / `XAI_API_KEY` | Paid (bundle) | ❌ **No `ms` in official lang list** |
 | OpenAI | `VOICE_TOOLS_OPENAI_KEY` in `.env` | Paid | ❌ No Malay |
 | NeuTTS (local) | `pip install neutts[all]` + espeak-ng | Free | ❌ Robotic |
 
+### ⛔ xAI TTS + Bahasa Melayu (verified 2026-08-01)
+
+When `tts.provider: xai` and `tts.xai.language: en` (common default), **Malay text is spoken with English phonetics** — user hears wrong/gibberish BM.
+
+Official xAI TTS BCP-47 list includes `en`, `id` (Indonesian), `zh`, … but **not `ms` / `ms-MY`**. Docs allow “additional languages with varying accuracy”; do **not** treat that as production Malay.
+
+| User ask | Correct action |
+|----------|----------------|
+| “tukar suara Melayu / bahasa melayu” | Switch **provider to Edge** + `ms-MY-OsmanNeural` or `ms-MY-YasminNeural` |
+| Keep xAI for expressiveness | Only if user accepts non-native BM; try `tts.xai.language auto` or `id` as **degraded** experiment — never claim native Malay |
+| Sample after switch | `text_to_speech` with short BM; expect `provider: edge` in tool result |
+
+```bash
+hermes config set tts.provider edge
+hermes config set tts.edge.voice ms-MY-YasminNeural   # perempuan MY — Tuan confirmed default 2026-08-01
+# alt: ms-MY-OsmanNeural   # lelaki MY
+```
+
+- `text_to_speech` reads `config.yaml` live (no gateway restart for tool audio).
+- Gateway auto-TTS may still need Tuan `/restart` (agent **cannot** pkill/restart gateway from session).
+- Do **not** “fix” Malay by only setting `tts.xai.language` while provider stays `xai`.
+- Detail: `references/xai-tts-malay-gap.md`.
+
+Edge Malay voices: `ms-MY-OsmanNeural` (Male), `ms-MY-YasminNeural` (Female). **HAFJET default after user pick: Yasmin.**
+
 ### Quick-switch workflow
 
-1. **Edge TTS (free, good for Malay):**
+1. **Edge TTS (free, required for proper Malay):**
    ```bash
    hermes config set tts.provider edge
-   hermes config set tts.edge.voice ms-MY-YasminNeural   # female, friendly
+   hermes config set tts.edge.voice ms-MY-YasminNeural   # female MY (confirmed default)
    # Alternative: ms-MY-OsmanNeural (male)
    ```
-   No API key needed — works immediately.
+   No API key needed. Flow: sample → if “nak Yasmin” set Yasmin + sample → “ok boleh” locks default.
 
 2. **ElevenLabs (premium, most natural for Malay):**
    - Sign up at https://elevenlabs.io → choose **ElevenCreative** plan (not ElevenAgents)
@@ -202,12 +228,14 @@ No restart needed — `text_to_speech` tool reads config live. For voice message
 - Each ~150 characters ≈ 94 credits
 
 ### TTS config keys reference
-- `tts.provider` — `edge`, `elevenlabs`, `openai`, `neutts`
-- `tts.edge.voice` — voice ID for Edge TTS (e.g. `ms-MY-YasminNeural`)
+- `tts.provider` — `edge`, `elevenlabs`, `xai`, `openai`, `neutts`, …
+- `tts.edge.voice` — Edge voice ID (`ms-MY-OsmanNeural` / `ms-MY-YasminNeural` for BM)
+- `tts.xai.voice_id` — e.g. `eve`, `ara`, `rex` (expressive EN-first)
+- `tts.xai.language` — BCP-47 (`en`, `id`, `auto`, …). **Not a substitute for Edge when user wants Malay.**
 - `tts.elevenlabs.voice_id` — ElevenLabs voice UUID (default: `pNInz6obpgDQGcFmaJgB` = Rachel)
 - `tts.elevenlabs.model_id` — model for ElevenLabs (default: `eleven_multilingual_v2`)
 
-The `text_to_speech` tool reads config live. For voice messages in gateway conversations, do `/restart` after changing config.
+The `text_to_speech` tool reads config live. For gateway auto voice bubbles, Tuan restarts gateway manually after config change — agent must not pkill gateway.
 
 ## Other providers (tested from this server, July 2026)
 
@@ -350,3 +378,4 @@ hermes config set model.api_key <KEY>
 - `references/elevenlabs-quota-errors.md` — Error transcripts, credit consumption patterns, and fallback flow from real ElevenLabs session
 - `references/provider-diagnostic-ladder.md` — Reusable urllib probe + result-interpretation table for isolating any provider failure (dummy-key → 401 = network OK; real-key timeout = auth passed but model slow; etc.)
 - `references/opencode-cli-diagnostics.md` — OpenCode CLI install, auth file format, free vs Go plan detection, opencode.json config, useful commands
+- `references/xai-tts-malay-gap.md` — Why xAI TTS fails proper BM; Edge switch recipe (2026-08-01)

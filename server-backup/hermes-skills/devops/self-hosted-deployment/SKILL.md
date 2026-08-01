@@ -183,12 +183,55 @@ nohup cloudflared tunnel --url http://localhost:5678 > /tmp/cloudflared.log 2>&1
 
 Full guide (named tunnels, n8n-specific N8N_PROXY_HOPS, verification): `references/cloudflare-tunnel.md`
 
-**Critical for n8n behind any reverse proxy:**
-- `WEBHOOK_URL=<tunnel-url>` (NO trailing `/webhook`)
-- `N8N_PROXY_HOPS=1` (mandatory)
-- Restart after env changes: `docker-compose down && docker-compose up -d`
+**Critical for n8n behind any reverse proxy (Quick Tunnel or named):**
+- `WEBHOOK_URL=<full-tunnel-url>` (exactly as shown in logs, NO trailing `/webhook` or path)
+- `N8N_PROXY_HOPS=1` (mandatory for correct webhook URLs and client IP)
+- Update **both** `.env` **and** any `environment:` overrides in `docker-compose.yml`
+- Always restart with full down+up (env read at container start):
+  ```bash
+  sg docker -c "/full/path/to/docker-compose down && /full/path/to/docker-compose up -d"
+  ```
+- Verify: `docker logs <container> | grep -A1 "Editor is now accessible via"`
 
-**Docker pitfall**: After `sudo usermod -aG docker $USER`, use `sg docker -c "command"` — `newgrp docker` does NOT work in Hermes Agent terminal sessions.
+**n8n Basic Auth + "Must be a valid email" fix (modern n8n 2.x)**
+When `N8N_BASIC_AUTH_ACTIVE=true` + `N8N_BASIC_AUTH_USER=...` still shows the owner creation form demanding a real email:
+
+Add pre-seed owner lines (fake local email is fine):
+```env
+N8N_OWNER_EMAIL=hafizi145@local.com
+N8N_OWNER_PASSWORD=strongpass123!
+```
+Basic auth popup uses the BASIC_AUTH_USER/PASS; the owner lines pre-seed the user management.
+
+**Editing .env safely (avoid line concatenation)**
+Never append directly without ensuring newlines. Preferred patterns:
+```bash
+echo 'KEY=val' >> .env
+```
+Always `tail -5 .env` to verify. Broken examples seen: `N8N_PROXY_HOPS=1N8N_OWNER_EMAIL=...`
+
+**n8n UI shows "kosong" / empty after fresh deploy**
+Workflow JSON on disk is **not auto-imported**. After successful login:
+- Workflows → Import from File → select the .json
+- Assign "Telegram API" credential to all Telegram nodes
+- In the Callback Trigger node: enable "Restrict to Chat IDs" and set the target chat (e.g. 1485374469)
+- Activate the workflow
+
+**User preference — direct execution**
+When the user explicitly says "tolong runkan dalam terminal untuk saya" (or "run these commands for me"), execute the setup commands directly with the terminal tool instead of only printing the list.
+
+**Quick Tunnel died (502 after idle)**
+The background cloudflared process frequently stops. Recovery pattern:
+```bash
+pkill cloudflared 2>/dev/null || true
+nohup cloudflared tunnel --url http://localhost:5678 > /tmp/cloudflared.log 2>&1 &
+sleep 8
+NEW_URL=$(grep -o 'https://.*trycloudflare.com' /tmp/cloudflared.log | tail -1)
+```
+Then update WEBHOOK_URL in both files, full n8n restart, and re-verify healthz + logs.
+
+**Docker group in agent sessions**
+Always wrap with `sg docker -c "..."`. `newgrp docker` does not work inside Hermes Agent terminal sessions.
 
 ## Heavy npm installs (ENOSPC, timeouts, cleanup)
 For large npm packages (1000+ deps), see `references/heavy-npm-installs.md` — covers disk requirements, ENOSPC recovery, background install patterns, and OmniRoute specifics.

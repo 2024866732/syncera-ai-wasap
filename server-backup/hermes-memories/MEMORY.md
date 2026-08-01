@@ -4,9 +4,9 @@ HAFJET ops ref: /home/hafizi145/HAFJET-Operating-Manual-v1.md; Tuan approval ove
 §
 CRITICAL: cctv-worker restarts need explicit Tuan approval only. Never auto-restart.
 §
-CCTV: UI changes need rendered proof; investigations need time-series. Camera 2 deferred (RSS leak).
+CCTV: Cam2 deferred RSS. Tapo no Hub—worker RTSP→/mnt/cctv; event-clip first; TC74 OK; C560WS wait RTSP. Xiaomi Samba separate from Tapo.
 §
-Composio: kamellperry/hermes-composio, Gmail+GitHub active. LiteLLM PC: 10 models, systemd.
+Composio Gmail+GitHub active. SuperGrok Orchestrator modes: Research/Content/Strategy/Automation/Copy. SuperGrok=research+image/video; DeepSeek=cheap write. Output: practical BM, 2+ angles, copy-paste ready, freeze drafts until revise.
 §
 VPS Azure: 1GB+4GB swap, 29GB disk. df -h / monitor. >90% cleanup: rm -rf ~/.cache/pip && uv cache clean. Key rotation: rotate immediately if leaked.
 §
@@ -14,12 +14,10 @@ Buzz: deploy/compose/compose.yml, ./run.sh start/stop. Nostr keypair via coincur
 §
 Hermes gateway: can't pkill/restart from session. Tuan restarts manually. Non-loopback bind = auth required.
 §
-HAFJET Content Automation Config: Brand=HAFJET, Business=Repair telefon/gadget/servis digital, Location=Raub Pahang + Malaysia, Audience=Pemilik iPhone/Android, pembeli gadget, pemilik bisnes kecil, Platforms=Threads/Instagram/Facebook/TikTok, Tone=Mesra/jujur/teknikal mudah faham/local/tidak hard-sell, CTA=WhatsApp HAFJET untuk tanya masalah/booking repair, Posting times=12:30 PM & 8:30 PM Asia/Kuala_Lumpur, Telegram Chat ID=1485374469. Full spec: automation-workflow-dev/references/hafjet-content-automation-spec.md
+HAFJET Content Auto: Brand HAFJET, repair/gadget Raub+MY, platforms Threads/IG/FB/TikTok, tone mesra/jujur/local/no hard-sell, CTA wa.me/60198021500, post 12:30&20:30 MYT, TG 1485374469, visual AI image+caption. Spec: automation-workflow-dev/references/hafjet-content-automation-spec.md
 §
-HAFJET WhatsApp CTA: https://wa.me/60198021500
+n8n hafjet-n8n :5678, compose ~/.n8n/, docker `sg docker -c`, compose bin ~/.local/bin/docker-compose. Workflow ~/.n8n/workflows/hafjet-content-automation.json. cloudflared Quick Tunnel temp (rebind WEBHOOK_URL+N8N_PROXY_HOPS=1). No bot tokens in chat—n8n Credentials only. TG bot pending BotFather.
 §
-HAFJET Content Automation: Visual generation = AI image generation + AI caption (both AI-generated)
+TTS: provider edge, voice ms-MY-YasminNeural (Melayu MY perempuan). xAI TTS tiada ms.
 §
-n8n: container hafjet-n8n (v2.8.4) running on :5678, docker-compose at ~/.n8n/, login hafizi145/changeme123. WEBHOOK_URL+N8N_PROXY_HOPS set. Use `sg docker -c` for docker. docker-compose at ~/.local/bin/. Workflow JSON: ~/.n8n/workflows/hafjet-content-automation.json (17 nodes). Quick tunnel temporary - re-setup when URL changes. Telegram bot pending @BotFather creation.
-§
-Cloudflared installed at /usr/local/bin/cloudflared (v2026.7.3). Quick tunnel: cloudflared tunnel --url http://localhost:5678. Tunnel URL temporary, changes on restart.
+Xiaomi CCTV NAS WORKS: Samba 192.168.1.252 xiaomi-nas/smbcam @ /mnt/cctv/xiaomi-nas (ACL smbcam +x on /mnt/cctv; never IPC$). Oray X1 112081250984 USB RMA parallel. Ingest P1 APPROVED: sibling :8092 meta+thumb; code ~/.hermes/cache/documents/xiaomi-ingest/; no worker restart.

@@ -1,11 +1,13 @@
-Tuan Hafizi (MD HAFJET, UiTM, X:@hafizigadjet145). KELANTAN Malay casual. Chat: max 3 lines in STEP/ACTION/NEED format. Long output → file via telegram-file-delivery skill only. Never long inline messages.
+User: Tuan Hafizi, MD HAFJET. Casual Malay/Kelantan dialect; technical tone for code/hardware. Address as Tuan Hafizi.
 §
-Deploy: requires structured pre-deploy report (branch, commit, diff, risks). Only commit when asked, never deploy without explicit cmd. Version-controlled startup (start.sh in repo) preferred over hidden config.
+Constraints: explicit approval for restarts; no code/config with restart; loopback API; D.6 estimates only; 94.7% disk no cleanup; RTSP creds redacted.
 §
-Office PC: hafjet-pc-office (100.121.94.41, i3-2100, 16GB, no GPU, Python 3.14, Ubuntu 26.04). CPU-only inference only.
+Hardware: i3-2100 CPU-only, 1GB+4GB swap, Ubuntu 26.04. Cameras: TC74 entrance, C560WS outdoor facial recog, CS-C6N indoor. Disk 94.7%.
 §
-Workflow: iterative approval gates, sequential steps; apply-code and load-via-restart approvals are separate. CCTV patches require scoped backup checksum + read-only RED/GREEN tests. Prefers .env and layered approval.
+Projects: cctv-worker (8091 D.3/5/6), xiaomi-ingest (8092 P1 metadata). P1 deployed 2026-08-01. Multi-camera deferred until RSS stable.
 §
-Idempotent operations: do NOT append duplicate keys to .env — replace existing value if present, add only if absent. Safe cleanup: delete specific named files, never wildcard under data paths.
+Sourcing: Shopee/Lazada/TikTok; AAC Hikvision, Dahua MY. Need ONVIF Profile M for AI events.
 §
-Tuan Hafizi requires audit-grade operational reporting: never present unverified output as fact; clearly distinguish proposed, applied, and verified states; show exact diffs before changes and wait for explicit approval. Scoped sudo must be verified using the exact command and arguments allowed by its rule.
+Comms: Telegram. Structured output (tables, lists). Long runbooks as .txt files. 6-hr monitor active.
+§
+n8n setups: basic auth (user hafizi145) + pre-seed N8N_OWNER_EMAIL=hafizi145@local.com to bypass 'valid email' on owner form. Update BOTH .env + docker-compose.yml for new Cloudflare Quick Tunnel URLs, restart with sg docker -c, verify 'Editor is now accessible via' in logs. Workflows live in DB; import JSON via UI. After adding Telegram credential, assign to all Telegram nodes + set chat ID restriction in Trigger node. Content series must output 3 formats (Threads, IG Feed, IG Story cards) + Telegram Approval Block per post.

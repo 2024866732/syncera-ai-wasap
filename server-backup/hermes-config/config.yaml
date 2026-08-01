@@ -285,9 +285,9 @@ dashboard:
 privacy:
   redact_pii: false
 tts:
-  provider: xai
+  provider: edge
   edge:
-    voice: ms-MY-OsmanNeural
+    voice: ms-MY-YasminNeural
   elevenlabs:
     voice_id: pNInz6obpgDQGcFmaJgB
     model_id: eleven_multilingual_v2

@@ -122,6 +122,93 @@ Use only after explicit approval. This is an external-observer diagnostic, not p
 7. A breach is evidence, not an authorization to restart. If RSS is below the critical escalation threshold, continue the approved observation; wait for explicit written restart approval.
 8. Interpret only against a control: distinguish a one-time native allocation, activity-correlated steps, reconnect-correlated steps, and time/event-count trends. Do not attribute a concurrent RSS increase to a diagnostic stream/test when production was already trending.
 
+#### Stage 3 Correlation Methodology (Added 2026-07-31)
+
+Compute Pearson correlation between 5-minute MemoryCurrent deltas and category-count deltas across the observation window:
+- `person_detected` delta: strongest positive correlation (r ≈ +0.87)
+- `Face attr` / successful D.6 delta: strong positive correlation (r ≈ +0.81)
+- `detection_started` / `loop_ended` / `reconnect_notice`: near-zero correlation (r ≈ ±0.02)
+
+This isolates the **activity-related growth** (person→crop→D.6→event/snapshot write→cgroup file+anon) from **reconnect-cycle noise**. The correlation is computed in-process by the external monitor; no raw journal persists.
+
+#### Cgroup vs Procfs Memory Accounting (Added 2026-07-31)
+
+`systemd MemoryCurrent` = cgroup memory (includes anonymous + file-backed + kernel + socket).
+`/proc/<pid>/smaps_rollup` RSS = process resident set (mostly anonymous + mapped files).
+
+Example at 937 MiB escalation:
+- cgroup anon: 565.9 MiB
+- cgroup file: 369.3 MiB (page cache, mmapped model files, DB pages)
+- procfs RSS: 584.0 MiB
+- procfs Pss_Anon/Private_Dirty: ~540 MiB
+
+**Do not equate cgroup MemoryCurrent with "native leak" alone** — substantial file-backed component is normal for a process holding model files, SQLite pages, and image buffers. Use procfs anon/dirty for native-leak signal.
+
+#### Restart Helper False-Failure Pattern (Added 2026-07-31)
+
+The approved helper `/home/hafizi145/restart-cctv.sh` exits `1` when its **Dashboard Column Check** expects a stale UI marker. This is a **helper bug, not a service failure**. Post-restart evidence (new PID, health 200, MemoryCurrent ~290 MiB, API responding) is the ground truth. Record helper exit code separately; never treat non-zero helper exit as restart failure if service checks pass.
+
 ### Multi-camera readiness preflight
 
 A second camera is normally a code-architecture decision, not a config-only addition. Before proposing it, apply the read-only preflight in `references/multicamera-readiness.md`. Keep it deferred while the single-camera RSS lifecycle remains unresolved.
+
+### Tapo storage + C560WS (2026-08-01)
+
+- No Tapo Storage Hub (budget). Path = RTSP worker → `/mnt/cctv`, **not** Xiaomi Samba.
+- Expand order: **event clips first** (not continuous).
+- TC74 RTSP OK (`CAMERA_1`). C560WS needs RTSP ON + Camera Account + LAN IP before add; still multi-cam architecture gate.
+- Never bind Tapo into Mi Home share `xiaomi-nas`.
+
+## Xiaomi NAS / file-ingest boundary (added 2026-08-01)
+
+- Mi Home SMB dumps and Oray USB shares are **not** RTSP sources. Use skill **`hafjet-camera-nas-storage`**.
+- Do **not** implement folder watchers inside the live `cctv-worker` process without a separate design + restart approval (RSS coupling).
+- **P1 design approved:** sibling `hafjet-xiaomi-ingest`, DB `xiaomi_ingest.db`, port **8092**, metadata+thumb only; must not write `cctv_events.db` or restart this worker. File DNN = Phase 2 gate.
+- Samba install/ACL fixes on `/mnt/cctv` must not be paired with `systemctl restart cctv-worker`.
+- When verifying ingest deploy, sample worker PID + `:8091/health` before and after — **unchanged PID** is the bar for “did not interrupt worker”.
+
+## P1 Deploy Verification Checklist (added 2026-08-01)
+
+After any deploy to Office PC (xiaomi-ingest or similar sibling services), run this **read-only verification** before declaring success:
+
+1. **Pre-deploy capture**: `systemctl show cctv-worker -p MainPID -p MemoryCurrent -p MemoryPeak` + `curl -s http://127.0.0.1:8091/health`
+2. **Deploy steps** (rsync, venv, tests, foreground smoke)
+3. **Post-deploy capture**: Same checks — confirm **PID unchanged**, health still `ok`, MemoryCurrent stable
+4. **New service health**: `curl -s http://127.0.0.1:8092/health` → `phase=1`, `watcher_alive=true`
+5. **Sample ingest**: Drop test file → verify `/api/videos` lists it with thumb + metadata
+6. **No systemd install/enable** until separate approval
+
+This checklist prevents silent worker disruption during sibling-service deploys.
+
+## Critical Pitfall: Shared Entry Point Process Killing (2026-08-01)
+
+**Incident**: `pkill -f "python -m app.main"` killed **both** cctv-worker (:8091) and xiaomi-ingest (:8092) because they share the exact same entry point pattern.
+
+**Root cause**: Both services use `python -m app.main` as their entry point. A broad `pkill -f` pattern matches all processes whose full command line contains that string.
+
+**Prevention rules** — add to any deploy/restart procedure for sibling services:
+
+1. **Never use `pkill -f` with a pattern that matches the main worker's entry point** (`python -m app.main`).
+2. **For cctv-worker (systemd service)**: Always use `sudo systemctl restart cctv-worker` — never pkill.
+3. **For xiaomi-ingest (foreground/background)**: Use specific PID from `$!` at launch, or `pkill -f "xiaomi-ingest"` if the module path differs, or write PID to a file at startup and kill by PID.
+4. **Verification after any process manipulation**: Always check both `:8091/health` and `:8092/health` (or whatever ports) and confirm cctv-worker PID is unchanged (or properly restarted via systemctl).
+
+**Correct restart patterns**:
+```bash
+# cctv-worker (systemd) — ONLY this:
+sudo systemctl restart cctv-worker
+
+# xiaomi-ingest (foreground test) — use PID:
+cd ~/projects/hafjet-xiaomi-ingest && . .venv/bin/activate
+python -m app.main &
+INGEST_PID=$!
+# later:
+kill $INGEST_PID
+
+# xiaomi-ingest (background) — write PID file at launch:
+echo $! > /tmp/xiaomi-ingest.pid
+# later:
+kill $(cat /tmp/xiaomi-ingest.pid)
+```
+
+**Verification bar**: "cctv-worker PID unchanged" (for non-restart ops) OR "cctv-worker restarted cleanly via systemctl with new PID and health=ok" (for approved restarts). Never assume a pkill only hit the intended target.
