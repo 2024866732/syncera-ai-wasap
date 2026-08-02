@@ -81,6 +81,33 @@ Commands to `100.121.94.41` (raw IP) trigger a **MEDIUM security-scan approval**
 if Tuan doesn't approve promptly. Batch SCP + run into one approved command when possible, and
 tell Tuan to approve fast.
 
+## Ollama on Constrained RAM (UpCloud 3.8GB server)
+
+When deploying LLMs via Ollama on a server with <4GB RAM and other services running:
+
+**Problem:** Ollama + llama3.2:3b (2.0 GB) needs ~2.4GB total. With k3s + monitoring + app stack (~1.5GB used), only ~2.3GB available → OOM kill.
+
+**Solution:** Stop non-essential services before LLM inference:
+```bash
+docker stop hafjet-stack-n8n-1          # frees ~200MB
+cd /opt/monitoring && docker compose stop grafana cadvisor  # frees ~300MB
+```
+
+**Ollama config for constrained RAM:**
+```ini
+# /etc/systemd/system/ollama.service.d/override.conf
+[Service]
+Environment=OLLAMA_NUM_PARALLEL=1
+Environment=OLLAMA_MAX_LOADED_MODELS=1
+Environment=OLLAMA_CONTEXT_LENGTH=2048
+```
+
+**Models tested on 3.8GB server:**
+- `llama3.2:3b` (2.0 GB) — works when services stopped, 8.5s total (7.6s load + 0.4s gen)
+- `phi3:mini` (2.2 GB) — works when services stopped
+
+**Pitfall:** First inference after model pull is slow (model loading into RAM). Subsequent calls are fast (~0.4s).
+
 ## References
 - `references/pc-office-setup.md` — full env facts + verified setup commands.
 - `references/malay-tts-models.md` — VoxCPM2 recipe (recommended), Malaysian-TTS gotchas,

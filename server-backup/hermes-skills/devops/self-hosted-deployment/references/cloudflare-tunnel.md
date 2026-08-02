@@ -1,100 +1,129 @@
-# Cloudflare Tunnel — Public HTTPS for Self-Hosted Services
+# Cloudflare Tunnel for Public HTTPS (n8n, Telegram webhooks, etc.)
 
-Use when you need a public HTTPS URL for a local service (n8n webhooks, Telegram bot, OAuth callback) without a domain or SSL certificate.
+**Class-level guidance** for exposing local services (especially n8n) to the public internet with a stable HTTPS URL for webhooks.
 
-## Quick Tunnel (testing / temporary)
+**Trigger**: User needs a public HTTPS URL for a self-hosted service (Telegram bot webhook, n8n, OAuth callback, etc.) on Linux. Mentions `cloudflared`, `trycloudflare`, Named Tunnel, or changing from temporary to stable URL.
 
-```bash
-# 1. Install cloudflared (one-time)
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
-  -o /tmp/cloudflared
-sudo mv /tmp/cloudflared /usr/local/bin/cloudflared
-sudo chmod +x /usr/local/bin/cloudflared
-cloudflared --version
+## Critical Distinction: Quick Tunnel vs Named Tunnel
 
-# 2. Start tunnel to local service
-cloudflared tunnel --url http://localhost:5678
-# Output: https://<random-words>.trycloudflare.com
+### Quick Tunnel (`--url`)
+- Command: `cloudflared tunnel --url http://localhost:5678`
+- Gives random `https://<words>.trycloudflare.com`
+- **No domain required**
+- **URL changes** every time the process restarts or the tunnel is recreated
+- Use only for testing or when you accept re-registering webhooks frequently
 
-# 3. Persistent background (survives terminal close)
-nohup cloudflared tunnel --url http://localhost:5678 > /tmp/cloudflared.log 2>&1 &
-```
+### Named Tunnel (with Public / Hostname Route)
+- Requires `cloudflared tunnel login` (Cloudflare account)
+- Creates a persistent tunnel ID
+- To get a **stable public URL** you must add a **Public Hostname / Hostname route** in the Cloudflare dashboard
+- **Domain requirement**: You need a domain that is active in your Cloudflare account to create a public hostname route (e.g. `n8n.hafjet.my`)
+- Without a domain in Cloudflare: You can still create and run a Named Tunnel for management/observability, but you **cannot** get a stable public hostname. You fall back to Quick Tunnel behaviour for public access.
 
-**Limitations:**
-- URL changes on every restart (random subdomain)
-- No uptime guarantee
-- For testing/dev only — not production
+**Common mistake**: Thinking "Named Tunnel = stable URL automatically". This is only true once you successfully add a Public Hostname using a domain you control in Cloudflare.
 
-## Named Tunnel (permanent, requires Cloudflare account)
+## Three Practical Scenarios
 
-1. Auth: `cloudflared tunnel login` (opens browser)
-2. Create: `cloudflared tunnel create <name>`
-3. Route DNS: `cloudflared tunnel route dns <name> <subdomain.domain.com>`
-4. Run: `cloudflared tunnel run <name>`
+**Scenario 1: You have a domain in Cloudflare (recommended for production)**
+- Create Named Tunnel in dashboard
+- Add Public Hostname: `n8n` + your domain (`hafjet.my`) → service `localhost:5678`
+- Result: stable `https://n8n.hafjet.my`
+- Update n8n: `WEBHOOK_URL=https://n8n.hafjet.my`, `N8N_HOST=n8n.hafjet.my`, `N8N_PROTOCOL=https`, `N8N_PROXY_HOPS=1`
+- Restart n8n fully (`down && up -d`)
 
-See https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/
+**Scenario 2: You have Cloudflare account but no domain**
+- You can create Named Tunnels and manage them in dashboard
+- You **cannot** create stable public hostnames
+- Stick to Quick Tunnel for public access
+- Accept that the URL will change on restart → you will need to update `WEBHOOK_URL` and re-activate n8n Telegram triggers
 
-## n8n-Specific: Webhook URL + Proxy Hops
+**Scenario 3: Fast testing only (current Quick Tunnel)**
+- Continue with `cloudflared tunnel --url ...` + `nohup`
+- Fastest to start
+- Major limitation: URL changes → Telegram webhook becomes invalid
+- Mitigation: After URL changes, run `getWebhookInfo`, then either let n8n re-register on workflow activation or manually `setWebhook`
 
-When n8n is behind Cloudflare Tunnel (or any reverse proxy), TWO config changes are mandatory:
+## n8n-Specific Configuration (Mandatory)
 
-### 1. WEBHOOK_URL = tunnel URL (no trailing path)
+When n8n sits behind any Cloudflare Tunnel (Quick or Named):
 
-```
-WEBHOOK_URL=https://<name>.trycloudflare.com
-```
-
-n8n appends `/webhook/...` internally — do NOT include `/webhook` in the env var.
-
-### 2. N8N_PROXY_HOPS=1
-
-```
+```env
+WEBHOOK_URL=https://n8n.hafjet.my          # full hostname, no path
+N8N_HOST=n8n.hafjet.my
+N8N_PROTOCOL=https
 N8N_PROXY_HOPS=1
+N8N_PORT=5678
 ```
 
-Without this, n8n reads the wrong client IP/protocol from proxied requests, and webhook URLs may be constructed incorrectly.
+Update in **both**:
+- `/home/.../.n8n/.env`
+- `environment:` section inside `docker-compose.yml`
 
-### docker-compose.yml example
-
-```yaml
-services:
-  n8n:
-    environment:
-      - WEBHOOK_URL=https://<name>.trycloudflare.com
-      - N8N_PROXY_HOPS=1
-```
-
-Or via `.env` file:
-```
-WEBHOOK_URL=https://<name>.trycloudflare.com
-N8N_PROXY_HOPS=1
-```
-
-### After config change: restart n8n
-
+Restart with full down + up (n8n reads these at container start):
 ```bash
-docker-compose down && docker-compose up -d
-# then verify:
-docker logs <container> 2>&1 | grep -i "accessible\|webhook"
+cd /home/hafizi145/.n8n
+docker-compose down
+docker-compose up -d
 ```
 
-Expected log line: `Editor is now accessible via: https://<name>.trycloudflare.com`
-
-## Verification
-
+Verify:
 ```bash
-# 1. Local health
-curl -sf http://localhost:5678/healthz && echo " ✓ Local OK"
-
-# 2. Tunnel health
-curl -sf https://<name>.trycloudflare.com/healthz && echo " ✓ Tunnel OK"
-
-# 3. Web UI accessible
-curl -s -o /dev/null -w '%{http_code}' https://<name>.trycloudflare.com/
+docker logs hafjet-n8n 2>&1 | grep -A1 "Editor is now accessible via"
 ```
 
-## Pitfalls
+## Telegram Webhook Migration When URL Changes
 
-- **Quick Tunnel URL changes on restart** — never hardcode in production configs. Use named tunnel with custom domain for permanent URLs.
-- **`newgrp docker` doesn't work in Hermes Agent terminal sessions** — use `sg docker -c "command"` instead when docker group was just added via `sudo usermod -aG docker $USER`.
-- **Restart is mandatory after env changes** — n8n reads WEBHOOK_URL at startup only. `docker-compose restart` may not pick up new env vars; prefer `down && up -d`.
+Telegram stores only one webhook per bot.
+
+1. Check current:
+   ```bash
+   curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
+   ```
+
+2. Best practice after URL change:
+   - Deactivate the n8n workflow containing the Telegram Trigger
+   - Update `WEBHOOK_URL` + restart n8n
+   - Reactivate the workflow (n8n usually re-registers)
+   - If it doesn't, manually:
+     ```bash
+     curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://n8n.hafjet.my/webhook/<trigger-path>"
+     ```
+
+3. Clean old:
+   ```bash
+   curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
+   ```
+
+## Cloudflare One / WARP Client Conflicts
+
+When adding hostname routes you may see:
+> "configure Cloudflare One Client device profile... 100.64.0.0/10 ... not part of an Exclude rule"
+
+Fix (Zero Trust → Settings → WARP Client → Device profiles):
+- Edit the relevant profile
+- Split Tunnels: Ensure `100.64.0.0/10` and the origin private IPs are **not** in Exclude lists
+- Local Domain Fallback: Ensure `n8n.hafjet.my` (and parent domain) is **not** listed
+
+## Current Best Practice (as of this audit)
+
+- For anything that needs reliable Telegram/n8n callbacks → prefer Named Tunnel + domain when possible.
+- If no domain yet → continue with Quick Tunnel but treat the URL as ephemeral.
+- Always update both `.env` and `docker-compose.yml` environment.
+- Full restart (`down && up -d`) after WEBHOOK_URL changes.
+- After any tunnel URL change, verify with `getWebhookInfo` and re-activate the relevant workflow.
+
+## Pitfalls to Avoid
+
+- Assuming Named Tunnel gives a stable public URL without a Cloudflare domain.
+- Using example hostnames like `*.trycloudflare.com` when describing Named Tunnel setups.
+- Only updating `.env` while `docker-compose.yml` still has the old URL.
+- Forgetting that Telegram caches the webhook URL aggressively.
+- Running Quick Tunnel and Named Tunnel at the same time (double exposure / confusion).
+
+---
+
+**References / Further Reading**
+- The detailed audit that produced this clarity is in the session where the user requested a full review of previous Cloudflare Tunnel advice (including the 3-scenario breakdown and domain requirement confirmation).
+- Official: Cloudflare Tunnels documentation (Public Hostnames / Hostname routes section).
+
+This reference supersedes earlier mixed Quick/Named guidance in the skill.

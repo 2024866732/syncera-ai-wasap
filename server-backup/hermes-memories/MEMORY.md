@@ -8,7 +8,7 @@ CCTV: Cam2 deferred RSS. Tapo no Hub—worker RTSP→/mnt/cctv; event-clip first
 §
 Composio Gmail+GitHub active. SuperGrok Orchestrator modes: Research/Content/Strategy/Automation/Copy. SuperGrok=research+image/video; DeepSeek=cheap write. Output: practical BM, 2+ angles, copy-paste ready, freeze drafts until revise.
 §
-VPS Azure: 1GB+4GB swap, 29GB disk. df -h / monitor. >90% cleanup: rm -rf ~/.cache/pip && uv cache clean. Key rotation: rotate immediately if leaked.
+Azure: 1GB+4GB swap. UpCloud Frankfurt: 94.237.88.114, TS 100.98.171.12, 2C/4GB/80GB. Command Center :80 threaded proxy. Docker 172.17.0.1 gateway. FastAPI 404=UP. Ollama localhost-only. SSH /tmp/hafjet-trial-key. Grok v0.2.118 installed, XAI auth pending.
 §
 Buzz: deploy/compose/compose.yml, ./run.sh start/stop. Nostr keypair via coincurve. relay_url ws:// for Tailscale.
 §

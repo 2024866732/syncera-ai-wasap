@@ -239,6 +239,7 @@ git config --global user.email "hermes@hafjet.com.my"
 ```
 
 ## Tuan's standing cleanup constraints
+- **Reversibility first:** Before ANY infrastructure change, backup everything and push to GitHub. User explicitly said "backup dulu semua, lepas habis trial saya nak kembali ke asal semula" — always create a restore path before deploying.
 - Destructive commands need EXPLICIT per-command approval. NEVER set "Allow always".
 - Do NOT touch: npm-global, state.db, whatsapp-bot repo, n8n, state-snapshots.
 - Cache-only deletions (~/.npm/_cacache, /tmp) are safe-to-rebuild.
@@ -252,6 +253,63 @@ When a HAFJET operating manual is designated as the primary reference, treat it 
 2. Base each replacement line on fresh tool evidence, not an earlier plan or an in-progress status. If requested wording becomes stale during execution, preserve it as a dated/historical checkpoint and state the later verified result as the current status.
 3. Keep unfinished controls visibly separate from verified work (for example: pending permission hardening, uncreated worker directories, unmounted backup storage, and unapproved listener changes).
 4. After applying an approved diff, re-read the changed section and deliver the updated document. The newest explicit instruction from Tuan still overrides the manual.
+
+## UpCloud Trial Deployment (Aug 2026)
+
+Tuan signed up for UpCloud 14-day $250 trial. Key learnings:
+
+### API Authentication
+- UpCloud now uses **Bearer token** auth (not username/password).
+- Token prefix: `ucat_...` — create in Hub → Profile → API Credentials.
+- Python SDK: `CloudManager(token='ucat_...')` — NOT `CloudManager(username, password)`.
+- REST: `Authorization: Bearer <token>` header.
+
+### Server Creation via SDK
+```python
+from upcloud_api import CloudManager, Server, Storage, login_user_block
+cm = CloudManager(token='ucat_...')
+server = Server(
+    zone='de-fra1',  # try multiple zones if one is full
+    title='HAFJET',
+    hostname='hafjet-trial',
+    plan='2xCPU-4GB',
+    storage_devices=[Storage(action='clone', storage=UBUNTU_UUID, size=80)],
+    login_user=login_user_block(username='ubuntu', create_password=False, ssh_keys=[pub_key]),
+    metadata=True  # REQUIRED when cloning cloud-init templates
+)
+created = cm.create_server(server)
+```
+
+### Zone Capacity Issues (CRITICAL)
+- Singapore (`sg-sin1`) frequently at capacity for trial accounts — `SERVER_RESOURCES_UNAVAILABLE`.
+- **Multi-zone fallback**: try `de-fra1` → `uk-lon1` → `nl-ams1` → `us-nyc1` → `au-syd1`.
+- Frankfurt (`de-fra1`) had best disk I/O: 19.7 GB/s sequential read.
+- Trial quota: 8 cores, 16GB RAM, 1024GB storage, 5 servers — NOT "1 server at a time".
+
+### SSH Session Overload
+- Too many concurrent SSH sessions + Ollama inference can lock out SSH.
+- Fix: hard restart via API (`stop_type: "hard"`) then wait 60s before reconnecting.
+- Always kill stale SSH connections before retrying: `pkill -f "ssh.*<IP>"`.
+
+### Ollama on 3.8GB RAM Server
+- `llama3.2:3b` (2GB) + services = OOM kill on 3.8GB with no swap.
+- **Fix**: stop non-essential services before running LLM:
+  ```bash
+  docker stop hafjet-stack-n8n-1
+  cd /opt/monitoring && docker compose stop grafana cadvisor
+  ```
+- This frees ~500MB → LLM runs at 30 tok/s CPU-only.
+- Configure Ollama: `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_MAX_LOADED_MODELS=1`, `OLLAMA_CONTEXT_LENGTH=2048`.
+
+### Docker Compose v2 on Ubuntu 26.04
+- `docker compose` (v2 plugin) not installed by default on fresh Ubuntu 26.04.
+- Install: `sudo apt-get install -y docker-compose-v2`.
+- Fallback: `sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose`.
+
+### Backup Before Trial End
+- Created GitHub private repo `2024866732/hafjet-backups` with full system backup.
+- Local backup: `~/backups/pre-upcloud-trial/` with `RESTORE.sh`.
+- Includes: Hermes config, bot code, Azure settings, upcloud-trial scripts.
 
 ## Hybrid topology (when PC is off most of the time)
 - Azure VPS (small) = public relay/proxy; PC-office = Hermes engine via Cloudflare Tunnel / Tailscale.

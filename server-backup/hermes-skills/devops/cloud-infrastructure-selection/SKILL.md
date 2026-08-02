@@ -39,6 +39,7 @@ and webhook servers.
 | 🥉 3 | Contabo | VPS S | 4 vCPU Intel | 8 GB | 200 GB NVMe | ❌ Germany | €5.99 | ~RM28 |
 | 4 | Vultr | Shared 2GB | 1 vCPU | 2 GB | 55 GB NVMe | ✅ Yes | $6.00 | ~RM26 |
 | 5 | DigitalOcean | Basic 2GB | 1 vCPU | 2 GB | 50 GB SSD | ✅ Yes | $12.00 | ~RM53 |
+| 🎁 | **UpCloud** | **Trial** | **2 vCPU AMD EPYC** | **4 GB** | **80 GB MaxIOPS** | **✅ Singapore** | **FREE 14d** | **~RM0** |
 
 ## Detailed Comparison
 
@@ -127,6 +128,14 @@ The Oracle Free Tier is **technically unbeatable at RM0**, but carries real risk
 - **Vultr Shared CPU:** The $2.50/mo plan is shared CPU — performance degrades under load. Get Regular plan for reliable performance.
 - **Hetzner Singapore stock:** Not all instance types are available in Singapore DC. Check before provisioning. CX22/CX32 are usually fine.
 - **DigitalOcean price creep:** Cheapest plan is $6/mo for 1GB RAM — 2x Hetzner for half the resources.
+
+## Cloud Trials (Experience-Driven)
+
+Some providers offer free trials with credit. **Key insight:** trial quotas hard-limit concurrent resources — you can't spend the full credit amount. Max deployable is typically $40-60 of resources over 14 days.
+
+**UpCloud Trial:** $250 credit, 14 days, quota-limited (see `references/upcloud-trial-deployment.md` for full deploy guide + stress test automation).
+
+**Use case:** Experience high-spec servers, benchmark managed services, chaos engineering — NOT production deployment.
 
 ## Verification
 

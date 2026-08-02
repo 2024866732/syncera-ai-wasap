@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 46
+        "completed": 47
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-08-02T07:00:00+00:00",
-      "last_run_at": "2026-08-01T07:02:52.459191+00:00",
+      "next_run_at": "2026-08-03T07:00:00+00:00",
+      "last_run_at": "2026-08-02T07:02:36.595670+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -63,15 +63,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 42
+        "completed": 43
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-08-02T13:00:00+00:00",
-      "last_run_at": "2026-08-01T13:01:17.291618+00:00",
+      "next_run_at": "2026-08-03T13:00:00+00:00",
+      "last_run_at": "2026-08-02T13:00:38.393721+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -106,15 +106,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 37
+        "completed": 38
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-08-02T14:00:00+00:00",
-      "last_run_at": "2026-07-31T14:01:23.108676+00:00",
+      "next_run_at": "2026-08-03T14:00:00+00:00",
+      "last_run_at": "2026-08-01T14:01:12.239809+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -149,15 +149,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 36
+        "completed": 37
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-08-02T09:00:00+00:00",
-      "last_run_at": "2026-08-01T09:00:55.734879+00:00",
+      "next_run_at": "2026-08-03T09:00:00+00:00",
+      "last_run_at": "2026-08-02T09:01:16.520494+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -192,15 +192,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 30
+        "completed": 31
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-08-02T09:00:00+00:00",
-      "last_run_at": "2026-08-01T09:00:49.647381+00:00",
+      "next_run_at": "2026-08-03T09:00:00+00:00",
+      "last_run_at": "2026-08-02T09:01:10.793587+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -237,15 +237,15 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 22
+        "completed": 23
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-08-02T03:00:00+00:00",
-      "last_run_at": "2026-08-01T03:14:48.105680+00:00",
+      "next_run_at": "2026-08-03T03:00:00+00:00",
+      "last_run_at": "2026-08-02T03:15:14.531536+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -283,15 +283,15 @@
       "schedule_display": "0 15 * * *",
       "repeat": {
         "times": null,
-        "completed": 18
+        "completed": 19
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-14T17:05:27.034793+00:00",
-      "next_run_at": "2026-08-01T15:00:00+00:00",
-      "last_run_at": "2026-07-31T15:00:36.491978+00:00",
+      "next_run_at": "2026-08-02T15:00:00+00:00",
+      "last_run_at": "2026-08-01T15:00:56.494237+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -416,15 +416,15 @@
       "schedule_display": "every 360m",
       "repeat": {
         "times": 28,
-        "completed": 21
+        "completed": 25
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-24T10:08:48.617035+00:00",
-      "next_run_at": "2026-08-01T18:32:12.867730+00:00",
-      "last_run_at": "2026-08-01T12:32:12.867730+00:00",
+      "next_run_at": "2026-08-02T18:51:55.041455+00:00",
+      "last_run_at": "2026-08-02T12:51:55.041455+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -511,17 +511,17 @@
       "schedule_display": "0 0 * * *",
       "repeat": {
         "times": null,
-        "completed": 5
+        "completed": 6
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-27T12:46:17.963804+00:00",
-      "next_run_at": "2026-08-02T00:00:00+00:00",
-      "last_run_at": "2026-08-01T00:00:42.829008+00:00",
+      "next_run_at": "2026-08-03T00:00:00+00:00",
+      "last_run_at": "2026-08-02T00:00:21.125627+00:00",
       "last_status": "error",
-      "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'openai-codex' -> 'xai-oauth'; model 'gpt-5.6-terra' -> 'grok-build-0.1'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=7b74334921e6 provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
+      "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'openai-codex' -> 'xai-oauth'; model 'gpt-5.6-terra' -> 'grok-4.5'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=7b74334921e6 provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -557,15 +557,15 @@
       "schedule_display": "every 30m",
       "repeat": {
         "times": null,
-        "completed": 189
+        "completed": 235
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-28T12:38:06.628044+00:00",
-      "next_run_at": "2026-08-01T14:30:37.312089+00:00",
-      "last_run_at": "2026-08-01T14:00:37.312089+00:00",
+      "next_run_at": "2026-08-02T14:10:06.326399+00:00",
+      "last_run_at": "2026-08-02T13:40:06.326399+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -627,5 +627,5 @@
       "workdir": null
     }
   ],
-  "updated_at": "2026-08-01T14:00:37.312332+00:00"
+  "updated_at": "2026-08-02T14:00:04.582014+00:00"
 }

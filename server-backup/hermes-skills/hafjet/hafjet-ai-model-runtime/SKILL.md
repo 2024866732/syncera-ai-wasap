@@ -79,6 +79,71 @@ Performance on i3-2100: ~1.5s/image (detection 1.16s + recognition 0.32s). Malay
 
 Full setup details in `references/ocr.md`.
 
+## Ollama on Limited RAM Servers (≤4GB)
+
+When deploying local LLMs on small servers (UpCloud trial 2C/4GB, Azure B1s 1GB+swap), Ollama is the easiest path but has strict RAM limits.
+
+### Installation
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+### RAM Limits by Model Size
+| Model | Size | Min RAM Needed | Notes |
+|-------|------|----------------|-------|
+| gemma:2b | 1.5 GB | 2.5 GB | Safest on 4GB server |
+| llama3.2:3b | 2.0 GB | 3.0 GB | Tight on 4GB with other services |
+| phi3:mini | 2.2 GB | 3.5 GB | Will OOM on 4GB if services running |
+
+### CRITICAL: OOM Pitfall
+On a 3.8GB server with Docker containers (Postgres, n8n, monitoring), loading a 3B+ model triggers OOM kill. The kernel OOM killer targets Ollama because it's the largest memory consumer.
+
+**Symptoms:**
+- `journalctl -u ollama` shows: `The kernel OOM killer killed some processes in this unit`
+- Model loads partially then connection drops (curl exit code 52 = empty reply)
+
+**Fix — Free RAM before loading model:**
+```bash
+# Stop non-essential containers
+docker stop hafjet-stack-n8n-1          # ~200MB
+docker stop monitoring-grafana-1        # ~200MB
+docker stop monitoring-cadvisor-1       # ~50MB
+
+# Configure Ollama for low RAM
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+cat << 'EOF' | sudo tee /etc/systemd/system/ollama.service.d/override.conf
+[Service]
+Environment=OLLAMA_NUM_PARALLEL=1
+Environment=OLLAMA_MAX_LOADED_MODELS=1
+Environment=OLLAMA_CONTEXT_LENGTH=2048
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+```
+
+**Verify model loaded:**
+```bash
+curl -s http://localhost:11434/api/ps  # Should show loaded model
+free -h                                 # Check available RAM
+```
+
+### SSH Session Overload Pitfall
+Running Ollama inference via SSH can hang the connection (CPU-heavy, blocks SSH banner exchange). If SSH stops responding after an Ollama test:
+1. Wait 60s for inference to complete
+2. If still stuck, restart server via UpCloud API (hard stop + start)
+3. Configure Ollama to bind `0.0.0.0:11434` for remote API access instead of SSH tunneling
+
+### Test Inference via API
+```bash
+# Short test (50 tokens max)
+curl -s --max-time 120 http://localhost:11434/api/generate \
+  -d '{"model":"llama3.2:3b","prompt":"Say hi","stream":false,"options":{"num_predict":20}}'
+
+# Chat API
+curl -s --max-time 120 http://localhost:11434/api/chat \
+  -d '{"model":"llama3.2:3b","messages":[{"role":"user","content":"Hi"}],"stream":false}'
+```
+
 ## References
 - `references/malaysian-tts.md` — full run recipe, dependency list, speaker list, limitations, license status.
 - `references/ocr.md` — RapidOCR setup, PaddlePaddle crash workaround, test results.
