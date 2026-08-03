@@ -205,6 +205,20 @@ regenerates tokens. The working credentials live in
 3. Maps `WHATSAPP_PHONE_ID` → `WHATSAPP_CLOUD_PHONE_ID`
 4. Maps `WHATSAPP_ACCESS_TOKEN` → `WHATSAPP_CLOUD_ACCESS_TOKEN`
 
+### Verified cron runner (2026-08-03) — `scripts/hafjet_pickup_runner.py`
+The direct-export approach for cron is now automated in
+`scripts/hafjet_pickup_runner.py` (replaces the broken `run_pickup_reminder.py`
+wrapper which times out silently). It:
+1. Reads WhatsApp creds from `~/.hermes/whatsapp-bot/.env` (valid Phone ID
+   `1089032617637482`) and maps them to `WHATSAPP_CLOUD_*` names
+2. Injects known-good constants: sheet ID, SA path, tab, owner, status value `SIAP`
+3. Strips stale `COLUMN_NAME_*` overrides from the environment
+4. Runs the pickup script via the venv python (`~/hermes-agent/venv/bin/python3`)
+Usage: `python3 scripts/hafjet_pickup_runner.py` (live) or `--dry` (test) or
+`--max N` (chunk). Verified: 606 sent / 15 failed (13 no-phone + 2 dual-number
+400s) / 0 × 470, exit 0, ~9.5 min for full batch.
+**Note:** log file for each run: `~/.hermes/logs/pickup_run_<ts>.log`.
+
 **⚠️ Wrapper timeout bug (2026-07-24):** The wrapper uses `exec(open(script).read())`
 which produces **no stdout** and exits with code 124 (timeout) after 120s.
 Root cause TBD. **Do not rely on the wrapper for cron runs.** Use direct export

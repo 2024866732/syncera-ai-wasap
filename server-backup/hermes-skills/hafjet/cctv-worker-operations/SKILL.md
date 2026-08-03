@@ -17,6 +17,12 @@ Use for HAFJET CCTV worker incidents, dashboard/API discrepancies, face-crop/D.6
 - Treat gender/age only as non-identifying estimates; never infer identity or trigger action from them.
 - Offline tests must use stored snapshots/crops only. Do not open a live RTSP stream, import the production worker, or write production DB/data unless separately approved.
 
+## Resource model (Office PC vs Hermes VPS)
+
+- **Office PC** (`100.121.94.41` / `hafjet-pc-office`): Intel i3-2100 **2C/4T**, **16 GB RAM** — runs `cctv-worker`, `xiaomi-ingest`, Frigate evaluation.
+- **Hermes Azure VPS**: **1 GB + 4 GB swap** — agent host only. **Never size Frigate or worker resource plans against the VPS 1 GB figure.**
+- With worker + ingest running, Office PC often still has **~14–15 GiB available**. Extra video AI bottleneck is usually **CPU**, not RAM.
+
 ## Dashboard/API parity diagnosis
 
 When a dashboard renders a placeholder despite an API/DB value, trace one exact event through four layers before proposing a patch:
@@ -148,16 +154,47 @@ Example at 937 MiB escalation:
 
 The approved helper `/home/hafizi145/restart-cctv.sh` exits `1` when its **Dashboard Column Check** expects a stale UI marker. This is a **helper bug, not a service failure**. Post-restart evidence (new PID, health 200, MemoryCurrent ~290 MiB, API responding) is the ground truth. Record helper exit code separately; never treat non-zero helper exit as restart failure if service checks pass.
 
+### Option A + C DNN mitigation (implemented 2026-08-03)
+
+Details: `references/dnn-memory-mitigation-option-a-c.md` and `references/option-a-timer-install.md`.
+
+- **Option C (production):** `app/vision/face_attr.py` loads age+gender nets **per** `predict_age_gender` call and unloads in `finally` (`del` + `gc.collect()`). Never restore module-level `_age_net` / `_gender_net` lazy cache. Backup: `face_attr.py.before-optionc`. **`main.py` unchanged** (signature stable).
+- **Prove C is live:** journal (redacted) must show `Age+gender DNN models loaded for single inference (unload after)` immediately before each `Face attr:` — one load per inference, not a single lifetime load.
+- **Option A (safety valve):** unit sources at `~/projects/hafjet-cctv-worker/systemd/cctv-worker-restart.{service,timer}` — 6-hourly `OnCalendar=00,06,12,18 UTC`. Installing into `/etc/systemd/system/` needs **interactive TTY sudo**; BatchMode fails. Scoped sudoers = restart/status only.
+- **Option A LIVE (verified 2026-08-03):** systemd timer **enabled** in `/etc/systemd/system/cctv-worker-restart.{service,timer}` (A1 6-hourly + RandomizedDelaySec=300). User installed via TTY sudo; agent BatchMode cannot copy into `/etc`. **Cron fallback removed** after timer install — do not re-add crontab while timer is enabled (double restart). Optional leftover wrapper `~/.local/bin/cctv-worker-scheduled-restart.sh` is inert if not in crontab. Verify: `systemctl list-timers | grep cctv-worker-restart`.
+- **Post-C RSS:** baseline after approved restart ~260–350 MB; brief MemoryPeak spikes on early inferences OK. Keep slope watch vs Face attr count; ≥900 MB remains alert-only outside timer or explicit approval.
+
 ### Multi-camera readiness preflight
 
-A second camera is normally a code-architecture decision, not a config-only addition. Before proposing it, apply the read-only preflight in `references/multicamera-readiness.md`. Keep it deferred while the single-camera RSS lifecycle remains unresolved.
+A second camera is normally a code-architecture decision, not a config-only addition. Before proposing it, apply the read-only preflight in `references/multicamera-readiness.md`. Keep multi-cam worker expansion gated while validating Option C RSS slope and Frigate 1-cam soak CPU headroom (Option A timer already enabled as ceiling).
 
-### Tapo storage + C560WS (2026-08-01)
+### Tapo storage + C560WS (updated 2026-08-03)
 
 - No Tapo Storage Hub (budget). Path = RTSP worker → `/mnt/cctv`, **not** Xiaomi Samba.
 - Expand order: **event clips first** (not continuous).
-- TC74 RTSP OK (`CAMERA_1`). C560WS needs RTSP ON + Camera Account + LAN IP before add; still multi-cam architecture gate.
+- **TC74 entrance:** `192.168.1.94` RTSP **`stream1`** (`CAMERA_1`).
+- **C560WS outdoor (luar kedai):** `192.168.1.226` RTSP **`stream1`** (user-corrected 2026-08-03; an earlier `stream2` note was wrong — **re-verify path each session**, TP-Link paths vary by model). On-device facial recognition is **app-trapped** (no reliable ONVIF face-ID export).
+- **C560WS 401 pitfall (2026-08-03):** 401 on ALL stream/usernames = device RTSP "Camera Account" not enabled or wrong password — fix on-device in Tapo app (Advanced Settings → Camera Account), re-test with ffmpeg, THEN update `.env`. **After 3–4 consecutive 401s STOP probing** — TP-Link applies a temporary IP-based lockout; every extra attempt extends it (VLC from a laptop with a different IP can still work while the server is locked). Rule out IP conflict first by matching `arp` MAC on both hosts + OUI lookup. Full ladder + lockout evidence: `references/frigate-cpu-only-deploy.md` → "Camera auth diagnosis" + "IP lockout discovery".
+- Still multi-cam **architecture** gate for cctv-worker; do not add a second live RTSP path without redesign + approval.
 - Never bind Tapo into Mi Home share `xiaomi-nas`.
+- **Dashboard SSH tunnels:** open `-L` from the **laptop**, not from an already-SSH session on the Office PC (server→server loop causes bind “Address already in use” / browser connection refused).
+- **EZVIZ CS-C6N:** indoor human detection/tracking only — **no facial recognition**; do not market it as face-ID for HAFJET integration.
+
+### Frigate 1-cam soak (updated 2026-08-03)
+
+See `references/frigate-cpu-only-deploy.md` (full deploy/tune/soak procedure) and `references/frigate-1cam-soak-prep.md`.
+
+- Purpose: browser **live view** (+ optional motion record), not a silent swap for worker D.3–D.6.
+- Files: `~/frigate/` (`docker-compose.yml`, `config/config.yml`, `.env`). Media `/mnt/cctv/frigate/media`.
+- **Defaults:** detect **1280×720 @ 3 fps** (optimised from 5 after soak — see tuning table below), CPU `num_threads: 2`, person-only, MQTT/birdseye off, `restart: "no"`, ports **`127.0.0.1:5000`** / `127.0.0.1:8554`.
+- **Camera 3 (C560WS) state (2026-08-03):** user approved the 2-cam draft (`config/config.yml.c3-draft`, 960×540 @ 2 fps, person-only) → applied + `docker compose restart` — **restart was approved and executed**. `outdoor_shop` came up but ffmpeg died on **401** (Camera Account auth). Frigate itself stayed healthy; `entrance` kept streaming. Multi-cam remains **blocked on auth resolution + soak re-verify**, not on draft approval. Do not assume draft re-application is needed; fix auth, ONE ffmpeg test, then restart.
+- Secrets in `.env` only; username may need `%40`. Mount **`./config:/config` once**.
+- Double RTSP on TC74: monitor worker PID/health/reconnect; stop Frigate on reconnect storm or worker ≥900 MB.
+- **CPU tuning (measured i3-2100, TC74 720p):** 5 fps → **~224–254%** (process_fps lags camera_fps, skip non-zero) — too hot. **3 fps → ~48–75%**, process_fps 3.0–3.1, skipped_fps ~0 — **recommended**. 2nd camera draft = **960×540 @ 2 fps, person only**.
+- Frigate RAM ~0.7–0.8 GiB is normal; host has ~14–15 GiB free. **CPU is the gate, not RAM.**
+- Frigate 0.17+ may create default `admin` password in logs on first boot; early `/api` 500 while FastAPI starts is normal for ~30–60s.
+- Never `docker compose up` without explicit soak approval **after** config review.
+- Config-change flow: draft to `config/config.yml.c3-draft` → show full content → wait for written apply approval → copy + `docker compose restart`.
 
 ## Xiaomi NAS / file-ingest boundary (added 2026-08-01)
 

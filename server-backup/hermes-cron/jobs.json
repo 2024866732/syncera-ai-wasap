@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 47
+        "completed": 48
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-08-03T07:00:00+00:00",
-      "last_run_at": "2026-08-02T07:02:36.595670+00:00",
+      "next_run_at": "2026-08-04T07:00:00+00:00",
+      "last_run_at": "2026-08-03T07:02:33.769828+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -63,15 +63,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 43
+        "completed": 44
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-08-03T13:00:00+00:00",
-      "last_run_at": "2026-08-02T13:00:38.393721+00:00",
+      "next_run_at": "2026-08-04T13:00:00+00:00",
+      "last_run_at": "2026-08-03T13:01:04.939351+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -106,15 +106,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 38
+        "completed": 39
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-08-03T14:00:00+00:00",
-      "last_run_at": "2026-08-01T14:01:12.239809+00:00",
+      "next_run_at": "2026-08-04T14:00:00+00:00",
+      "last_run_at": "2026-08-02T14:00:32.561488+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -149,15 +149,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 37
+        "completed": 38
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-08-03T09:00:00+00:00",
-      "last_run_at": "2026-08-02T09:01:16.520494+00:00",
+      "next_run_at": "2026-08-04T09:00:00+00:00",
+      "last_run_at": "2026-08-03T09:01:13.723084+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -192,15 +192,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 31
+        "completed": 32
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-08-03T09:00:00+00:00",
-      "last_run_at": "2026-08-02T09:01:10.793587+00:00",
+      "next_run_at": "2026-08-04T09:00:00+00:00",
+      "last_run_at": "2026-08-03T09:01:06.740460+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -237,15 +237,15 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 23
+        "completed": 24
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-08-03T03:00:00+00:00",
-      "last_run_at": "2026-08-02T03:15:14.531536+00:00",
+      "next_run_at": "2026-08-04T03:00:00+00:00",
+      "last_run_at": "2026-08-03T03:24:37.688638+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -283,15 +283,15 @@
       "schedule_display": "0 15 * * *",
       "repeat": {
         "times": null,
-        "completed": 19
+        "completed": 20
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-14T17:05:27.034793+00:00",
-      "next_run_at": "2026-08-02T15:00:00+00:00",
-      "last_run_at": "2026-08-01T15:00:56.494237+00:00",
+      "next_run_at": "2026-08-03T15:00:00+00:00",
+      "last_run_at": "2026-08-02T15:00:27.861441+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -395,55 +395,6 @@
       "fire_claim": null
     },
     {
-      "id": "2aeb2f897d8d",
-      "name": "cctv-baseline-6h-monitor",
-      "prompt": "You are a passive monitoring agent for the HAFJET CCTV Worker on office PC 100.121.94.41. Run read-only checks only. Do NOT restart services, edit files/configurations, download models, rotate/delete logs, alter retention, expose the API, or make any HAFJET/Azure/WhatsApp/Telegram changes.\n\nUse SSH as hafizi145. First test connectivity. If unreachable, report that clearly and stop.\n\nCheck and report, with every time shown as UTC plus MYT (UTC+8):\n1) Worker: exact scoped command `sudo -n /usr/bin/systemctl status cctv-worker` (no extra systemctl args). Report active state, PID, uptime, memory/peak where visible.\n2) API health: curl `http://127.0.0.1:8091/health`.\n3) Dashboard: HTTP status for `/dashboard`; verify visible HTML labels `Time (MYT)`, `Gender (est.)`, `Age (est.)`; do not claim a label exists without checking.\n4) CSV: HTTP status for `/api/events/csv` and verify its header contains `Face Snapshot`.\n5) Event data: inspect recent events, count total, events with face_snapshot_path, and post-D.6 events with gender+age. Clearly distinguish historical pre-D.6 missing attributes from any post-D.6 gaps.\n6) Face crops: file count and total disk usage of `/mnt/cctv/faces/`.\n7) Resources: worker CPU/RSS plus systemd memory/peak. Track trend against prior known baseline: CPU about 45\u201347%, RSS around 296\u2013435 MB. Escalate if RAM rises continuously across reports without plateau, if RSS exceeds 600 MB, or CPU sustains above 80%.\n8) Security: inspect only NEW/latest worker journal lines for RTSP URLs and report masked vs unmasked counts without printing credentials. Expected new format contains `:***@`. Escalate immediately if an unmasked credential appears. Do NOT modify journal history.\n9) Errors/anomalies: count recent ERROR/Traceback/Exception lines; separately report RTSP/decode/disconnect warnings as known Tapo TC74 camera-firmware behaviour unless materially worse. Escalate crashes, worker inactive/restarts, API failure, security exposure, or significant resource spike.\n10) Retention: use read-only `systemctl list-timers cctv-face-retention.timer --no-pager` (non-sudo) and report next run, expected daily 20:00 UTC / 04:00 MYT.\n\nPrivacy: no facial recognition, identity matching, watchlists, embeddings, or biometric tracking. Gender/age remain display-only AI estimates (known ~75% accuracy; not facts). Keep report concise and factual. If all stable, state BASELINE STABLE; otherwise clearly state ESCALATION REQUIRED and why.",
-      "skills": [],
-      "skill": null,
-      "model": "deepseek-v4-flash-free",
-      "provider": "opencode",
-      "provider_snapshot": null,
-      "model_snapshot": null,
-      "base_url": null,
-      "script": null,
-      "no_agent": false,
-      "context_from": null,
-      "schedule": {
-        "kind": "interval",
-        "minutes": 360,
-        "display": "every 360m"
-      },
-      "schedule_display": "every 360m",
-      "repeat": {
-        "times": 28,
-        "completed": 25
-      },
-      "enabled": true,
-      "state": "scheduled",
-      "paused_at": null,
-      "paused_reason": null,
-      "created_at": "2026-07-24T10:08:48.617035+00:00",
-      "next_run_at": "2026-08-02T18:51:55.041455+00:00",
-      "last_run_at": "2026-08-02T12:51:55.041455+00:00",
-      "last_status": "ok",
-      "last_error": null,
-      "last_delivery_error": null,
-      "deliver": "origin",
-      "origin": {
-        "platform": "telegram",
-        "chat_id": "1485374469",
-        "chat_name": "Hafizi",
-        "thread_id": "27726",
-        "user_id": "1485374469"
-      },
-      "enabled_toolsets": [
-        "terminal"
-      ],
-      "workdir": null,
-      "run_claim": null,
-      "fire_claim": null
-    },
-    {
       "id": "938acee3db9b",
       "name": "SPX Autopilot Summary to Telegram",
       "prompt": "",
@@ -511,15 +462,15 @@
       "schedule_display": "0 0 * * *",
       "repeat": {
         "times": null,
-        "completed": 6
+        "completed": 7
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-27T12:46:17.963804+00:00",
-      "next_run_at": "2026-08-03T00:00:00+00:00",
-      "last_run_at": "2026-08-02T00:00:21.125627+00:00",
+      "next_run_at": "2026-08-04T00:00:00+00:00",
+      "last_run_at": "2026-08-03T00:00:15.951374+00:00",
       "last_status": "error",
       "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'openai-codex' -> 'xai-oauth'; model 'gpt-5.6-terra' -> 'grok-4.5'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=7b74334921e6 provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
       "last_delivery_error": null,
@@ -557,15 +508,15 @@
       "schedule_display": "every 30m",
       "repeat": {
         "times": null,
-        "completed": 235
+        "completed": 282
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-28T12:38:06.628044+00:00",
-      "next_run_at": "2026-08-02T14:10:06.326399+00:00",
-      "last_run_at": "2026-08-02T13:40:06.326399+00:00",
+      "next_run_at": "2026-08-03T14:21:18.309631+00:00",
+      "last_run_at": "2026-08-03T13:51:18.309631+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -627,5 +578,5 @@
       "workdir": null
     }
   ],
-  "updated_at": "2026-08-02T14:00:04.582014+00:00"
+  "updated_at": "2026-08-03T14:00:16.576492+00:00"
 }

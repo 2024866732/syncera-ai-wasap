@@ -1,0 +1,82 @@
+Cronjob Response: cctv-baseline-6h-monitor
+(job_id: 2aeb2f897d8d)
+-------------
+
+Semua check siap, Tuan Hafizi. Laporan penuh di bawah — bacaan pada 2026-08-03 07:10 UTC (15:10 MYT).
+
+---
+
+# 📡 HAFJET CCTV Worker — Laporan Pemantauan Berkala
+**Host:** hafjet-pc-office (100.121.94.41) · **Masa laporan:** 2026-08-03 07:10 UTC / 15:10 MYT
+
+## Kesimpulan: ✅ BASELINE STABLE
+
+Tiada crash, tiada pendedahan kredential, tiada spike sumber melebihi ambang. **Satu notis**: worker restart bersih jam 06:55:40 UTC, dan 2 label dashboard tak sepadan spec (`Gender (est.)` / `Age (est.)` tak wujud verbatim). Butiran di bawah.
+
+---
+
+### 1) Worker — ACTIVE (running)
+| Item | Nilai |
+|---|---|
+| Active state | `active (running)` sejak **2026-08-03 06:55:40 UTC (14:55:40 MYT)**; uptime ~15 min |
+| PID | 697474 (`python -m app.main`) |
+| Memory | 360.1M (peak **533.2M**) |
+| CPU (total) | 2 min 38.6 s |
+| NRestarts | **0** |
+
+⚠️ **Notis restart:** unit dihentikan & dimulakan semula secara bersih jam 06:55:40 UTC (`Deactivated successfully`, tiada jejak crash). Instance lama berjalan 1d 21h 37m, guna 20h 57m CPU, peak memori seumur hidup 779.5M. Nampak macam restart berjadual/deploy, bukan kegagalan.
+
+### 2) API Health — OK
+`HTTP 200` · `{"status":"ok","camera_configured":true,"camera_enabled":true,"camera_name":"entrance","free_disk_gb":340.0,"free_disk_pct":92.4,"models_present":true}`
+
+### 3) Dashboard — HTTP 200, tapi label tak sepadan spec
+- ✅ `Time (MYT)` — **jumpa**
+- ❌ `Gender (est.)` — **TIDAK jumpa verbatim** (0 match)
+- ❌ `Age (est.)` — **TIDAK jumpa verbatim** (0 match)
+
+Kolum wujud tetapi dilabel `Gender` dan `Age` sahaja (dengan tooltip *"AI estimate, ±5 years accuracy"*). Ini deviasi pelabelan, bukan kerosakan fungsi — dashboard render OK.
+
+### 4) CSV — OK
+`HTTP 200` · Header: `Event ID,Camera,Type,Timestamp (UTC),Confidence,Snapshot,Face Snapshot` → ✅ mengandungi `Face Snapshot`
+
+### 5) Event Data — 1,071 jumlah, tiada gap post-D.6
+- **Jumlah event:** 1,071 (tertua 2026-07-23T11:38 UTC, terbaru 2026-08-03T06:58 UTC)
+- **Dengan `face_snapshot_path`:** 456 · **Dengan gender+age:** 381
+- **Marker D.6 (data-derived):** first gender+age = **2026-07-27T04:16:49 UTC**; first face crop = 2026-07-25T08:11:31 UTC
+- **Post-D.6** (819 event): 381 ada face, 381 ada gender+age, **0** event ada face tapi tiada anggaran → ✅ tiada gap sebenar post-D.6. 438 event tanpa face = deteksi low-confidence/tanpa muka (normal)
+- **75 event sepanjang masa** ada face tapi tiada gender+age — kesemuanya era pre-D.6 (25–27 Jul), **sejarah, dijangka**
+
+### 6) Face Crops — OK
+`/mnt/cctv/faces/` → **456 fail, 11 MB** (konsisten dengan 456 event ber-face)
+
+### 7) Resources — dalam baseline
+| Metrik | Kini | Baseline | Status |
+|---|---|---|---|
+| RSS | **357.5 MB** (systemd 360.1M) | 296–435 MB | ✅ dalam julat |
+| Peak (instance kini) | 533.2 MB | < 600 MB ambang | ✅ |
+| CPU | **51.9%** (instant) | 45–47% | ✅ jauh bawah 80% |
+
+Tiada kenaikan berterusan diperhatikan (satu sampel). Nota konteks: peak lama 779.5M adalah instance sebelumnya (pra-restart); instance kini dalam julat normal.
+
+### 8) Security — ✅ 0 kredential terdedah
+- 600 baris journal disemak: **97 baris RTSP, 97 masked (`:***@`), 0 unmasked**
+- Post-restart: 3 baris RTSP, 0 unmasked
+- Format `rtsp://hafizi145%40gmail.com:***@192.168.1.94:554/stream1` — mask berfungsi
+
+### 9) Errors / Anomalies — tiada escalation
+- ERROR/Traceback/Exception: **0** (600-baris & post-restart)
+- 210 baris amaran RTSP/decode/disconnect dalam 600 baris terakhir; post-restart: 12 baris noise h264 + 1 kitaran disconnect/reconnect (07:07:56 UTC) — **tingkah laku firmware Tapo TC74 yang diketahui**, frekuensi sama/rendah berbanding corak pra-restart (06:43/06:45/06:51). Tidak material lebih teruk
+
+### 10) Retention Timer — on schedule ✅
+- **Next run:** Mon **2026-08-03 20:00:00 UTC (04:00 MYT 04-Ogos)**, 13 jam lagi
+- **Last run:** 2026-08-02 20:00:27 UTC — tepat jadual harian 20:00 UTC / 04:00 MYT
+
+---
+
+### Notis untuk tindakan Tuan (tiada tindakan diambil — read-only)
+1. **Restart worker 06:55:40 UTC** — kemungkinan deploy/jadual; sahkan jika Tuan yang initiate. NRestarts=0, tiada crash.
+2. **Label dashboard** — spec sebut `Gender (est.)` / `Age (est.)`, tetapi HTML gunakan `Gender` / `Age`. Jika perlu penyeragaman label, itu perubahan kod — perlukan arahan Tuan dulu.
+
+*Peringatan privasi: anggaran gender/umur kekal paparan AI sahaja (~75% ketepatan, bukan fakta). Tiada biometrik/pengenalpastian identiti dilakukan.*
+
+To stop or manage this job, send me a new message (e.g. "stop reminder cctv-baseline-6h-monitor").

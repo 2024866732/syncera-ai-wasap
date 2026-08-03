@@ -1,10 +1,8 @@
-PC Office: 100.121.94.41 Tailscale, i3-2100, 16GB, Ubuntu 26.04. Buzz relay RUNNING ws://100.121.94.41:3000. Hermes v0.19.0 :9119 auth. LiteLLM :4000. SOP: no curl|bash, uv not pip, sudo needs pwd.
+PC Office: 100.121.94.41 Tailscale, i3-2100 2C/4T, 16GB RAM, Ubuntu 26.04. (1GB+4GB swap = Azure Hermes VPS only, NOT Office PC.)
 §
 HAFJET ops ref: /home/hafizi145/HAFJET-Operating-Manual-v1.md; Tuan approval overrides.
 §
-CRITICAL: cctv-worker restarts need explicit Tuan approval only. Never auto-restart.
-§
-CCTV: Cam2 deferred RSS. Tapo no Hub—worker RTSP→/mnt/cctv; event-clip first; TC74 OK; C560WS wait RTSP. Xiaomi Samba separate from Tapo.
+CCTV: worker restart needs approval except Opt A 6h timer cctv-worker-restart /etc (00/06/12/18 UTC). Opt C live: face_attr load/unload D.6. TC74 .94/s1; C560WS .226/s1 (VLC ok, Frigate 401); C6N indoor. Frigate 0.17.2 :5000 loopback 1-cam soak 720p@3fps; C560WS draft 540p@2fps pending. Multi-cam gated. No pkill app.main.
 §
 Composio Gmail+GitHub active. SuperGrok Orchestrator modes: Research/Content/Strategy/Automation/Copy. SuperGrok=research+image/video; DeepSeek=cheap write. Output: practical BM, 2+ angles, copy-paste ready, freeze drafts until revise.
 §
@@ -20,4 +18,4 @@ n8n hafjet-n8n :5678, compose ~/.n8n/, docker `sg docker -c`, compose bin ~/.loc
 §
 TTS: provider edge, voice ms-MY-YasminNeural (Melayu MY perempuan). xAI TTS tiada ms.
 §
-Xiaomi CCTV NAS WORKS: Samba 192.168.1.252 xiaomi-nas/smbcam @ /mnt/cctv/xiaomi-nas (ACL smbcam +x on /mnt/cctv; never IPC$). Oray X1 112081250984 USB RMA parallel. Ingest P1 APPROVED: sibling :8092 meta+thumb; code ~/.hermes/cache/documents/xiaomi-ingest/; no worker restart.
+Xiaomi NAS Samba 192.168.1.252→/mnt/cctv/xiaomi-nas. Ingest P1 :8092 LIVE prod recordings path+DB. Passive monitors: final/critical/≥900MB/crash/blocker only. SSH tunnels from laptop not server.
