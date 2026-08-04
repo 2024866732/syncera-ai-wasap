@@ -183,6 +183,10 @@ nohup cloudflared tunnel --url http://localhost:5678 > /tmp/cloudflared.log 2>&1
 
 Full guide (named tunnels, n8n-specific N8N_PROXY_HOPS, verification): `references/cloudflare-tunnel.md`
 
+**HAFJET n8n + Telegram Content Automation** — Production setup with Named Tunnel:
+- `references/n8n-telegram-content-automation.md` (in hafjet-infra-setup skill)
+- Covers: workflow nodes, inline keyboard, webhook migration, Generate Content node options, testing protocol
+
 **Critical for n8n behind any reverse proxy (Quick Tunnel or named):**
 - `WEBHOOK_URL=<full-tunnel-url>` (exactly as shown in logs, NO trailing `/webhook` or path)
 - `N8N_PROXY_HOPS=1` (mandatory for correct webhook URLs and client IP)
@@ -682,6 +686,28 @@ docker exec <db-container> psql -U <user> -d <db> -c "\dt"
 
 **Also check:** If the schema file appears as a directory (`file schema.sql → directory`), it means Docker created a directory mount instead of a file mount. Fix: remove the directory, copy the actual file, recreate the volume.
 
+### UpCloud account suspension (NOT just zone capacity)
+
+**Symptom:** UpCloud account completely locked. Email: "Your UpCloud account has been temporarily suspended." Server unreachable, API returns 403, Tailscale loses connectivity.
+
+**Root cause:** UpCloud suspends trial accounts for: invalid personal info, payment method issues, multiple accounts, or "inappropriate use" (even legitimate business trials).
+
+**Impact:** ALL data on server is lost instantly. No grace period. Tailscale connected to the server also goes offline.
+
+**Recovery:** Email abuse@upcloud.com to appeal. Response time: 1-3 business days. No guarantee of reinstatement.
+
+**Prevention:**
+- Backup ALL data to GitHub/private repo before trial ends
+- Use real, consistent personal information
+- Don't create multiple accounts
+- Have a migration plan ready (Hetzner CX22 €3.99/mo, Oracle Free, AWS Free Tier)
+- Treat trial servers as ephemeral — code and configs should be reproducible
+
+**Migration path when UpCloud dies:**
+1. Check GitHub backups: `gh repo list 2024866732 --limit 10`
+2. Deploy to alternative (Hetzner, Oracle, AWS)
+3. Restore from backup + re-deploy Docker stacks
+
 ### UpCloud zone capacity unavailable (SERVER_RESOURCES_UNAVAILABLE)
 
 **Symptom:** `UpCloudAPIError: SERVER_RESOURCES_UNAVAILABLE` when starting or creating a server.
@@ -873,6 +899,7 @@ cd backups-$(date +%Y%m%d) && tar xzf config.tar.gz -C ~/.hermes/
 
 ## Related references
 
+- `references/hafjet-8-project-deployment.md` — Full 8-project deployment pattern (Inventory, CRM, Analytics, MultiChannel, Marketing, Supplier, Knowledge + Command Center). Port allocation, RAM budget, per-stack Docker Compose template, schema init, Tailscale access, migration pattern.
 - `references/upcloud-deployment.md` — UpCloud Python SDK, server lifecycle, zone capacity, SSH key injection, performance benchmarks
 - `references/cloudflare-tunnel.md` — Cloudflare Tunnel Quick + Named tunnel setup for public HTTPS
 - `references/fastapi-route-ordering.md` — FastAPI route registration order pitfall (literal vs parameterized)

@@ -254,6 +254,129 @@ When a HAFJET operating manual is designated as the primary reference, treat it 
 3. Keep unfinished controls visibly separate from verified work (for example: pending permission hardening, uncreated worker directories, unmounted backup storage, and unapproved listener changes).
 4. After applying an approved diff, re-read the changed section and deliver the updated document. The newest explicit instruction from Tuan still overrides the manual.
 
+## n8n + Cloudflare Named Tunnel + Telegram Webhook (Aug 2026)
+
+Production-ready setup for HAFJET Content Automation workflow with stable hostname.
+
+### Architecture
+- **n8n**: Docker Compose on HAFJET-Hermes-Server (Azure VPS), port 5678
+- **Cloudflare Named Tunnel**: `hafjet-n8n` → `https://n8n.hafjet.my`
+- **Cloudflare Zero Trust Free**: 0/50 seats, $0/month
+- **Telegram Bot**: Webhook at `https://n8n.hafjet.my/webhook/<JOB_ID>/webhook`
+- **Workflow**: `HAFJET Content Automation` (17 nodes, active)
+
+### Key Configurations
+
+**n8n .env & docker-compose.yml (must align):**
+```env
+WEBHOOK_URL=https://n8n.hafjet.my
+N8N_HOST=n8n.hafjet.my
+N8N_PROTOCOL=https
+N8N_PROXY_HOPS=1
+N8N_BASIC_AUTH_ACTIVE=true
+N8N_BASIC_AUTH_USER=hafizi145
+N8N_BASIC_AUTH_PASSWORD=***
+N8N_OWNER_EMAIL=hafizi145@gmail.com
+TZ=Asia/Kuala_Lumpur
+```
+
+**Cloudflare Tunnel systemd service (/etc/systemd/system/cloudflared.service):**
+```ini
+[Unit]
+Description=Cloudflare Tunnel - hafjet-n8n
+After=network.target
+
+[Service]
+Type=simple
+User=hafizi145
+ExecStart=/usr/local/bin/cloudflared tunnel run --token <TOKEN>
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**DNS at Cloudflare (Full setup):**
+- Type: CNAME (auto-created by Tunnel as "Tunnel" type)
+- Name: `n8n`
+- Target: `<TUNNEL_ID>.cfargotunnel.com`
+- Proxy: Proxied (orange cloud)
+
+**Split Tunnels (Device Profile → WARP Client):**
+- **Remove** `100.64.0.0/10` from Exclude list (CGNAT range required for Tunnel)
+- Keep `192.168.0.0/16` and `10.0.0.0/8` in Exclude (local LAN)
+- **Local Domain Fallback**: Ensure `n8n.hafjet.my` and `hafjet.my` NOT in list
+
+### Telegram Webhook Migration (Critical Steps)
+
+1. **Update n8n config** → WEBHOOK_URL to new domain
+2. **Deactivate → Activate** workflow "HAFJET Content Automation" (triggers auto-register)
+3. **Verify** with `getWebhookInfo`:
+   ```bash
+   curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
+   ```
+   - `url` must be `https://n8n.hafjet.my/...`
+   - `last_error_date` / `last_error_message` = empty
+   - `allowed_updates` includes `callback_query` (and `message` if using Telegram Trigger)
+
+### Workflow "HAFJET Content Automation" (17 nodes)
+
+| Node | Type | Purpose |
+|------|------|---------|
+| Send Draft to Telegram | telegram | Deliver draft + 10-button inline keyboard |
+| Telegram Callback Trigger | telegramTrigger | **Main inbound** (Restrict Chat ID: 1485374469) |
+| Answer Callback Query | telegram | Acknowledge button press |
+| Switch | switch | Route 8 callback actions |
+| Edit - Approved / Publish Success / Ask Revise / Regenerate Captions/Visual/Both / Ask New Schedule / Reject / Ask Manual Instruction | telegram | Response branches |
+
+**Inline Keyboard (10 buttons):** Approve Option 1/2, Revise, New Captions, New Visual, New Both, Change Schedule, Reject, Manual Instruction
+
+### Hermes Gateway Endpoint Discovery
+
+**Port 8787 (Gateway) — NOT 9119:**
+- Hermes gateway runs on `:8787` with API key auth (config: `gateway.api_key`)
+- Port 8080 = Web server (dashboard only)
+- Port 9119 = NOT listening (was assumption, wrong)
+
+**Cron fire endpoint (if using Hermes for content generation):**
+```
+POST http://host.docker.internal:8787/api/cron/fire
+Headers: Authorization: Bearer <API_KEY>
+Body: {"job_id": "<CRON_JOB_ID>"}
+```
+
+**No `/api/cron/hafjet-content-generate` endpoint exists in Hermes** — that was a placeholder.
+
+### Generate Content Node Options (n8n)
+
+| Option | Endpoint | Auth | Notes |
+|--------|----------|------|-------|
+| xAI API (Grok) | `https://api.x.ai/v1/chat/completions` | Bearer xAI API Key | Standard REST, text + image (grok-2-image) |
+| Hermes Cron Fire | `http://host.docker.internal:8787/api/cron/fire` | Bearer Hermes API Key | Requires pre-created cron job in Hermes |
+| SuperGrok | Web UI only (OAuth) | — | No programmatic API |
+
+**Recommended: xAI API direct** (has API key, standard REST).
+
+### Testing Checklist
+- [ ] `curl -I https://n8n.hafjet.my` → HTTP/2 200
+- [ ] `curl https://n8n.hafjet.my/healthz` → `{"status":"ok"}`
+- [ ] `systemctl status cloudflared` → active (running)
+- [ ] `getWebhookInfo` → URL = n8n.hafjet.my, no errors
+- [ ] Execute "Send Draft to Telegram" → draft + buttons arrive
+- [ ] Press "New Captions" / "Revise" → callback executes, routes correctly
+- [ ] **NO live publish** (Approve Option 1/2) during test
+
+### Pitfalls & Fixes
+
+| Issue | Fix |
+|-------|-----|
+| `curl: (7) Connection refused` on :9119 | Hermes gateway is on :8787, not :9119 |
+| "The connection cannot be established" in n8n HTTP Request | Use `host.docker.internal:8787` for Hermes, or `api.x.ai` for xAI |
+| Webhook still shows trycloudflare.com | Deactivate → Activate workflow; wait 5s |
+| `allowed_updates` only has `callback_query` | Normal for Callback Trigger only; add `message` if using Telegram Trigger |
+| Telegram message not sent from n8n | Check node "Send Draft to Telegram": Credential selected, Chat ID = 1485374469 |
+
 ## UpCloud Trial Deployment (Aug 2026)
 
 Tuan signed up for UpCloud 14-day $250 trial. Key learnings:
@@ -310,6 +433,14 @@ created = cm.create_server(server)
 - Created GitHub private repo `2024866732/hafjet-backups` with full system backup.
 - Local backup: `~/backups/pre-upcloud-trial/` with `RESTORE.sh`.
 - Includes: Hermes config, bot code, Azure settings, upcloud-trial scripts.
+
+## AWS Free Tier Deployment (Aug 2026)
+
+After UpCloud account suspension, migrated HAFJET projects to AWS Free Tier.
+Full deployment guide + RAM constraints: `references/aws-free-tier-deployment.md`
+
+Key lesson: t3.micro (911MB) cannot run 6 PostgreSQL + 6 APIs simultaneously.
+Either use 1 shared database or upgrade to t3.small (2GB).
 
 ## Hybrid topology (when PC is off most of the time)
 - Azure VPS (small) = public relay/proxy; PC-office = Hermes engine via Cloudflare Tunnel / Tailscale.

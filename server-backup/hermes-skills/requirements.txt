@@ -1,0 +1,18 @@
+# HAFJET Business Intelligence - Python Dependencies
+
+# Core
+supabase>=2.0.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+flask>=2.3.0
+
+# OCR & PDF
+pytesseract>=0.3.10
+pillow>=10.0.0
+pdfplumber>=0.10.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# System: apt-get install tesseract-ocr tesseract-ocr-msa poppler-utils

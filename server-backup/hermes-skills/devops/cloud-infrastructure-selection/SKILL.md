@@ -120,8 +120,31 @@ The Oracle Free Tier is **technically unbeatable at RM0**, but carries real risk
 | Need local latency (Malaysia) | **Hetzner CX22** (Singapore DC) — don't use Contabo |
 | Need massive storage/RAM on budget | **Contabo VPS S** — 8GB RAM, 200GB SSD, €5.99/mo |
 
+## AWS Free Tier (12 months)
+
+| Spec | Value |
+|---|---|
+| CPU | 2 vCPU (t3.micro) |
+| RAM | 1 GB |
+| Storage | 30 GB EBS |
+| Data Transfer | 100 GB/mo out |
+| Cost | **FREE for 12 months** |
+| Region | us-east-1 (Virginia) — ~200ms to Malaysia |
+
+**Strengths:** Reliable, well-documented, huge ecosystem. Good for learning AWS. Free RDS PostgreSQL (750 hrs/mo db.t3.micro).
+
+**Weaknesses:** Only 1GB RAM (can't run Ollama + services). High latency from Malaysia (no Singapore free tier). Credit card required. After 12 months, charges begin.
+
+**Use case:** Learning AWS, hosting lightweight APIs, CI/CD. NOT suitable for AI/LLM workloads on free tier.
+
+**Setup:** Create account → Launch EC2 t3.micro Ubuntu 24.04 → Upload SSH key → Deploy.
+
 ## Pitfalls
 
+- **UpCloud account suspension:** Trial accounts can be suspended for "invalid personal info", "multiple accounts", or "unauthorized payment method" — even if you did nothing wrong. Impact: ALL data on server is lost instantly. **Always backup to GitHub/external before trial ends.** Appeal to abuse@upcloud.com but response is slow. Confirmed Aug 2026: HAFJET account suspended mid-trial.
+- **AWS Free Tier RAM trap:** t3.micro = 1GB RAM only. Cannot run 6 PostgreSQL databases + 6 APIs simultaneously — server will hang/SSH timeout. **Rule of thumb:** each PG instance needs ~100MB + API ~50MB. With 1GB RAM, max 4-5 lightweight services. Either reduce to 1 shared PG database for all projects, or upgrade to t3.small (2GB).
+- **AWS SSH key format:** Newer AWS key pairs use OpenSSH format which may fail with `error in libcrypto` on older ssh clients. Fix: add final newline to .pem file, or convert with `ssh-keygen -p -m PEM`.
+- **AWS instance SSH timeout under load:** When all Docker images are being pulled simultaneously + containers starting, the t3.micro runs out of RAM and SSH hangs. Deploy services sequentially, not in parallel.
 - **Oracle Free termination:** Always have a migration plan. Accounts can be killed without notice. Backup to GitHub/external storage.
 - **Hostinger promo trap:** Promo price is 24-48 month commitment. Renewal is 2-3x. Read the checkout terms.
 - **Contabo latency:** No Singapore DC. If your users are in Malaysia, latency will be 150-200ms.

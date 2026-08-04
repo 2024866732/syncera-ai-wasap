@@ -78,3 +78,39 @@ Even after the user verified the correct Camera Account credentials and closed V
 4. **VLC-vs-ffmpeg is a diagnostic signal, not a contradiction:** same URL OK on laptop but 401 from server = lockout (or 1-session RTSP client limit if VLC is still streaming) — not a stream-format problem. Rule out IP conflict first via matching MACs.
 
 Also confirmed this session: user later stated C560WS RTSP path is **`stream1`** at `192.168.1.226:554` (earlier `stream2` was superseded by user correction), and the on-device facial recognition has **no reliable export** (app-trapped) — so Frigate/worker get plain person detection, never face-ID from the C560WS. **Re-verify the actual stream path from the user each session** — TP-Link camera path names are not consistent across models.
+
+## `.env` reload + multi-credential pitfall (2026-08-04, decisive)
+
+### `docker compose restart` does NOT reload `.env`
+
+After updating `~/frigate/.env`, `docker compose restart frigate` keeps the **old env inside the existing container** (`docker inspect frigate` showed stale `FRIGATE_RTSP_USER`). Fix: **`docker compose up -d --force-recreate`** (or `down` + `up -d`). Verify env actually landed:
+```bash
+docker inspect frigate --format '{{range .Config.Env}}{{println .}}{{end}}' | grep FRIGATE_RTSP
+```
+A `docker compose config | grep FRIGATE_RTSP` showing the new value does NOT prove the container has it — compose config resolves from the file, not the running container.
+
+### Two cameras with different credentials need separate env vars
+
+TC74 entrance used `hafizi145%40gmail.com` / (own password); C560WS uses `hafizi145` / `skyblues`. A single shared `FRIGATE_RTSP_USER`/`PASSWORD` pair can only serve one of them — changing it to fit C560WS broke entrance (401) and vice versa. Use per-camera vars:
+```bash
+# ~/frigate/.env
+FRIGATE_RTSP_USER=hafizi145%40gmail.com        # TC74 (entrance)
+FRIGATE_RTSP_PASSWORD=***                       # read from worker .env CAMERA_1_RTSP_URL, never log raw
+FRIGATE_RTSP_USER_C3=hafizi145                  # C560WS (outdoor)
+FRIGATE_RTSP_PASSWORD_C3=skyblues
+```
+```yaml
+# config.yml
+entrance:     path: rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@192.168.1.94:554/stream1
+outdoor_shop: path: rtsp://{FRIGATE_RTSP_USER_C3}:{FRIGATE_RTSP_PASSWORD_C3}@192.168.1.226:554/stream1
+```
+**Read the TC74 password server-side** (e.g. regex `CAMERA_1_RTSP_URL=rtsp://([^:]+):([^@]+)@` on `~/projects/hafjet-cctv-worker/.env`) and write it into the Frigate `.env` without echoing it into chat. Frigate redacts credentials in its own ffmpeg logs as `*:*` — that redaction is Frigate-side, not a substitute for not logging secrets yourself.
+
+### IP lockout re-triggers on the new IP if you keep hammering
+
+The IP lockout is **per source-IP**: after Office PC changed `.252 → .250`, one ffmpeg test succeeded (camera accepted the new IP). But then Frigate (container, NATed to `.250`) began retrying with the **wrong credentials for that camera** (wrong user / wrong stream), re-triggering the lockout — and then even `ffmpeg` from the host got 401 on `.250` again. `docker exec frigate ffmpeg` fails with `executable file not found` (no ffmpeg in PATH in the image) — test from the host instead.
+
+Rules derived:
+- After any credential change, test **once** from the host before letting Frigate retry in a loop — every Frigate watchdog retry extends lockout.
+- When adding camera 2/3 with different creds, **prepare both `.env` sets AND config paths before the first restart** so Frigate never starts with a wrong pair.
+- Power-cycling the camera alone does not protect you if the container keeps probing — stop the offender first (or fix config), then reset/verify, then start clean.

@@ -195,6 +195,7 @@ See `references/frigate-cpu-only-deploy.md` (full deploy/tune/soak procedure) an
 - Frigate 0.17+ may create default `admin` password in logs on first boot; early `/api` 500 while FastAPI starts is normal for ~30–60s.
 - Never `docker compose up` without explicit soak approval **after** config review.
 - Config-change flow: draft to `config/config.yml.c3-draft` → show full content → wait for written apply approval → copy + `docker compose restart`.
+- **`.env` reload + multi-credential (2026-08-04):** `docker compose restart` does NOT reload `.env` — use `up -d --force-recreate`, then verify with `docker inspect frigate ... | grep FRIGATE_RTSP`. Cameras with different credentials need separate env pairs (`FRIGATE_RTSP_USER_C3` / `_PASSWORD_C3`), not one shared set — a single pair breaks the other camera. TP-Link IP lockout re-triggers on the new IP if Frigate keeps probing with wrong creds: test once from host first, never let the watchdog loop hammer. Full details: `references/frigate-cpu-only-deploy.md` → ".env reload + multi-credential pitfall".
 
 ## Xiaomi NAS / file-ingest boundary (added 2026-08-01)
 

@@ -1,0 +1,112 @@
+# Cloudflared Named Tunnel — Systemd Service Template
+
+## Purpose
+Run Cloudflare Named Tunnel as a persistent systemd service with token-based auth. Auto-starts on boot, restarts on failure.
+
+---
+
+## Service File: `/etc/systemd/system/cloudflared.service`
+
+```ini
+[Unit]
+Description=Cloudflare Tunnel - hafjet-n8n
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hafizi145
+ExecStart=/usr/local/bin/cloudflared tunnel run --token <TUNNEL_TOKEN>
+Restart=always
+RestartSec=5
+KillMode=process
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/hafizi145/.cloudflared
+
+[Install]
+WantedBy=multi-user.target
+```
+
+---
+
+## Setup Commands
+
+```bash
+# 1. Get tunnel token from Cloudflare Dashboard
+# Zero Trust → Networks → Tunnels → hafjet-n8n → Copy token
+
+# 2. Create service file (replace <TUNNEL_TOKEN>)
+sudo tee /etc/systemd/system/cloudflared.service > /dev/null << 'EOF'
+[Unit]
+Description=Cloudflare Tunnel - hafjet-n8n
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hafizi145
+ExecStart=/usr/local/bin/cloudflared tunnel run --token <TUNNEL_TOKEN>
+Restart=always
+RestartSec=5
+KillMode=process
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/hafizi145/.cloudflared
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 3. Reload systemd
+sudo systemctl daemon-reload
+
+# 4. Enable & start
+sudo systemctl enable cloudflared
+sudo systemctl start cloudflared
+
+# 5. Verify
+sudo systemctl status cloudflared --no-pager
+sudo journalctl -u cloudflared -n 30 --no-pager
+```
+
+---
+
+## Verification
+
+```bash
+# Check service status
+sudo systemctl status cloudflared
+
+# Check logs (look for "Connection established")
+sudo journalctl -u cloudflared -f
+
+# Test tunnel
+curl -I https://n8n.hafjet.my
+curl https://n8n.hafjet.my/healthz
+```
+
+---
+
+## Troubleshooting
+
+| Issue | Check | Fix |
+|-------|-------|-----|
+| Service fails immediately | `journalctl -u cloudflared` | Verify token is correct; check `cloudflared tunnel list` |
+| "Cannot determine default origin certificate path" | Logs show cert.pem missing | Use `--token` auth (not `tunnel run hafjet-n8n`) |
+| Tunnel inactive in dashboard | `cloudflared` not connecting | Check Split Tunnels: remove `100.64.0.0/10` from Exclude |
+| DNS not resolving | `dig n8n.hafjet.my` | Wait for NS propagation; verify nameservers at registrar |
+
+---
+
+## Related Files
+
+- `references/n8n-named-tunnel-transition.md` — Full transition guide from Quick Tunnel to Named Tunnel
+- `references/hafjet-hermes-cron-content-generator.md` — Hermes cron integration

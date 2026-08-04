@@ -19,6 +19,91 @@ Quick Tunnels are temporary and rotate on restart. Every new `cloudflared tunnel
 - 502 Bad Gateway is normal for the first 10-60s while the tunnel reconnects.
 - Full Telegram linking flow after adding credential in UI: assign the credential to **every** Telegram node → set `Restrict to Chat IDs` in the Callback Trigger → Activate workflow.
 
+**Named Tunnel Production Setup (Aug 2026) — HAFJET Content Automation**
+- Full reference: `references/n8n-telegram-content-automation.md` (in hafjet-infra-setup skill)
+- Tunnel: `hafjet-n8n` → `https://n8n.hafjet.my` (Cloudflare Zero Trust Free)
+- systemd service for cloudflared with token-based auth
+- Split Tunnels: remove `100.64.0.0/10` from Exclude; keep private LAN in Exclude
+- Webhook migration: Deactivate → Activate workflow to auto-register
+- Verify: `getWebhookInfo` → URL = `https://n8n.hafjet.my/...`, no errors
+
+**Cloudflare Zero Trust Free Device Profile Config (Critical for Tunnel Connectivity)**
+- **Problem**: Tunnel shows "Inactive" / "No connectors" even with correct DNS + route
+- **Root Cause**: WARP Client device profile Split Tunnels excludes `100.64.0.0/10` (CGNAT range used by Cloudflare Tunnel internal routing)
+- **Fix** (Zero Trust Dashboard → Settings → WARP Client → Device Profiles → Edit profile):
+  - Split Tunnels: **Remove `100.64.0.0/10` from Exclude list** (keep `192.168.0.0/16`, `10.0.0.0/8` for local LAN)
+  - Local Domain Fallback: Ensure `n8n.hafjet.my` / `hafjet.my` NOT in list
+  - Save → wait 30-60s → tunnel connectors appear → route becomes active
+- **Verification**: `curl -I https://n8n.hafjet.my` returns HTTP/2 200
+
+**DNS Propagation Checklist**
+- Nameserver change at registrar (Exabyte): `lauryn.ns.cloudflare.com`, `sterling.ns.cloudflare.com`
+- DNSSEC **must be OFF** at registrar
+- Verify: `dig NS hafjet.my` → returns Cloudflare nameservers
+- Verify: `dig n8n.hafjet.my` → resolves to Cloudflare IPs (e.g., `104.21.x.x`, `172.67.x.x`)
+- Propagation typically 5 min - 2 hrs; test with `curl -I https://n8n.hafjet.my`
+
+**Hermes Cron Job Integration for AI Content Generation (No xAI API Key Needed)**
+- **Architecture**: n8n → HTTP POST → Hermes `/api/cron/fire` → Cron job runs agent with xAI OAuth (SuperGrok) → Returns structured JSON
+- **Prerequisites**: Hermes running on port 8787 with `xai-oauth` provider authenticated; `grok-4.5` model available
+- **Cron Job Creation** (CLI):
+  ```bash
+  hermes cron create "once in 1min" \
+    --name "hafjet-content-generator" \
+    --provider "xai-oauth" \
+    --model "grok-4.5" \
+    --prompt "<SYSTEM_PROMPT_TEMPLATE>" \
+    --deliver local
+  ```
+  - `once in 1min` = manual trigger schedule (runs once, then triggered via `/api/cron/fire`)
+  - `--deliver local` = output returned to API caller, not sent to Telegram
+  - Pin model/provider to avoid config drift errors
+- **Get Job ID**: `hermes cron list | grep hafjet-content-generator` → copy ID
+- **Get Hermes API Key**: `grep -A 3 "gateway:" ~/.hermes/config.yaml | grep api_key`
+- **n8n HTTP Request Node Config**:
+  - Method: POST
+  - URL: `http://host.docker.internal:8787/api/cron/fire`
+  - Headers: `Authorization: Bearer <HERMES_API_KEY>`, `Content-Type: application/json`
+  - Body (JSON):
+    ```json
+    {
+      "job_id": "<CRON_JOB_ID>",
+      "payload": {
+        "topic": "={{$json.topic}}",
+        "platform": "={{$json.platform}}",
+        "tone": "santai_kelantan",
+        "content_type": "caption",
+        "additional_context": "={{$json.context}}"
+      }
+    }
+    ```
+  - Timeout: 300000ms (5 min); Retry: 2x with 5s interval
+- **Expected Output Format** (JSON from cron job):
+  ```json
+  {
+    "success": true,
+    "content": { "option_1": "...", "option_2": "..." },
+    "image_prompt": "...",
+    "hashtags": ["#tag1", "#tag2"],
+    "character_count": 180
+  }
+  ```
+- **Fallback Cron Job** (OpenRouter via Hermes):
+  ```bash
+  hermes cron create "once in 1min" \
+    --name "hafjet-content-generator-fallback" \
+    --provider "openrouter" \
+    --model "x-ai/grok-2-latest" \
+    --prompt "<SAME_SYSTEM_PROMPT>" \
+    --deliver local
+  ```
+- **Error Handling**:
+  - Timeout (5 min) → retry 2x
+  - 401 Auth failed → check API key in config.yaml
+  - 404 Job not found → verify job_id
+  - JSON parse error → log raw response, fallback to OpenRouter cron job
+  - Model config drift → pin model/provider explicitly in cron job
+
 **n8n Login / Owner Setup Gotcha (2026-08-01)**
 Even with `N8N_BASIC_AUTH_ACTIVE=true`, the UI still shows the owner creation form that validates "Must be a valid email".
 - Add to `.env`:
