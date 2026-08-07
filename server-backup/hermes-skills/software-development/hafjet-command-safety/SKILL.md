@@ -174,6 +174,22 @@ to approve prompts — any command that lands in `pending_approval` stalls forev
    output to a log file, and poll with `process(action='poll'/'wait')`. A
    ~600-message WhatsApp batch takes ~7–8 min, so chunk the waits (wait limit is
    180s per call) and tail the log between polls to confirm progress.
+   **Verified recipe (pickup reminder, 2026-08-05):** dry run first via the skill
+   runner (`python3 .../hafjet_pickup_runner.py --dry` — confirms pending count +
+   headers WITHOUT sending), then live:
+   `python3 .../hafjet_pickup_runner.py > /tmp/pickup_live_$(date +%Y%m%d_%H%M%S).log 2>&1`
+   (background=true). Poll progress with `grep -cE 'Sent ->' /tmp/pickup_live_<ts>.log`
+   (~1.4 msgs/sec → ~258 after 3 min, ~510 after 5–6 min). Final: `tail -8` shows
+   `🏁 Done. Sent=X Failed=Y`, `Owner summary sent`, `runner exit: 0`; breakdown via
+   `grep -cE '470 blocked'`, `grep -cE 'no phone'`, `grep -E 'HTTP [0-9]+ ->'`.
+4. **Do NOT build compound summary one-liners with `$(...)` substitution to
+   report on a batch log** — e.g. `LOG=$(ls -t /tmp/pickup_live_*.log | head -1)`
+   followed by multiple `$LOG` greps. That pattern got BLOCKED by the Hermes
+   terminal hardline parser ("command parser limit or malformed executable
+   payload") — an unconditional blocklist, not bypassable even with
+   approvals.mode=off. Use plain commands on the explicit filename
+   (`tail -8 /tmp/pickup_live_20260805_110800.log`, `grep -cE 'pattern' <file>`)
+   or read_file / search_files instead.
 
 ## When Tuan says "deny"
 Do not retry, rephrase, or achieve the same outcome another way. Stop the

@@ -38,6 +38,7 @@ agent:
   gateway_auto_continue_freshness: 3600
   image_input_mode: auto
   disabled_toolsets: []
+  verify_on_stop: false
 terminal:
   backend: local
   modal_mode: auto
@@ -364,7 +365,6 @@ delegation:
   max_spawn_depth: 1
   orchestrator_enabled: true
   subagent_auto_approve: false
-  max_async_children: 3
 prefill_messages_file: ''
 goals:
   max_turns: 20
@@ -534,7 +534,7 @@ secrets:
 paste_collapse_threshold: 5
 paste_collapse_threshold_fallback: 5
 paste_collapse_char_threshold: 2000
-_config_version: 30
+_config_version: 33
 fallback_model:
   model: gpt-oss-120b
   provider: cerebras

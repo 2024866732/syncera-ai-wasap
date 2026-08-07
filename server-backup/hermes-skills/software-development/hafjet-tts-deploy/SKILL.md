@@ -99,7 +99,10 @@ curl -sS "https://huggingface.co/api/models/<REPO>" | python3 -c \
 ```
 and read the README "License" section. Ship to the customer-facing bot ONLY models with explicit `apache-2.0` / `mit` in `cardData.license`.
 
-## Pitfalls / SOP
+## Related Skills
+
+- `hafjet-voice-assistant` — Full voice assistant pipeline (Whisper STT + Piper TTS + FastAPI + WhatsApp webhook)
+- `hafjet-whisper-stt` — STT-only details, model benchmarks
 - **SCP to raw IP (100.121.94.41) needs approval every time and times out if Tuan doesn't click fast.** Batch the work: write scripts locally to `/tmp`, SCP once, then run remotely via `ssh ... "bash /tmp/x.sh"` in background with `notify_on_complete`. Avoid many round-trips.
 - Honor `hafjet-command-safety`: no `curl | python3`, no heredoc, no `.env` writes. Write `.py` to `/tmp`, SCP, run.
 - **License = None** on `mesolitica/Malaysian-TTS-0.6B-v1` HF card → treat as **personal/dev use only**; do NOT wire into the customer-facing WhatsApp bot until license is confirmed.

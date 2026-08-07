@@ -20,17 +20,17 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 49
+        "completed": 52
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-08-05T07:00:00+00:00",
-      "last_run_at": "2026-08-04T07:05:18.067237+00:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-08-08T07:00:00+00:00",
+      "last_run_at": "2026-08-07T07:01:03.708761+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -63,15 +63,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 45
+        "completed": 48
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-08-05T13:00:00+00:00",
-      "last_run_at": "2026-08-04T13:01:19.408326+00:00",
+      "next_run_at": "2026-08-08T13:00:00+00:00",
+      "last_run_at": "2026-08-07T13:01:57.170001+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -106,15 +106,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 40
+        "completed": 43
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-08-05T14:00:00+00:00",
-      "last_run_at": "2026-08-03T14:00:32.630692+00:00",
+      "next_run_at": "2026-08-08T14:00:00+00:00",
+      "last_run_at": "2026-08-06T14:02:21.302535+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -149,17 +149,17 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 39
+        "completed": 42
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-08-05T09:00:00+00:00",
-      "last_run_at": "2026-08-04T09:02:09.351987+00:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
+      "next_run_at": "2026-08-08T09:00:00+00:00",
+      "last_run_at": "2026-08-07T09:01:05.734891+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -192,15 +192,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 33
+        "completed": 36
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-08-05T09:00:00+00:00",
-      "last_run_at": "2026-08-04T09:04:50.662858+00:00",
+      "next_run_at": "2026-08-08T09:00:00+00:00",
+      "last_run_at": "2026-08-07T09:01:51.600756+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -237,17 +237,17 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 25
+        "completed": 28
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-08-05T03:00:00+00:00",
-      "last_run_at": "2026-08-04T03:11:05.607076+00:00",
-      "last_status": "error",
-      "last_error": "TimeoutError: Cron job 'hafjet-pickup-reminder' idle for 601s (limit 600s) \u2014 last activity: waiting for non-streaming API response",
+      "next_run_at": "2026-08-08T03:00:00+00:00",
+      "last_run_at": "2026-08-07T03:17:17.478159+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -283,15 +283,15 @@
       "schedule_display": "0 15 * * *",
       "repeat": {
         "times": null,
-        "completed": 21
+        "completed": 24
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-14T17:05:27.034793+00:00",
-      "next_run_at": "2026-08-04T15:00:00+00:00",
-      "last_run_at": "2026-08-03T15:00:40.968271+00:00",
+      "next_run_at": "2026-08-07T15:00:00+00:00",
+      "last_run_at": "2026-08-06T15:01:11.191363+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -462,15 +462,15 @@
       "schedule_display": "0 0 * * *",
       "repeat": {
         "times": null,
-        "completed": 8
+        "completed": 11
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-27T12:46:17.963804+00:00",
-      "next_run_at": "2026-08-05T00:00:00+00:00",
-      "last_run_at": "2026-08-04T00:00:28.023145+00:00",
+      "next_run_at": "2026-08-08T00:00:00+00:00",
+      "last_run_at": "2026-08-07T00:00:23.007445+00:00",
       "last_status": "error",
       "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'openai-codex' -> 'xai-oauth'; model 'gpt-5.6-terra' -> 'grok-4.5'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=7b74334921e6 provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
       "last_delivery_error": null,
@@ -508,15 +508,15 @@
       "schedule_display": "every 30m",
       "repeat": {
         "times": null,
-        "completed": 328
+        "completed": 468
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-28T12:38:06.628044+00:00",
-      "next_run_at": "2026-08-04T14:01:20.445580+00:00",
-      "last_run_at": "2026-08-04T13:31:20.445580+00:00",
+      "next_run_at": "2026-08-07T14:05:42.898593+00:00",
+      "last_run_at": "2026-08-07T13:35:42.898593+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -599,15 +599,15 @@
       "schedule_display": "*/30 * * * *",
       "repeat": {
         "times": null,
-        "completed": 11
+        "completed": 154
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-04T08:58:48.581972+00:00",
-      "next_run_at": "2026-08-04T14:30:00+00:00",
-      "last_run_at": "2026-08-04T14:00:40.302962+00:00",
+      "next_run_at": "2026-08-07T14:30:00+00:00",
+      "last_run_at": "2026-08-07T13:31:11.967755+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -625,8 +625,8 @@
     },
     {
       "id": "bb8a6cae36e8",
-      "name": "HAFJET Monthly P&L Report",
-      "prompt": "Generate and deliver the HAFJET monthly Profit & Loss report.\n\nSteps:\n1. Run the P&L generator script for the PREVIOUS month: python3 /home/hafizi145/.hermes/skills/pnl_generator.py (auto-detects last month)\n2. The script will:\n   - Fetch revenue data from Loyverse API\n   - Fetch expenses from Supabase\n   - Calculate complete P&L with hire-readiness verdict\n   - Update pnl_tracker.csv and pnl_dashboard.html\n3. Read the console output and deliver a concise Telegram summary to Tuan Hafizi with:\n   - Period (Month Year)\n   - Total Revenue, COGS, Gross Profit, Gross Margin\n   - Total Expenses (breakdown by category + fixed costs)\n   - Net Profit, Net Margin\n   - Hire Readiness: READY/NOT READY + gap amount + months to ready\n   - Strategic insight (phone sales vs bill payments ratio)\n4. Keep message scannable with bullet points. Use Malay for key terms.\n\nThe script handles all data fetching, calculation, and file updates. Just run it and deliver the summary.\nIf Supabase credentials not configured, report the blocker honestly.",
+      "name": "HAFJET Monthly P&L Report (v2)",
+      "prompt": "Generate and deliver the HAFJET monthly Profit & Loss report using pnl_generator_v2.py.\n\nSteps:\n1. Run: python3 /home/hafizi145/.hermes/skills/pnl_generator_v2.py (auto-detects the PREVIOUS month)\n2. The script fetches Loyverse revenue, Supabase expenses, and prints a complete P&L with hire-readiness verdict.\n3. It also updates pnl_tracker_v2.csv and pnl_dashboard_v2.html.\n4. Read the console output and deliver a concise Telegram summary to Tuan Hafizi:\n   - Period (Month Year)\n   - Revenue, COGS, Gross Profit, Gross Margin %\n   - Expenses (variable + fixed), Net Profit, Net Margin %\n   - Hire Readiness: READY or NOT READY + gap amount + months estimate\n   - Strategic insight (Phone+Repair revenue vs Bill/Reload ratio)\n5. Keep the summary scannable with bullet points in Bahasa Melayu.\n\nThe script handles everything. If Supabase credentials are missing, it will fall back to hardcoded fixed costs (RM 1,300). If Loyverse data is truncated by the 31-day limit, warn the user. Report blockers honestly \u2014 do not invent numbers.",
       "skills": [],
       "skill": null,
       "model": null,
@@ -669,5 +669,5 @@
       "workdir": null
     }
   ],
-  "updated_at": "2026-08-04T14:00:40.311460+00:00"
+  "updated_at": "2026-08-07T14:00:41.952247+00:00"
 }

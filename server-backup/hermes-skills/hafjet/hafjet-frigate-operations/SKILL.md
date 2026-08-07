@@ -25,6 +25,14 @@ Frigate NVR on the HAFJET office PC (`hafizi145@100.121.94.41`, hostname `hafjet
 
 ## Steps
 
+### 0. Frigate event DB (0.17) — querying for alerts/analytics (Fasa A pattern)
+Schema gotchas that bite anyone querying `event` for alerting or visitor counts — full recipe in `references/frigate-event-db-queries.md`.
+- **`score`, `top_score`, `false_positive` COLUMNS ARE ALL NULL in 0.17.** Real values live in the `data` JSON column (`data.score`, `data.top_score`, `data.max_severity`, `data.path_data`). Filtering `WHERE false_positive=0` silently returns nothing; parse `json_extract(data, '$.top_score')` instead.
+- **Event volume is huge:** Frigate writes a segment every ~10s and many map to person events — measured ~450 person events in 24h across 2 cameras (score≥0.55), and ~100 events/hour in peak business hours. Any visitor counter MUST coalesce (e.g. events within 120s = 1 visitor), never count raw events.
+- Event IDs are `epoch.float-randomsuffix` — sort by `start_time`, dedupe by ID when resuming.
+- CPU detector on i3-2100 is noisy: filter `data.top_score >= 0.55` (matches Frigate `min_score`).
+- `python3` (3.11) on the VPS has NO supabase module — use **`python3.10`** for Supabase SDK (or SQL Editor for DDL; PostgREST cannot run DDL).
+
 ### 1. Dual-credential camera config (critical)
 Different cameras use DIFFERENT RTSP accounts. One `.env` set is NOT enough — use a `_C3` suffix for the second camera.
 
@@ -88,3 +96,4 @@ Stop Frigate FIRST during 401/IP-block loops — watchdog retries extend the cam
 ## Support files
 - `references/tp-link-rtsp-401-ip-block.md` — full 401 debugging narrative + resolution steps.
 - `references/soak-test-procedure.md` — monitor script pattern + guard logic + report cadence.
+- `references/frigate-event-db-queries.md` — 0.17 event schema gotchas (score in `data` JSON, NULL columns), visitor-count coalesce recipe, alert-poller pattern, supabase-py via python3.10.

@@ -139,6 +139,45 @@ The Oracle Free Tier is **technically unbeatable at RM0**, but carries real risk
 
 **Setup:** Create account → Launch EC2 t3.micro Ubuntu 24.04 → Upload SSH key → Deploy.
 
+**Deployment patterns:** See `references/multi-project-deployment-patterns.md` for command center proxy, low-RAM deployment, SSH key fixes.
+
+## Oracle Free Tier — Capacity Issues
+
+| Issue | Symptom | Workaround |
+|-------|---------|------------|
+| **ARM capacity full** | `Out of host capacity` error when launching VM.Standard.A1.Flex | Try again in 1-2 hours (capacity fluctuates), or try smaller shape (1 OCPU, 1GB) |
+| **Region locked** | Only 1 AD available (ap-kulai-2) | No workaround — wait or use different region |
+| **Limit exceeded** | `standard-a1-core-count` or `standard-a1-memory-count` limits | Account already used free tier allocation — check existing instances |
+| **x86 shapes N/A** | Only `VM.Standard.A1.Flex` available in AP-KULAI-2 | Cannot use E2/E4 x86 shapes — region only offers ARM |
+| **Pay As You Go no fix** | `LimitExceeded` persists after account upgrade | Capacity issue is physical, not account limit — ARM hosts genuinely full |
+
+**Confirmed Aug 2026:** AP-KULAI-2 region has very limited ARM capacity. "Out of host capacity" is common during peak hours. Always Free VM.Standard.A1.Flex (4 OCPU, 24GB) is the target but availability is not guaranteed. Upgrading to Pay As You Go does NOT resolve capacity exhaustion — it only raises account limits, not physical host availability.
+
+**x86 fallback unavailable:** AP-KULAI-2 only offers VM.Standard.A1.Flex. No VM.Standard.E2/E4 x86 shapes exist in this region, so there is no lower-tier fallback.
+
+**Recovery pattern:** Try multiple times over 1-2 hours. Shape `VM.Standard.A1.Flex` with minimum config (1 OCPU, 1GB) also fails when capacity is exhausted. Best strategy: deploy elsewhere (Hetzner CX22 €4.5/mo) and retry Oracle later for migration.
+
+**Pay As You Go upgrade:** Converting from Free Tier to Pay As You Go does NOT help with ARM capacity — it only raises account limits, not physical host availability. However, after repeated attempts (Aug 5, 2026), capacity eventually freed up and VM launched successfully on Pay As You Go. **Pattern:** upgrade → wait 1-2 hours → retry. Capacity fluctuates throughout the day.
+
+**Budget protection:** After deploying on Pay As You Go, always set budget alerts to prevent surprise charges:
+```bash
+# Create $10/month budget
+oci budgets budget budget create --compartment-id $TENANCY --display-name "HAFJET-FreeTier" --amount 10 --target-type "COMPARTMENT" --targets "[\"$TENANCY\"]" --reset-period "MONTHLY"
+
+# Create 80% alert rule
+oci budgets budget alert-rule create --budget-id $BUDGET_ID --display-name "80-Alert" --threshold 80 --threshold-type "PERCENTAGE" --type "ACTUAL"
+```
+
+**Oracle Docker permission:** Fresh Ubuntu installs need `sudo` for Docker or user must be added to docker group:
+```bash
+# Option 1: Use sudo
+sudo docker compose up -d
+
+# Option 2: Add user to docker group (requires re-login)
+sudo usermod -aG docker ubuntu
+newgrp docker
+```
+
 ## Pitfalls
 
 - **UpCloud account suspension:** Trial accounts can be suspended for "invalid personal info", "multiple accounts", or "unauthorized payment method" — even if you did nothing wrong. Impact: ALL data on server is lost instantly. **Always backup to GitHub/external before trial ends.** Appeal to abuse@upcloud.com but response is slow. Confirmed Aug 2026: HAFJET account suspended mid-trial.
@@ -159,6 +198,12 @@ Some providers offer free trials with credit. **Key insight:** trial quotas hard
 **UpCloud Trial:** $250 credit, 14 days, quota-limited (see `references/upcloud-trial-deployment.md` for full deploy guide + stress test automation).
 
 **Use case:** Experience high-spec servers, benchmark managed services, chaos engineering — NOT production deployment.
+
+## Oracle ARM Deep Dive
+
+See `references/oracle-arm-capacity-2026-08.md` for detailed capacity tracking, timeline, SSH keys, deployment files, and migration strategy.
+
+See `references/oracle-arm-deployment-2026-08.md` for actual deployment specs, Ollama setup, production dashboard pattern, and budget protection.
 
 ## Verification
 

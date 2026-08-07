@@ -1,8 +1,13 @@
 # HAFJET 8-Project Deployment Reference
 
-## Architecture (UpCloud Frankfurt → AWS Migration)
+## Architecture (UpCloud Frankfurt → AWS → Oracle ARM)
 
 8 business projects deployed as separate Docker Compose stacks on a single VPS, unified by a Command Center dashboard.
+
+**Deployment history:**
+- UpCloud Frankfurt (4GB RAM) — Account suspended mid-trial
+- AWS t3.micro (911MB RAM) — Too small, OOM with 6 PG databases
+- **Oracle ARM A1.Flex (24GB RAM)** — SUCCESS (Aug 4, 2026) ✅
 
 ## Projects & Port Allocation
 

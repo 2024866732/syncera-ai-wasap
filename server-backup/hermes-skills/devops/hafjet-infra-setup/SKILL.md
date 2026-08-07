@@ -442,6 +442,312 @@ Full deployment guide + RAM constraints: `references/aws-free-tier-deployment.md
 Key lesson: t3.micro (911MB) cannot run 6 PostgreSQL + 6 APIs simultaneously.
 Either use 1 shared database or upgrade to t3.small (2GB).
 
+## Oracle Cloud Deployment (Aug 2026)
+
+Tuan signed up for Oracle Cloud, initially Free Tier then upgraded to Pay As You Go.
+
+### ARM Capacity Issues (CRITICAL)
+- Region `ap-kulai-2` (Malaysia) has SEVERE ARM capacity constraints.
+- Even with Pay As You Go, `VM.Standard.A1.Flex` may return "Out of host capacity".
+- Free Trial accounts also hit "LimitExceeded" for ARM shapes until upgraded.
+- **Workaround**: Try off-peak hours, or use `ap-mumbai-1` (requires tenancy subscription to that region).
+- If capacity unavailable, fallback to Hetzner CX22 (€4.5/mo, 2C/4GB) or AWS t3.small.
+
+### OCI CLI Multi-Region
+- API keys are tenancy-wide, NOT region-specific.
+- To use different region: add profile to `~/.oci/config` with `region=ap-mumbai-1`.
+- BUT: tenancy must be subscribed to that region first (check via Console).
+- Cross-region auth works if key is valid, but `--region` flag alone doesn't override config profile.
+
+### VM Creation Command
+```bash
+oci compute instance launch \
+  --compartment-id $TENANCY \
+  --availability-domain "$AD" \
+  --display-name "hafjet-oracle" \
+  --shape "VM.Standard.A1.Flex" \
+  --shape-config '{"ocpus": 4, "memoryInGBs": 24}' \
+  --image-id $IMAGE \
+  --ssh-authorized-keys-file /tmp/hafjet-oracle-key.pub \
+  --assign-public-ip true \
+  --subnet-id $SUBNET \
+  --query "data.{id:id,state:\"lifecycle-state\"}" \
+  --output table
+```
+
+### SSH Key for Oracle
+- Generate: `ssh-keygen -t ed25519 -f /tmp/hafjet-oracle-key -N ""`
+- Public key passed via `--ssh-authorized-keys-file` during instance creation.
+- Key saved at `/tmp/hafjet-oracle-key` (private) and `/tmp/hafjet-oracle-key.pub`.
+
+### Oracle ARM VM Specs (Confirmed Aug 2026)
+| Resource | Value |
+|----------|-------|
+| Shape | VM.Standard.A1.Flex |
+| CPU | 4 cores ARM (Neoverse-N1) |
+| RAM | 24GB |
+| Storage | 45GB boot volume |
+| IP | Public IP assigned at launch |
+| Cost | **SGD 0.00** (Always Free) |
+
+### Docker Permission Fix (Fresh Ubuntu on Oracle)
+```bash
+# Use sudo for all docker commands until user is added to docker group
+sudo docker compose up -d
+
+# Or add user permanently (requires re-login)
+sudo usermod -aG docker ubuntu
+```
+
+### Ollama on Oracle ARM
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Configure to listen on all interfaces (for Docker containers)
+sudo sed -i '/Environment="PATH=/a Environment="OLLAMA_HOST=0.0.0.0"' /etc/systemd/system/ollama.service
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+
+# Verify: ss -tlnp | grep 11434 → should show *:11434
+```
+
+### Budget Protection (Oracle Pay As You Go)
+```bash
+# Create $10/month budget
+oci budgets budget budget create --compartment-id $TENANCY \
+  --display-name "HAFJET-FreeTier" --amount 10 \
+  --target-type "COMPARTMENT" --targets "[\"$TENANCY\"]" \
+  --reset-period "MONTHLY"
+
+# Create 80% alert rule
+oci budgets budget alert-rule create --budget-id $BUDGET_ID \
+  --display-name "80-Alert" --threshold 80 \
+  --threshold-type "PERCENTAGE" --type "ACTUAL"
+```
+
+### Hybrid Azure + Oracle Architecture (Aug 2026)
+
+Tuan chose **Option 2: Hybrid** — Azure as WhatsApp channel layer, Oracle as AI engine.
+
+**Architecture:**
+```
+Customer WhatsApp → Azure Bot Service → Oracle VM (AI) → Response
+```
+
+**Azure Bot URLs:**
+- Bot: `https://hafjet-whatsapp-bot.azurewebsites.net`
+- Dashboard: `https://hafjet-whatsapp-bot.azurewebsites.net/dashboard`
+
+**API Contract (Azure ↔ Oracle):**
+- Endpoint: `POST /api/ai/chat`
+- Request: `{phone, message_text, context_id, timestamp}`
+- Response: `{reply_text, suggested_actions, confidence, model, latency_ms}`
+
+**Full reference**: `references/whatsapp-ai-bot-oracle-deployment.md` (Hybrid Architecture section)
+
+### WhatsApp AI Bot Deployment on Oracle ARM (Aug 2026)
+
+**Full reference**: `references/whatsapp-ai-bot-oracle-deployment.md`
+
+```bash
+# Clone repos
+cd ~ && git clone https://github.com/2024866732/Sistem-Wasap-Hafjet.git
+git init HAFJET-AI-WhatsApp-Bot
+
+# Deploy with Docker Compose (network_mode: host for Ollama access)
+cd ~/HAFJET-AI-WhatsApp-Bot
+sudo docker compose up -d
+
+# Test: curl http://localhost:8200/api/health
+```
+
+**Key lessons:**
+- Use `network_mode: host` for API container to reach Ollama at `localhost:11434`
+- Port must be set in BOTH Dockerfile AND main.py (port mappings ignored with host mode)
+- Ollama must listen on `0.0.0.0` (not just `127.0.0.1`) for container access
+- `.env` file must be in project root and referenced via `env_file:` in docker-compose.yml
+
+### 🚨 iptables Firewall on Oracle VM (CRITICAL — hit Aug 2026)
+
+**Symptom:** Port 8200 is open in Oracle Cloud Security Lists but external `curl` times out. Port 80 works fine.
+
+**Root cause:** Oracle Cloud Ubuntu images come with iptables INPUT rules that only allow:
+- SSH (port 22)
+- ICMP (ping)
+- RELATED,ESTABLISHED connections
+
+Everything else is REJECT'd by the INPUT chain. Cloud Security Lists are Layer 3/4; iptables is Layer 7 — BOTH must allow the port.
+
+**Fix:**
+```bash
+# Add rules to allow your service ports
+sudo iptables -I INPUT 3 -p tcp --dport 8200 -j ACCEPT
+sudo iptables -I INPUT 4 -p tcp --dport 8201 -j ACCEPT
+
+# Make persistent across reboots
+sudo apt-get install -y iptables-persistent
+sudo netfilter-persistent save
+```
+
+**Verify:**
+```bash
+# Check rules
+sudo iptables -L INPUT -n --line-numbers
+
+# Test external access
+curl -s --max-time 10 http://<PUBLIC_IP>:8200/api/health
+```
+
+**Debugging pattern:** When a port is open in Cloud Security Lists but still blocked:
+1. Check iptables on the VM: `sudo iptables -L INPUT -n`
+2. Check if service is listening on 0.0.0.0: `ss -tlnp | grep PORT`
+3. Check if service is running: `curl localhost:PORT/api/health`
+4. If all pass but external fails → iptables is the culprit
+
+**⚠️ Dual-layer fix required:** Both Oracle Cloud Security Lists AND iptables must allow the port. Fix iptables first (faster), then verify Security Lists in OCI Console.
+
+### Pydantic v2 BaseSettings Migration (Aug 2026)
+
+**Symptom:** `from pydantic import BaseSettings` fails with `PydanticImportError: BaseSettings has been moved to the pydantic-settings package`.
+
+**Root cause:** Pydantic v2 moved `BaseSettings` to a separate package.
+
+**Fix:**
+```bash
+# Add to requirements.txt
+pydantic-settings==2.7.0
+```
+
+```python
+# Update imports
+# ❌ OLD (Pydantic v1)
+from pydantic import BaseSettings
+
+# ✅ NEW (Pydantic v2)
+from pydantic_settings import BaseSettings
+```
+
+### Meta Webhook Verification Handler (WhatsApp Cloud API)
+
+Meta requires a GET handler for webhook verification. Without it, the "Verify and Save" button in Business Manager fails.
+
+**Required GET handler in FastAPI:**
+```python
+from fastapi import FastAPI, Request, Query
+from fastapi.responses import PlainTextResponse
+
+@app.get("/webhook")
+async def verify_webhook(
+    hub_mode: str = Query(..., alias="hub.mode"),
+    hub_verify_token: str = Query(..., alias="hub.verify_token"),
+    hub_challenge: str = Query(..., alias="hub.challenge")
+):
+    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
+        return PlainTextResponse(content=hub_challenge)
+    else:
+        return PlainTextResponse(content="Forbidden", status_code=403)
+```
+
+**Meta Business Manager setup:**
+1. Go to `https://business.facebook.com/settings/whatsapp-business-accounts/<WABA_ID>`
+2. Click Webhook → Callback URL
+3. Enter: `http://<PUBLIC_IP>:<PORT>/webhook`
+4. Enter Verify Token (must match `.env`)
+5. Click "Verify and Save"
+6. Subscribe to "messages" field
+
+**Complete .env template for WhatsApp AI Bot:**
+```bash
+# Ollama
+OLLAMA_HOST=127.0.0.1
+OLLAMA_PORT=11434
+OLLAMA_MODEL=qwen2.5:7b
+
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Database (Supabase PostgreSQL)
+DB_HOST=db.your-project.supabase.co
+DB_PORT=5432
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASSWORD=your_password
+
+# WhatsApp Meta Cloud API
+WHATSAPP_TOKEN=your_access_token
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+WHATSAPP_VERIFY_TOKEN=your_verify_token
+WHATSAPP_BUSINESS_ACCOUNT_ID=your_waba_id
+WHATSAPP_GRAPH_API_VERSION=v21.0
+
+# Owner
+OWNER_PHONE_NUMBER=60169808736
+```
+
+## Cloud Provider Comparison (Aug 2026)
+
+| Provider | CPU | RAM | Storage | Cost | Notes |
+|----------|-----|-----|---------|------|-------|
+| UpCloud Trial | 2C | 4GB | 80GB | Free 14d | Account suspended |
+| AWS t3.micro | 2C | 1GB | 20GB | Free 12mo | Too small for 6 DBs |
+| AWS t3.small | 2C | 2GB | 20GB | ~RM65/mo | Can handle projects |
+| Oracle A1.Flex | 4C | 24GB | 200GB | Free forever | ARM capacity issues |
+| Hetzner CX22 | 2C | 4GB | 40GB | €4.5/mo | Best value, SG region |
+| PC Office | 2C | 18GB | 512GB | RM5-15/mo | On-demand boot |
+
+**Recommendation**: Oracle Free (if capacity) > Hetzner (if cheap needed) > AWS t3.small (if must have).
+
+## Command Center Architecture (Aug 2026)
+
+Unified dashboard for all HAFJET projects using proxy pattern.
+
+### Components
+1. **cc_server.py** — Python threaded HTTP server (ThreadingMixIn)
+2. **commandcenter_ui.html** — Single-page dashboard with Chart.js
+3. **Docker Compose** — Runs on port 80
+
+### Proxy Pattern (avoids CORS)
+```
+Browser → http://server:80/proxy/8080/api/dashboard
+        → cc_server.py → http://172.17.0.1:8080/api/dashboard
+        → Returns JSON to browser
+```
+
+### Key Implementation Details
+- Use `172.17.0.1` (Docker gateway) NOT `127.0.0.1` for service access from container.
+- Health check: accept `HTTPError` with code < 500 as "service UP" (FastAPI returns 404 for `/`).
+- Cache health results 10 seconds to avoid hammering services.
+- Threaded server prevents blocking on slow health checks.
+- All fetch() in HTML use relative paths (`/proxy/{port}/api/...`) to avoid CORS.
+
+### Pitfalls
+- Single-threaded `HTTPServer` blocks ALL requests during health check — MUST use `ThreadingMixIn`.
+- FastAPI services return 404 for root `/` — health check must treat 4xx as "UP" (service running).
+- `127.0.0.1` inside Docker container = container itself, NOT host — use `172.17.0.1`.
+
+## Memory-Constrained Docker Deployment (911MB RAM)
+
+When running many services on small instances:
+
+### Option A: Shared PostgreSQL (recommended)
+- 1 PostgreSQL instance with multiple databases (one per project).
+- Saves ~500MB vs 6 separate PostgreSQL containers.
+- Connection strings: `host=shared-db dbname=inventory user=hafjet`
+
+### Option B: Sequential Startup
+- Start DBs first, wait for healthy, then start APIs.
+- Don't start all containers at once — RAM spike kills services.
+- Use `docker compose up -d db1 && sleep 15 && docker compose up -d db2 && ...`
+
+### PostgreSQL Memory Tuning
+```yaml
+command: postgres -c shared_buffers=128MB -c work_mem=4MB -c max_connections=20
+```
+- `shared_buffers=128MB` (default 128MB, OK for small)
+- `work_mem=4MB` (reduces per-query memory)
+- `max_connections=20` (limit concurrent connections)
+
 ## Hybrid topology (when PC is off most of the time)
 - Azure VPS (small) = public relay/proxy; PC-office = Hermes engine via Cloudflare Tunnel / Tailscale.
 - When PC off, bot "sleeps". No fixed-cost increase if Azure already paid.

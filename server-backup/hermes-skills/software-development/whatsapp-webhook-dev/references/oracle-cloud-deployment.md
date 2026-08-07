@@ -2,22 +2,149 @@
 
 Deploy WhatsApp Cloud API bots to Oracle Cloud Infrastructure (OCI) Always Free tier. Use when the user asks about Oracle Cloud, OCI, A1.Flex, or migrating from Azure to Oracle.
 
-## Always Free Limits (Official — docs.oracle.com, updated 2026-06-12)
+## Always Free Limits (Official — docs.oracle.com, updated 2026-08-05)
 
 > **⚠️ CRITICAL: Oracle HALVED its Always Free Ampere A1 limits in June 2026.**
 > Previous limit: 4 OCPU / 24 GB → **Current limit: 2 OCPU / 12 GB total across ALL A1 instances.**
+>
+> **UPDATE (2026-08-05):** Pay-As-You-Go accounts get higher limits. User confirmed successful deployment of 4 OCPU / 24 GB after upgrading from Always Free to Pay-As-You-Go. Billing shows SGD 0.00 for A1.Flex instances (Always Free tier remains free even on PAYG accounts).
 
-| Resource | Always Free Limit | Notes |
-|----------|-------------------|-------|
-| **A1.Flex OCPU** | 2 OCPU total | 1,500 OCPU-hours/month. Shared across all A1 instances. |
-| **A1.Flex RAM** | 12 GB total | 9,000 GB-hours/month. Shared across all A1 instances. |
-| **Block Storage** | 200 GB | Boot + block volumes combined. 5 volume backups included. |
-| **Object Storage** | 20 GB | Standard tier, free. |
-| **Outbound Data** | 10 TB / month | Generous — sufficient for WhatsApp bot traffic. |
-| **Load Balancer** | 1 NLB, 10 Mbps | Not needed for single-VM bot deployment. |
-| **VCN / Subnets** | Up to 2 VCNs | 1 VCN + 1 subnet sufficient. |
-| **Public IPs** | 1 per VM (ephemeral or reserved) | First instance gets IPv4 automatically. |
-| **Micro Instances (AMD)** | 2 VMs (E2.1.Micro) | AMD-based, 1 OCPU / 1 GB each. Alternative to ARM. |
+| Resource | Always Free Limit | Pay-As-You-Go Limit | Notes |
+|----------|-------------------|---------------------|-------|
+| **A1.Flex OCPU** | 2 OCPU total | 4+ OCPU | 1,500 OCPU-hours/month (Always Free). PAYG removes limit. |
+| **A1.Flex RAM** | 12 GB total | 24+ GB | 9,000 GB-hours/month (Always Free). PAYG removes limit. |
+| **Block Storage** | 200 GB | 200 GB+ | Boot + block volumes combined. |
+| **Object Storage** | 20 GB | 20 GB+ | Standard tier, free. |
+| **Outbound Data** | 10 TB / month | 10 TB+ | Generous — sufficient for WhatsApp bot traffic. |
+
+### Pay-As-You-Go Upgrade Process (2026-08-05)
+
+**Problem:** Always Free accounts in `ap-kulai-2` region have ARM capacity exhaustion. Even after account upgrade to PAYG, capacity may not immediately improve.
+
+**Solution:**
+1. Upgrade to Pay-As-You-Go via Oracle Console
+2. Wait for email confirmation (5-10 minutes)
+3. Retry instance creation with full 4 OCPU / 24 GB spec
+4. If still "Out of host capacity", wait and retry — capacity fluctuates
+
+**Billing Impact:**
+- A1.Flex instances remain **FREE** even on PAYG accounts
+- Only overages (beyond Always Free limits) are charged
+- Monitor billing at `https://cloud.oracle.com/billing`
+
+### Ollama Docker Networking (2026-08-05)
+
+**Problem:** Ollama listens on `127.0.0.1:11434` by default. Docker containers cannot access localhost of the host.
+
+**Solution:**
+1. Set `OLLAMA_HOST=0.0.0.0` in Ollama systemd service
+2. Use `network_mode: host` in Docker Compose for services needing Ollama access
+3. Or use Docker gateway IP (`172.17.0.1`) — less reliable
+
+**Configuration:**
+```bash
+# Add to /etc/systemd/system/ollama.service
+Environment="OLLAMA_HOST=0.0.0.0"
+
+# Docker Compose
+services:
+  whatsapp-api:
+    network_mode: host  # Access Ollama on localhost:11434
+```
+
+### iptables Firewall on Oracle Cloud VMs (2026-08-05)
+
+**Problem:** Oracle Cloud VMs have iptables rules that block most ports by default. Even after opening ports in OCI Security Lists, the VM's iptables may still block traffic.
+
+**Symptom:** Port is open in OCI Security List but `curl http://<public-ip>:<port>` times out.
+
+**Diagnosis:**
+```bash
+# Check iptables rules
+sudo iptables -L -n | head -20
+
+# Look for REJECT rules in INPUT chain
+# If you see: REJECT 0 -- 0.0.0.0/0 0.0.0.0/0 reject-with icmp-host-prohibited
+# This means iptables is blocking non-SSH traffic
+```
+
+**Solution:**
+```bash
+# Allow specific ports
+sudo iptables -I INPUT 3 -p tcp --dport 8200 -j ACCEPT  # API port
+sudo iptables -I INPUT 4 -p tcp --dport 8117 -j ACCEPT  # Dashboard port
+
+# Make persistent (survives reboot)
+sudo apt-get install -y iptables-persistent
+sudo netfilter-persistent save
+```
+
+**Port checklist for WhatsApp Bot deployment:**
+| Port | Purpose | iptables rule |
+|------|---------|---------------|
+| 22 | SSH | Already open (default) |
+| 80 | HTTP (Command Center) | May need to add |
+| 443 | HTTPS | May need to add |
+| 8200 | WhatsApp Bot API | Must add |
+| 8117 | Dashboard UI | Must add |
+| 5440 | PostgreSQL (local only) | Don't expose publicly |
+
+### Pydantic BaseSettings Migration (2026-08-05)
+
+**Problem:** In Pydantic v2, `BaseSettings` moved to a separate package `pydantic-settings`.
+
+**Error:**
+```
+pydantic.errors.PydanticImportError: `BaseSettings` has been moved to the `pydantic-settings` package.
+```
+
+**Solution:**
+```bash
+# Add to requirements.txt
+pydantic-settings==2.7.0
+```
+
+```python
+# WRONG (Pydantic v1)
+from pydantic import BaseSettings
+
+# CORRECT (Pydantic v2)
+from pydantic_settings import BaseSettings
+```
+
+### Dashboard Deployment Pattern (2026-08-05)
+
+**Problem:** Need to serve a static HTML dashboard alongside the FastAPI API.
+
+**Solution options:**
+
+**Option 1: Nginx container (recommended for production)**
+```yaml
+services:
+  dashboard:
+    image: nginx:alpine
+    volumes:
+      - ./dashboard.html:/usr/share/nginx/html/index.html:ro
+    ports:
+      - "8117:80"
+    restart: unless-stopped
+```
+
+**Option 2: FastAPI StaticFiles (simpler)**
+```python
+from fastapi.staticfiles import StaticFiles
+
+app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")
+```
+
+**Option 3: Python HTTP server (dev/testing only)**
+```bash
+docker run -d --name dashboard -p 8117:8117 \
+  -v $(pwd)/dashboard.html:/app/index.html \
+  -w /app python:3.12-slim python -m http.server 8117
+```
+
+**Don't forget:** Open the port in both OCI Security List AND iptables!
 
 ### Instance Splitting Options
 

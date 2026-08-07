@@ -79,6 +79,10 @@ patterns = [
     (re.compile(r"gho_[A-Za-z0-9_]+"), "[REDACTED_GITHUB]"),
     (re.compile(r"ghu_[A-Za-z0-9_]+"), "[REDACTED_GITHUB]"),
     (re.compile(r"csk-[A-Za-z0-9_-]+"), "[REDACTED_CEREBRAS]"),
+    # Real Supabase service-role secrets only (not docs placeholders like sb_secret_xxx)
+    (re.compile(r"sb_secret_[A-Za-z0-9_]{20,}"), "[REDACTED_SUPABASE_SERVICE_ROLE]"),
+    (re.compile(r"sb_publishable_[A-Za-z0-9_-]{20,}"), "[REDACTED_SUPABASE_PUBLISHABLE]"),
+    (re.compile(r"eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"), "[REDACTED_JWT]"),
     (re.compile(r"(?m)^(api_key\s*:\s*).+$"), r"\1[REDACTED]"),
 ]
 count = 0
@@ -105,8 +109,8 @@ find "$BACKUP_DIR" \( -name ".env" -o -name "auth.json" -o -name "*.key" -o -nam
 
 sed -i "s/^Last Updated:.*/Last Updated: $TIMESTAMP/" "$BACKUP_DIR/README.md" 2>/dev/null || true
 
-# Abort if OpenRouter keys remain
-if grep -RInE 'sk-or-v1-[A-Za-z0-9]{8,}|sk-or-[A-Za-z0-9_-]{16,}' "$BACKUP_DIR" 2>/dev/null | grep -v 'REDACTED'; then
+# Abort if known secret patterns remain
+if grep -RInE 'sk-or-v1-[A-Za-z0-9]{8,}|sk-or-[A-Za-z0-9_-]{16,}|sb_secret_[A-Za-z0-9_]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.' "$BACKUP_DIR" 2>/dev/null | grep -v 'REDACTED'; then
   echo "❌ Abort: secret-like strings still present"
   exit 2
 fi

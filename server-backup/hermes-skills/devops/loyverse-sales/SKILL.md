@@ -414,18 +414,28 @@ TNB  = 500.0      # range 400-500, use 500 conservative
 KOS_TETAP = 1300.0
 ```
 
-### Hire-readiness logic (thresholds on `baki_hidup`) — PRODUCTION MODEL
+### Hire-readiness logic — TWO MODELS (different calculation chains)
+
+These measure different things so their thresholds differ numerically — they are not conflicting.
+
+**Model A — `gaji_profit_calc.py` (standalone, pre-Supabase):** measures `baki_hidup`
 ```python
-HIRE_READY  = 3200.0   # baki_hidup needed for full-time hire
-PART_TIME    = 1500.0   # baki_hidup needed for part-time hire
-if baki_hidup >= HIRE_READY:   status = "READY — boleh hire full-time"
-elif baki_hidup >= PART_TIME:   status = f"PART-TIME — perlu +RM {HIRE_READY-baki_hidup:,.2f} lagi"
-elif baki_hidup >= 0:          status = f"OK - belum boleh hire (perlu +RM {HIRE_READY-baki_hidup:,.2f})"
-else:                          status = f"⚠️ BELUM — perlu +RM {HIRE_READY-baki_hidup:,.2f} lagi"
+baki_hidup = net_profit - KOS_TETAP   # RM 1,300 fixed costs already subtracted
+HIRE_READY = 3200.0   # baki_hidup needed → full-time hire
+PART_TIME  = 1500.0   # baki_hidup needed → part-time hire
 ```
-> NOTE: an older doc version used `HIRE_PROFIT_THRESHOLD=3500` + salary/living-wage math. That does
-> NOT match the production tracker (the 3200 model is what generated the CSV rows). This is the source
-> of truth.
+> Legacy model. Preserved for backward compatibility of cron `41a5046bdc08`.
+
+**Model B — `pnl_generator_v2.py` (full P&L with Supabase):** measures `net_profit`
+```python
+net_profit = gross_profit - (variable_expenses + fixed_costs)
+HIRE_THRESHOLD = 2900.0   # net_profit needed → hire ready (UNIFIED target)
+```
+> **Model B is the UNIFIED target for all future scripts.** When Tuan asks "boleh hire pekerja?",
+> prefer Model B if Supabase expenses are available.
+
+**Unification rule:** Any NEW script that answers "boleh hire?" must use **net_profit ≥ RM 2,900**
+as the single threshold. This applies to P&L scripts, cron job summaries, and WhatsApp bot replies.
 
 ### CRITICAL: data-integrity guard — never re-fetch a month older than 31 days
 Loyverse free tier returns ONLY the last 31 days. A tracker run on, say, the 16th for the prior
@@ -463,6 +473,8 @@ The tracker reports the PREVIOUS month, never the current in-progress month.
 | `references/security-patterns.md` | Security patterns: forbidden `curl \| python3 -c`, safe alternatives |
 | `references/gaji-profit-tracker.md` | Gaji vs Profit / hire-readiness tracker: calculation chain, the >31-day data-integrity guard, and as-of status |
 | `references/loyverse-items-api.md` | Loyverse Items/Inventory API (supplementary to receipts): endpoint, data model, pagination (50+ pages), voice-query matching, low-stock filter, performance caching |
+| `references/pnl-system-v2.md` | Full P&L system v2: discount-adjusted COGS, fixed costs from DB, consistent HIRE_THRESHOLD=2900, UTC boundaries, revenue reconciliation |
+| `references/ocr-receipt-processing.md` | OCR for Malaysian receipts: label-precedence total amount extraction, image preprocessing pipeline, vendor normalization, confidence scoring, idempotency |
 
 ## Cron Job Setup (Daily Digest)
 
@@ -594,6 +606,7 @@ Save as `/tmp/loyverse_test.py` and run with `python3 /tmp/loyverse_test.py`.
 | HTTP 400 | Bad request — wrong param name or datetime format | Use `created_at.gte`/`created_at.lte` (dot notation) with ISO 8601 offset (`+08:00` or `Z`); not `created_at_min`/`created_at_max` |
 | HTTP 401 | Invalid/expired token | Update `LOYVERSE_ACCESS_TOKEN` in `~/.hermes/.env` |
 | HTTP 402 | Receipt older than 31 days | Expected — stop pagination, what you have is fine |
+| Monthly report shows fewer transactions than expected (e.g. 121 vs 140) | Loyverse window check compares month END, but early-month receipts fall off before end-of-month date | Use month START for the window check: `(today - date(year, month, 1)).days > 31`. The `pnl_generator_v2.py` function `check_loyverse_window()` has this fix. |
 | "Tiada transaksi" but dashboard shows sales | Timezone mismatch or filter bug | Check `created_at` dates in raw API response |
 | Profit shows way too high | Items without cost data (cost=0 → 100% margin) | Set costs in Loyverse Back Office for service items |
 | Profit shows way too low (e.g. RM 1.51 on RM 65 sales) | Reload/topup items have very thin margins (~2%) | Normal — reload margins are intrinsically low; focus on accessory/repair sales |

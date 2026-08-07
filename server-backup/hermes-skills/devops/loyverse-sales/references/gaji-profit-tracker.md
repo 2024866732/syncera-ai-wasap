@@ -46,23 +46,27 @@ Loyverse free tier only returns the last 31 days of receipts. The day-1 cron run
 full previous month because day-1 is within 31 days of month-end. Running mid-month for a
 previous month (e.g. July 16 for June) will return ZERO June matches — June 1-15 is >45 days old.
 
-**The current script does NOT have a data-integrity guard.** If you re-run for an old month,
-it fetches nothing and would overwrite the row with empty/zero data. **Mitigation:** do not
-re-run the calc for months already closed; rely on the preserved CSV row. If a guard is needed,
-add: skip fetch+upsert when (today - month_start).days > 31 AND a row already exists.
+**Data-integrity guard implemented in `scripts/gaji_profit_calc.py`:** if `today - month_start > 31 days`
+AND a row already exists in the tracker, PRESERVE the existing row — do NOT fetch/overwrite.
+This prevents accidental zeroing of historical data.
 
-## Business context (from conversation with Tuan Hafizi)
-- Tuan jaga kedai SENDIRI setiap hari — "terperuk, tak boleh ke mana". Hiring frees his time.
-- ROI argument: hire when (value of freed time) > (salary + profit gap). Even if shop profit
-  doesn't rise, if freed time earns >RM2,400/mo elsewhere (logistics, AI ops), hiring is ROI+.
-- Margin insight: reload/bill-payment days = 2-5% margin; phone/repair days = 25-80%.
-  Pushing 2-3 phone units/mo like VIVO V70 (+RM607) closes the hire gap fast.
-- Fixed costs confirmed Jul 2026: Sewa tertunggak RM400/bln (baki RM5,000), BSN loan RM400/bln,
-  TNB RM400-500/bln (use 500 conservative).
+## P&L System v2 (Full Financial Statement)
 
-## Status as of 2026-07-16
-- June 2026 row: complete (jualan 9443.98, net_profit 2722.19, baki_hidup 1422.19,
-  status "OK - belum boleh hire").
-- July 2026 row: partial (1-16 Julai) jualan 8445.49, net_profit 1196.95, baki_hidup -103.05.
-- `/tmp/gaji_profit_calc.py` is the working copy; the dashboard is `/tmp/gaji_profit_dashboard.html`.
-- Cron `41a5046bdc08` tested successfully (run on 2026-07-16 computed July correctly).
+For consolidated P&L reporting that combines Loyverse revenue + Supabase expenses + fixed costs,
+see `references/pnl-system-v2.md`. The calculator script (`gaji_profit_calc.py`) is the simple
+version; the full P&L generator (`pnl_generator_v2.py`) produces complete Profit & Loss statements
+with discount-adjusted COGS, category-level reconciliation, and hire-readiness dashboards.
+
+**⚠️ CONSISTENCY RULE**: `pnl_generator_v2.py` uses `HIRE_THRESHOLD = 2900.0` (net_profit).
+This is the same source of truth. Do not introduce a different threshold in any script.
+
+## Status as of 2026-08-04
+- Supabase schema hardened: vendors table, fixed_costs table, RLS restricted to service_role,
+  soft-delete via deleted_at, UNIQUE on whatsapp_message_id for idempotency.
+- OCR v2 deployed: label-precedence total amount extraction (7/7 test pass), image preprocessing
+  pipeline, field-level confidence scoring.
+- P&L v2 deployed: discount allocation to COGS, UTC month boundaries, revenue reconciliation,
+  Loyverse 31-day warning.
+- WhatsApp webhook v2: idempotent UPSERT, exponential backoff retry, rate limiting, monitoring.
+- QA checklist: 25 test cases across OCR (10), P&L (7), Webhook (6), Integration (2).
+- Verdict: CONDITIONAL GO — all critical fixes applied, pending QA test pass.

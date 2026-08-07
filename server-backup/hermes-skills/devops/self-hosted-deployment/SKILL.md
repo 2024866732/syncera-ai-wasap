@@ -237,6 +237,19 @@ Then update WEBHOOK_URL in both files, full n8n restart, and re-verify healthz +
 ### Docker group in agent sessions
 Always wrap with `sg docker -c "..."`. `newgrp docker` does not work inside Hermes Agent terminal sessions.
 
+### 🚨 Docker Permission on Fresh Ubuntu
+After `apt install docker.io`, the user is NOT in the docker group. Running `docker compose` fails with "permission denied while trying to connect to the Docker daemon socket".
+
+**Quick fix**: use `sudo docker compose` instead of `docker compose`. Works immediately without re-login.
+
+**Permanent fix** (requires re-login):
+```bash
+sudo usermod -aG docker ubuntu
+# Then re-login or: newgrp docker
+```
+
+**Agent sessions**: `newgrp docker` does NOT work inside Hermes terminal. Use `sg docker -c "..."` or `sudo docker compose`.
+
 ## Multi-Service Docker Compose Deployment
 
 When deploying multiple independent services on one server, use **separate Docker Compose files per service stack** — NOT one giant compose file. This provides isolation, independent restarts, and easier debugging.
@@ -758,6 +771,52 @@ requests.post(f"https://api.upcloud.com/1.3/server/{UUID}/stop",
 # Wait 45s for stopped state, then start, wait 30-60s
 ```
 
+### Ollama Binding — Containers Can't Reach It 🚨
+
+**Symptom:** Docker containers report "No route to host" or timeout when trying to reach Ollama at `172.17.0.1:11434`, even though Ollama is running on the host.
+
+**Root cause:** Ollama binds to `127.0.0.1:11434` by default (localhost only). The Docker bridge gateway `172.17.0.1` can't reach this because it's a different network interface.
+
+**Fix:** Tell Ollama to listen on all interfaces:
+```bash
+# Option A: Environment variable (persistent)
+echo 'OLLAMA_HOST=0.0.0.0' | sudo tee -a /etc/environment
+sudo systemctl restart ollama
+
+# Option B: Systemd override (more targeted)
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+cat <<EOF | sudo tee /etc/systemd/system/ollama.service.d/override.conf
+[Service]
+Environment=OLLAMA_HOST=0.0.0.0
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+```
+
+**Verify:** `ss -tlnp | grep 11434` should show `*:11434` (not `127.0.0.1:11434`).
+
+**Alternative: `network_mode: host`** — Instead of using Docker gateway IP, run the API container with host networking:
+```yaml
+services:
+  whatsapp-api:
+    image: python:3.12-slim
+    network_mode: host  # Container uses host network directly
+    # Now localhost:11434 = host Ollama
+```
+With `network_mode: host`, the container shares the host's network namespace — `localhost:11434` reaches Ollama directly. No gateway IP needed. Trade-off: container can't use Docker DNS or inter-container networking.
+
+**⚠️ Ollama `sed` Pitfall (Oracle VM):** The Ollama service file has `Environment="PATH=..."` as the last line. Adding `OLLAMA_HOST` via sed MUST insert BEFORE the `[Install]` section, not after the PATH line:
+```bash
+# BROKEN — inserts after last Environment, may break systemd parsing
+sudo sed -i '/Environment="PATH=/a Environment="OLLAMA_HOST=0.0.0.0"' /etc/systemd/system/ollama.service
+
+# CORRECT — use systemd override directory instead
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+echo '[Service]' | sudo tee /etc/systemd/system/ollama.service.d/override.conf
+echo 'Environment=OLLAMA_HOST=0.0.0.0' | sudo tee -a /etc/systemd/system/ollama.service.d/override.conf
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+```
+
 ### Ollama/LLM on constrained RAM (≤4GB)
 
 **Symptom:** Ollama killed by OOM killer when loading models alongside other services (PostgreSQL, n8n, monitoring).
@@ -836,6 +895,64 @@ StandardError=journal
 
 This is especially common when migrating from `nohup ... > /tmp/log 2>&1` (which works fine as the user) to a systemd service (which opens files as root first).
 
+### AWS Free Tier t3.micro (911MB) — Deployment Strategy
+
+**Confirmed Aug 2026:** AWS t3.micro has only 911MB RAM. Running 6 PostgreSQL + 6 APIs simultaneously causes OOM → SSH hangs → server unreachable.
+
+**Safe deployment for 911MB:**
+```bash
+# 1. Single PostgreSQL instance for ALL projects
+docker run -d --name shared-pg \
+  -e POSTGRES_USER=hafjet \
+  -e POSTGRES_PASSWORD=TrialPass123! \
+  -p 127.0.0.1:5432:5432 \
+  -v pg_data:/var/lib/postgresql/data \
+  postgres:16-alpine
+
+# 2. Create all databases
+docker exec shared-pg psql -U hafjet -c "
+CREATE DATABASE inventory;
+CREATE DATABASE crm;
+CREATE DATABASE multichannel;
+CREATE DATABASE marketing;
+CREATE DATABASE supplier;
+CREATE DATABASE knowledge;
+"
+
+# 3. Deploy APIs one at a time (not all at once!)
+for proj in inventory crm multichannel marketing supplier knowledge; do
+  cd ~/projects/$proj
+  docker compose up -d ${proj}-api
+  sleep 10  # Wait for pip install + startup
+done
+```
+
+**RAM budget (911MB):**
+- System + Docker: ~300MB
+- 1 PostgreSQL: ~150MB
+- 6 APIs (sequentially): ~50MB each = 300MB peak
+- Total: ~750MB → fits with 160MB headroom
+
+**Why 6 separate PostgreSQL fails:**
+- Each PG instance: ~100-150MB
+- 6 × 125MB = 750MB just for databases
+- Plus system (300MB) + APIs = 1200MB+ → OOM
+
+### AWS SSH Key Format Fix
+
+AWS generates OpenSSH format keys. Some older ssh clients fail with `error in libcrypto`.
+
+**Fix:** Add trailing newline to .pem file:
+```bash
+echo "" >> /tmp/hafjet-aws-key.pem
+# Verify: ssh-keygen -l -f /tmp/hafjet-aws-key.pem
+```
+
+**Upload pattern from iPhone:**
+1. Download .pem from AWS Console
+2. AirDrop to PC Office
+3. Copy to /tmp/hafjet-aws-key.pem
+
 ## Verification
 
 ```bash
@@ -899,7 +1016,135 @@ cd backups-$(date +%Y%m%d) && tar xzf config.tar.gz -C ~/.hermes/
 
 ## Related references
 
+- `references/local-python-service-deploy.md` — **HAFJET BI Agent deployment pitfalls:** venv vs global Python, systemd port conflicts, Supabase schema fallback, column mismatch, .env credential fix, and the incremental schema deployment pattern (ADD COLUMN IF NOT EXISTS + DO blocks + dual-column resolution)
 - `references/hafjet-8-project-deployment.md` — Full 8-project deployment pattern (Inventory, CRM, Analytics, MultiChannel, Marketing, Supplier, Knowledge + Command Center). Port allocation, RAM budget, per-stack Docker Compose template, schema init, Tailscale access, migration pattern.
 - `references/upcloud-deployment.md` — UpCloud Python SDK, server lifecycle, zone capacity, SSH key injection, performance benchmarks
 - `references/cloudflare-tunnel.md` — Cloudflare Tunnel Quick + Named tunnel setup for public HTTPS
 - `references/fastapi-route-ordering.md` — FastAPI route registration order pitfall (literal vs parameterized)
+
+---
+
+# FastAPI + Pydantic v2 Docker Deployment
+
+## When to use
+Deploying a FastAPI app with Pydantic settings inside Docker on Oracle Cloud or similar VPS.
+
+## Pydantic v2 Migration (BREAKING)
+
+**Symptom:** `pydantic.errors.PydanticImportError: BaseSettings has been moved to the pydantic-settings package`
+
+**Root cause:** Pydantic v2 moved `BaseSettings` from `pydantic` to `pydantic-settings` package.
+
+**Fix:**
+```bash
+# Add to requirements.txt
+echo "pydantic-settings==2.7.0" >> requirements.txt
+```
+
+```python
+# OLD (Pydantic v1)
+from pydantic import BaseSettings
+
+# NEW (Pydantic v2)
+from pydantic_settings import BaseSettings
+```
+
+## Python Import Paths in Docker
+
+**Symptom:** `ModuleNotFoundError: No module named 'src'`
+
+**Root cause:** When `main.py` is inside `src/` folder and Dockerfile copies files to `/app/`, the `src` prefix is not a valid package inside the container.
+
+**Fix:** Use relative imports when the entry point is inside the package:
+```python
+# src/main.py — BROKEN in Docker
+from src.settings import settings  # ❌ ModuleNotFoundError
+from src.ai.ollama_client import ollama_client  # ❌ ModuleNotFoundError
+
+# src/main.py — WORKS in Docker
+from settings import settings  # ✅ Relative import
+from ai.ollama_client import ollama_client  # ✅ Relative import
+```
+
+**Pattern:** When your `Dockerfile` does `COPY src/ .` (copies contents, not the folder), imports inside `src/` lose the `src.` prefix.
+
+## Dockerfile + docker-compose.yml + settings.py Template
+
+```dockerfile
+# Dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY src/ .
+EXPOSE 8200
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8200"]
+```
+
+```yaml
+# docker-compose.yml
+services:
+  api:
+    build: .
+    network_mode: host  # Use host network for Ollama access
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=mydb
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=mypass
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  db_data:
+```
+
+```python
+# src/settings.py
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    app_name: str = "MyApp"
+    app_port: int = 8200
+
+    # Ollama
+    ollama_host: str = "127.0.0.1"
+    ollama_port: int = 11434
+    ollama_model: str = "qwen2.5:7b"
+    ollama_request_timeout: int = 30
+
+    # Database
+    db_host: str = "localhost"
+    db_port: int = 5432
+    db_name: str = "postgres"
+    db_user: str = "postgres"
+    db_password: str
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+
+settings = Settings()
+```
+
+## Verification Checklist
+
+1. ✅ `pydantic-settings` in requirements.txt
+2. ✅ `from pydantic_settings import BaseSettings` (not `from pydantic`)
+3. ✅ Import paths in `main.py` use relative imports (no `src.` prefix)
+4. ✅ `uvicorn.run(port=...)` matches Dockerfile `--port`
+5. ✅ `.env` file exists in project root
+6. ✅ `network_mode: host` for Ollama access (or use Docker gateway IP)

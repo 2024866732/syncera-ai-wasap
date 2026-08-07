@@ -2,6 +2,17 @@
 
 ## Run History
 
+### 06 Aug 2026 (cron run)
+- Tab: REPAIR BARU | Filter: SIAP
+- Pending: 621 | Sent: 606 | Failed: 15 (13 no-phone skips + 2 HTTP 400 dual-phone) | Exit 0
+- 470 blocks: 0
+- HTTP 400: 2 (ID-677, ID-693 — dual phone numbers `601111144636/0104163884`, `60132659486/0132659485`)
+- No-phone skips: 13 (ID-008, 081, 122, 130, 138, 150, 228, 280, 309, 577, 586, 727, 737)
+- Owner summary: sent to 60198021500
+- Pre-flight: credential OK (+60 11-4956 1698)
+- Run time: ~10 min, exit 0
+- Ran via `run_pickup_live.sh` (sources bot .env for WA creds, injects known constants)
+
 ### 26 Jul 2026 (this session)
 - Tab: REPAIR BARU | Filter: SIAP
 - Pending: 621 | Sent: 606 | Failed: 15

@@ -444,9 +444,21 @@ This is a one-time config — survives deploys. Without it on Free tier, cold st
 
 17z. **⚠ Deploying updated dashboard/dist to Azure without triggering rebuild:** Prefer `az webapp deploy --type zip --src-path dist.zip` over Kudu VFS API. VFS upload requires Kudu credentials which are always redacted by Azure CLI. If you must update only `dashboard/dist/`, deploy the full zip with `SCM_DO_BUILD_DURING_DEPLOYMENT=false` + `ENABLE_ORYX_BUILD=false` to skip Oryx build entirely. See `references/azure-kudu-vfs-deploy.md` for when VFS is the only option.
 
+17ak. **⚠ LIVE `webhook_listener.py` on Azure is NOT the repo copy — ALWAYS download from Kudu VFS first, patch that, upload back.** The HAFJET production bot's live file is **3628 lines** (dashboard, WebSocket, JWT auth, `db_logger` imports, `get_stats`) while the git repo copy `syncera-ai-wasap/bots/hafjet-azure/webhook_listener.py` is a stale **414-line** FastAPI skeleton. Uploading the repo copy over VFS silently replaces the production bot with the old version — dashboard 404s, WebSocket dies, JWT endpoints vanish. Safe workflow when adding an endpoint (e.g. `/cctv-alert`) or any change:
+```bash
+TOKEN=$(az account get-access-token --resource https://management.azure.com --query accessToken -o tsv)
+curl -s -H "Authorization: Bearer $TOKEN" "https://<app>.scm.azurewebsites.net/api/vfs/site/wwwroot/webhook_listener.py" -o /tmp/live_webhook.py
+# patch /tmp/live_webhook.py, py_compile it, then:
+curl -s -X PUT -H "Authorization: Bearer $TOKEN" -H "If-Match: *" --data-binary @/tmp/live_webhook.py \
+  "https://<app>.scm.azurewebsites.net/api/vfs/site/wwwroot/webhook_listener.py" -w "HTTP %{http_code}\n"   # expect 204
+```
+Same rule for any companion module (`hermes_ai.py`, `repair_db.py`, `db_logger.py`) — fetch live, patch, push. Also verify the deployed file actually has the new route via `curl -s https://<app>.azurewebsites.net/health` (check `features` array) after restart.
+
 17aa. **⚠ `routing_path` string mismatch causes silent analytics failure:** When `_detect_routing()` returns a value that differs from the hardcoded strings in SQL analytics queries, counters silently return zero while the bot operates normally. Example: `_detect_routing()` returns `"ai_query"` but `_query_stats()` filters with `WHERE routing_path='ai'`. Symptom: dashboard shows `today_ai_calls=0` and `fallback_rate=100%` despite bot replying correctly. **Detection:** (1) Compare producer constants vs SQL literals with `grep`. (2) If stored `routing_path` values differ from query filters, queries will return 0. (3) Add `SELECT routing_path, COUNT(*) FROM messages GROUP BY routing_path` to inspect actual values. **Fix:** Make producer and consumer use identical strings. See `references/routing-path-mismatch.md` for the diagnostic recipe.
 
 17aa. **⚠ `az webapp config appsettings set --settings KEY=VALUE` NULLIFIES all other settings:** This command REPLACES the entire settings collection with only what you pass. Existing keys not included become null. **ALWAYS** backup → modify → apply ALL settings at once. See `references/azure-settings-preservation.md` for the safe Python workflow and `references/azure-safe-update-workflow.md` for the exact CLI commands used in production.
+
+17aa2. **⚠ Multi-key `--settings` via Python subprocess can DROP some keys silently — verify every key landed after the call.** On 2026-08-05, applying 23 settings in ONE `az webapp config appsettings set` call (20 existing + 3 new `CCTV_ALERT_*` via a Python subprocess arg list) resulted in `CCTV_ALERT_ENABLED=true` landing but `CCTV_ALERT_TOKEN` and `CCTV_ALERT_TARGET` silently missing — no error, RC=0. Root cause suspected: special chars in the token (hyphens/underscores) combined with the long arg list. **Fix pattern:** after ANY settings write, re-read with `az webapp config appsettings list ... --query "[?contains(name,'CCTV')].{name:name,value:value}" -o table` and confirm every key + value is present; set missing keys individually with their own `az ... set --settings KEY=VAL` call. Never trust the set command's own output (it was truncated/echoed oddly here) — verify via a fresh `list`.
 
 17ab. **⚠ `az webapp deploy --type zip` on Linux App Service PRESERVES `appCommandLine`** — unlike Windows, Linux zip deploy does NOT reset the startup command. Do NOT proactively re-set `appCommandLine` after every Linux deploy — you risk conflicting with the working config. If `/health` works after deploy, `start.sh` is running correctly. Only re-set if `appCommandLine` is confirmed null via `az webapp config show --query appCommandLine`.
 
@@ -568,6 +580,247 @@ ngrok http 8443 --config ~/.config/ngrok/ngrok.yml
 ```
 
 **⚠ ngrok free tier (`*.ngrok-free.dev`) is unreliable for Meta webhook delivery** — connections drop, webhook POST requests from Meta may silently not reach your server. Use only for initial testing. Migrate to Azure for production. See `references/ngrok-free-tier-issues.md`.
+
+## Hybrid Azure + Oracle Architecture (Aug 2026)
+
+For production WhatsApp bots, use Azure as the channel layer and Oracle as the AI engine.
+
+### Architecture
+```
+Customer WhatsApp → Azure Bot Service → Oracle VM (AI) → Response
+```
+
+### API Contract (Azure ↔ Oracle)
+
+**Endpoint:** `POST /api/ai/chat`
+
+**Request:**
+```json
+{
+  "phone": "60198021500",
+  "message_text": "harga iPhone 11?",
+  "context_id": "azure-conversation-id",
+  "timestamp": "2026-08-05T10:00:00Z"
+}
+```
+
+**Response:**
+```json
+{
+  "reply_text": "iPhone 11 (128GB) - RM1,299. Ada stok 2 unit.",
+  "suggested_actions": [],
+  "confidence": 0.95,
+  "model": "qwen2.5:7b",
+  "latency_ms": 5200
+}
+```
+
+### FastAPI Implementation
+```python
+from fastapi import APIRouter
+from pydantic import BaseModel
+from typing import Optional
+
+router = APIRouter()
+
+class AIChatRequest(BaseModel):
+    phone: str
+    message_text: str
+    context_id: Optional[str] = None
+    timestamp: Optional[str] = None
+
+class AIChatResponse(BaseModel):
+    reply_text: str
+    suggested_actions: list[str] = []
+    confidence: Optional[float] = None
+    model: str
+    latency_ms: Optional[int] = None
+
+@router.post("/api/ai/chat", response_model=AIChatResponse)
+async def ai_chat(req: AIChatRequest):
+    # Call Ollama, return response
+    ...
+```
+
+### Key Points
+- Azure handles WhatsApp Cloud API integration
+- Oracle handles AI inference (Ollama qwen2.5:7b)
+- Use Tailscale IP (`100.124.99.52`) for reliability
+- Public IP (`149.118.152.50`) also works after iptables fix
+
+## Ollama as Local AI Backend (No External API Costs)
+
+For self-hosted WhatsApp bots where you want zero API costs, use Ollama as the AI backend instead of OpenRouter/OpenAI.
+
+### Architecture
+```
+Customer (WhatsApp)
+    → Meta Cloud API
+    → Webhook POST (our server)
+    → FastAPI Webhook Listener
+    → Ollama API (localhost:11434)
+    → qwen2.5:7b / llama3.2:3b
+    → Reply
+    → Meta Cloud API
+    → Customer (WhatsApp)
+```
+
+### Ollama Integration Pattern
+```python
+import httpx
+
+OLLAMA_URL = "http://localhost:11434"  # or http://172.17.0.1:11434 from Docker
+
+SYSTEM_PROMPT = """You are [BUSINESS] WhatsApp assistant. Be helpful, concise.
+Reply in the same language the customer uses (Malay/English).
+End with: "Nak lebih detail? WhatsApp kami di [NUMBER]" """
+
+async def ask_ollama(message: str, model: str = "qwen2.5:7b") -> str:
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(f"{OLLAMA_URL}/api/chat", json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": message}
+                ],
+                "stream": False,
+                "options": {"temperature": 0.7, "num_predict": 150}
+            })
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("message", {}).get("content", FALLBACK_REPLY)
+            return FALLBACK_REPLY
+    except Exception:
+        return FALLBACK_REPLY
+```
+
+### Docker Compose for Ollama + WhatsApp Bot
+```yaml
+services:
+  whatsapp-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: whatsapp
+      POSTGRES_USER: hafjet
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - wa_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5439:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hafjet -d whatsapp"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  whatsapp-api:
+    image: python:3.12-slim
+    working_dir: /app
+    command: bash -c "pip install -q fastapi uvicorn psycopg2-binary httpx && python whatsapp_api.py"
+    volumes:
+      - ./whatsapp_api.py:/app/whatsapp_api.py
+    network_mode: host  # Access Ollama on localhost:11434
+    depends_on:
+      whatsapp-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  wa_data:
+```
+
+### Model Selection Guide
+| Model | RAM | Speed (CPU) | Quality | Best For |
+|-------|-----|-------------|---------|----------|
+| qwen2.5:7b | ~5GB | ~15 tok/s | Good | General customer service |
+| llama3.2:3b | ~2.4GB | ~30 tok/s | OK | Simple Q&A, tight RAM |
+| gemma2:2b | ~1.5GB | ~40 tok/s | Basic | Very constrained servers |
+
+### Multi-Turn Conversation Context
+
+Ollama is stateless — each request starts fresh. To make the bot "remember" previous messages, maintain conversation history in your webhook handler:
+
+```python
+from collections import defaultdict
+from datetime import datetime, timedelta
+
+# In-memory conversation store (per phone number)
+# For production: use PostgreSQL table or Redis
+_conversations: dict[str, list[dict]] = defaultdict(list)
+_CONTEXT_WINDOW = 10  # last N message pairs
+_CONTEXT_TTL = timedelta(minutes=30)
+
+def _get_context(phone: str) -> list[dict]:
+    """Get recent conversation history for a phone number."""
+    now = datetime.now()
+    msgs = _conversations[phone]
+    # Remove messages older than TTL
+    _conversations[phone] = [
+        m for m in msgs
+        if now - m.get("_ts", now) < _CONTEXT_TTL
+    ]
+    return _conversations[phone][-_CONTEXT_WINDOW * 2:]
+
+def _add_message(phone: str, role: str, content: str):
+    """Add a message to conversation history."""
+    _conversations[phone].append({
+        "role": role,
+        "content": content,
+        "_ts": datetime.now()
+    })
+
+async def ask_ollama_with_context(message: str, phone: str, model: str = "qwen2.5:7b") -> str:
+    """Ollama call with multi-turn context."""
+    # Build message history
+    history = _get_context(phone)
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages.extend([{"role": m["role"], "content": m["content"]} for m in history])
+    messages.append({"role": "user", "content": message})
+    
+    # Store user message
+    _add_message(phone, "user", message)
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(f"{OLLAMA_URL}/api/chat", json={
+                "model": model,
+                "messages": messages,
+                "stream": False,
+                "options": {"temperature": 0.7, "num_predict": 150}
+            })
+            if response.status_code == 200:
+                reply = response.json().get("message", {}).get("content", FALLBACK_REPLY)
+                # Store assistant reply
+                _add_message(phone, "assistant", reply)
+                return reply
+            return FALLBACK_REPLY
+    except Exception:
+        return FALLBACK_REPLY
+```
+
+**Production alternative:** Store conversation context in PostgreSQL (survives restarts):
+
+```sql
+CREATE TABLE conversation_context (
+    id SERIAL PRIMARY KEY,
+    phone VARCHAR(50) NOT NULL,
+    role VARCHAR(10) NOT NULL,  -- 'user' or 'assistant'
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_conv_phone ON conversation_context(phone, created_at);
+```
+
+### Pitfalls
+- **Ollama default binding**: `127.0.0.1` only — set `OLLAMA_HOST=0.0.0.0` for Docker access
+- **First request slow**: Model loading takes ~8-15s; subsequent requests are fast
+- **No streaming in webhook**: Use `stream: False` in Ollama API call; streaming doesn't work with Meta's synchronous webhook model
+- **Language matching**: qwen2.5 handles Malay well; llama3.2 is better for English
+- **RAM pressure**: Stop other Docker containers before LLM workloads on constrained servers
+- **Multi-turn context size**: Keep context window ≤10 pairs to avoid Ollama context length overflow (qwen2.5:7b = 32K context, but longer context = slower inference)
+- **Conversation TTL**: Clear stale conversations (>30 min old) to prevent memory leaks in long-running processes
 
 ## Hybrid Webhook Pattern (AI + Static Menu + DB + Keyword Rules)
 
