@@ -333,6 +333,8 @@ BACKEND_HEADERS: { 'X-Agent-Token': 'REPLACE_ME' },
 
 ## v3.2 — Push to HAFJET Backend
 
+**⚠️ CRITICAL: `__spx_poc_run()` does NOT auto-push.** After PoC completes, user MUST manually call `__spx_poc_push_hafjet()`. This is intentional — PoC is console-only verification before any backend writes.
+
 ```javascript
 function pushHafjet(apiUrl, apiKey) {
     const payload = window.__spx_poc_results
@@ -354,19 +356,69 @@ window.__spx_poc_push_hafjet = pushHafjet;
 
 **Response:** `{updated, skipped, errors, total, details: [{tracking, reason}]}`
 
-## v4.0 — Autopilot (Balanced/Option B)
+## v5.0 — Fire-and-Forget 🔥 (CURRENT)
+
+**Zero manual steps.** Buka SPX page → auto-scrape → auto-push → repeat setiap 15 minit.
+
+Deployed file: `~/.hermes/whatsapp-bot/spx_autopilot_v1_rollout_safe.user.js`
+Delivery: copy to `~/.hermes/cache/documents/spx_autopilot_v5_fire_and_forget.txt` → `MEDIA:`
+
+### CONFIG.AUTOPILOT Block (v5.0)
+```javascript
+const AUTOPILOT = {
+    ENABLED: true,                        // auto-start on page load 🔥
+    INTERVAL_MINUTES: 15,                 // extraction interval
+    STATUS_FILTER: '',                    // ALL statuses (ReadyForCollection + Return_Outbound)
+    DEDUPE: true,
+    BATCH_LIMIT: 10,                      // scrape 10 orders per cycle
+    BACKEND_URL: 'https://hafjet-whatsapp-bot.azurewebsites.net/api/spx/bulk-map-phones',
+    API_KEY: 'MX86M7cpU6LOyEn5NN_fbSnnxoQ53PeNLcAlXfBCHbg',
+    RETRY_MAX: 3,
+    PUSH_TIMEOUT_MS: 30000,               // 30s timeout
+    INITIAL_DELAY_MS: 2000,               // 2s delay (biar page render)
+};
+```
+
+### v5.0 Changes from v4.0
+- `ENABLED: true` — auto-start on page load (TAK perlu taip command)
+- `BATCH_LIMIT: 10` — more orders per cycle
+- Auto-push built-in via `pushHafjetAsync()` in `autopilotTick()`
+- Visual badge overlay (bottom-right, 8s fade) on page load
+- Cleaner console: hanya show command penting
+
+### Global Commands (v5.0)
+```javascript
+__spx_on()                    // Enable autopilot (alias for __spx_start_autopilot)
+__spx_off()                   // Stop autopilot (alias for __spx_stop_autopilot)
+__spx_state()                 // → { running, cycle, failures, queue }
+__spx_poc_run({limit:10})     // Manual run (jika perlu)
+__spx_poc_push_hafjet(url,key) // Manual push (jika perlu)
+```
+
+### Cara Install
+1. Delete script lama di Tampermonkey
+2. Import `spx_autopilot_v5_fire_and_forget.txt` (rename to `.user.js`)
+3. Buka SPX Self-Collection page → **done!**
+
+### Cara Update dari v4.0
+1. Tampermonkey Dashboard → delete script lama
+2. Import script baru (rename `.txt` → `.user.js`)
+3. Reload SPX page → auto-start
+
+## v4.0 — Autopilot (Balanced/Option B) [DEPRECATED — use v5.0]
 
 Full auto-timer Tampermonkey script at `spx_phone_agent_autopilot_v1.user.js` (1263 lines).
 
-**Deployment patterns (CORS, auth, timeout, rollout):** see `references/autopilot-v1-deployment-patterns.md` — covers CORS middleware for SPX origins, X-API-Key-only endpoint auth, PUSH_TIMEOUT_MS tuning (15s→45s recommendation), API key location (Azure App Settings), and the rollout-safe checklist.
+**Deployment patterns (CORS, auth, timeout, rollout):** see `references/autopilot-v1-deployment-patterns.md`.
 
-### CONFIG.AUTOPILOT Block
+### CONFIG.AUTOPILOT Block (v4.0)
 ```javascript
 const AUTOPILOT = {
-    ENABLED: false, INTERVAL_MINUTES: 15, STATUS_FILTER: 'Ready For Collection',
-    DEDUPE: true, BATCH_LIMIT: 5, RETRY_MAX: 3, PUSH_TIMEOUT_MS: 15000, INITIAL_DELAY_MS: 5000,
+    ENABLED: false, INTERVAL_MINUTES: 15,
+    STATUS_FILTER: '',  // Empty = ALL statuses
+    DEDUPE: true, BATCH_LIMIT: 5, RETRY_MAX: 3, PUSH_TIMEOUT_MS: 45000, INITIAL_DELAY_MS: 5000,
     BACKEND_URL: 'https://hafjet-whatsapp-bot.azurewebsites.net/api/spx/bulk-map-phones',
-    API_KEY: 'DASHBOARD_API_KEY_HERE',
+    API_KEY: 'MX86M7cpU6LOyEn5NN_fbSnnxoQ53PeNLcAlXfBCHbg',
 };
 ```
 
@@ -390,31 +442,30 @@ function isSessionValid() {
 ### Rollout-Safe Pattern
 First import: `ENABLED: false`, `BATCH_LIMIT: 5`. Manual `__spx_start_autopilot()` in console. Verify one cycle. Then set `ENABLED: true`. Never run v3.2 and v4.0 simultaneously.
 
-### Global Commands
+### Global Commands (v4.0)
 ```javascript
 __spx_start_autopilot()    // Start auto-timer
 __spx_stop_autopilot()     // Stop immediately
 __spx_autopilot_state()    // → { running, cycle, failures, queue }
 ```
 
-### Session Upgrade from v3.2
-1. Disable v3.2 in Tampermonkey 2. Import v4.0 (rollout-safe) 3. Reload SPX page 4. `__spx_start_autopilot()` 5. After smoke test passes: edit `ENABLED: true`
+## Backend Follow-Up Engine — `spx_followup.py` + `_check_spx_reminders()`
 
-## Backend Follow-Up Engine — `spx_followup.py`
+Production Python functions in `~/.hermes/whatsapp-bot/`.
 
-Production Python function at `~/.hermes/whatsapp-bot/spx_followup.py`.
+**`determine_followup(order, now=None) → (next_stage, template_name)`** — in `spx_followup.py`:
+- Priority: SPX page status → date fallback → inbound_time+5
+- Anti-duplicate: never re-send same stage, never downgrade
 
-**`determine_followup(order, now=None) → (next_stage, template_name)`**
+**`_check_spx_reminders()`** — in `webhook_listener.py` (~line 542):
+- Called by APScheduler every 15 min (08:00-21:00 MYT)
+- Guard: `get_runtime_bool("spx_reminders_enabled", False)`
+- Fetch: `get_spx_due_orders()` → `determine_followup()` → `send_whatsapp_smart()`
+- Template params: MUST be individual name + tracking number, NOT full text (see references/spx-reminder-backend-pitfalls.md Bug 8)
+- DB update: ONLY after successful WhatsApp send (`update_spx_reminder_state()`)
 
-Priority:
-1. SPX page status IS the source of truth: "Remind1"→remind1, "Collection Failed"→collection_failed
-2. Fallback by `collect_by_date`: days_left<0→collection_failed, ==0→remind4, ==1→remind3, ==2→remind2, >=3→remind1
-3. No collect_by_date → `inbound_time + 5 days`
-4. `first_seen_at` NEVER used for SLA basis
-
-Anti-duplicate: never re-send same stage, never downgrade, collected overrides all.
-
-See `references/spx-followup-engine.md` for full mapping tables and test cases.
+See `references/spx-followup-engine.md` for full mapping tables.
+See `references/spx-reminder-backend-pitfalls.md` for all 8 known backend bugs.
 
 ## Pitfalls
 
@@ -426,11 +477,25 @@ See `references/spx-followup-engine.md` for full mapping tables and test cases.
 
 4. **PoC must NOT include any POST/API calls**: The PoC is console-only. Backend payload is added only after selectors are confirmed working on real SPX portal.
 
+5. **STATUS_FILTER should be empty for first scrape**: Default `'Ready For Collection'` misses `Return_Outbound` and other statuses. Set `STATUS_FILTER: ''` to scrape ALL orders, then filter server-side. Only apply a filter after confirming scrapers work on a specific status.
+
+6. **Post-PoC push is MANUAL**: `__spx_poc_run()` reveals phones in-memory but does NOT send to backend. User must run `__spx_poc_push_hafjet(url, apiKey)` explicitly. The push command is: `__spx_poc_push_hafjet('https://hafjet-whatsapp-bot.azurewebsites.net/api/spx/bulk-map-phones', 'MX86M7cpU6LOyEn5NN_fbSnnxoQ53PeNLcAlXfBCHbg')`
+
+7. **SPX API returns dummy/placeholder phone numbers — browser agent is the ONLY reliable source.** The `POST /api/spx/fetch-phones` endpoint calls SPX's internal API, which often returns sequential placeholder numbers like `+60123456789` instead of real customer phones (hex `2B3630313233343536373839`). The Tampermonkey eye-icon scrape bypasses this entirely — the revealed phone in the DOM IS the real number. Never trust phones from the SPX API without hex-verification.
+
+8. **Hex-verify phones before trusting them.** Dummy phones have hex containing `313233343536` (sequential `123456` pattern). Check with `hex(recipient_phone)` in SQLite. If hex shows sequential digits, the phone was NOT resolved by the API — treat as unverified.
+
+9. **`is_paused=1` blocks orders from `get_spx_due_orders()`.** If orders mysteriously skip reminder processing, check `is_paused` column. The DB query `WHERE is_paused = 0` silently excludes paused orders. Orders can become paused due to phone validation failures or manual dashboard action.
+
 ## Reference Files
 
 - `references/container-scoring-algorithm.md` — detailed scoring math, selector points table, worked example
 - `references/click-normalization.md` — v2.7→v2.8 eye-click fix: `isProbablyClickable()` heuristic, synthetic `MouseEvent` dispatch, `debugAncestors()` pattern
 - `references/iteration-history-v2.md` — v2.1→v2.8 changelog: each version's runtime failure and fix
+- `references/spx-followup-engine.md` — follow-up stage mapping and test cases
+- `references/autopilot-v1-deployment-patterns.md` — CORS, auth, timeout tuning, rollout checklist
+- `references/spx-server-ops.md` — Server-side: phone fetch, reminder toggle, Kudu SQLite pitfalls, WhatsApp template testing
+- `references/spx-reminder-backend-pitfalls.md` — Backend SPX reminder bugs: wrong column name (`reminder_status` vs `hafjet_reminder_state`), missing `_SPX_TEMPLATES` keys, `is_paused=1` blocking, template name mismatches
 
 ## Related Skills
 

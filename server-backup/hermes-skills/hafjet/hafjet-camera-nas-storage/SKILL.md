@@ -42,7 +42,7 @@ IP cameras that dump clips to “NAS” almost always mean **SMB on the same LAN
 - LAN IP (typical): `192.168.1.252` (`enp1s0`)
 - Share path: `/mnt/cctv/xiaomi-nas` (sibling to worker data; **not** `snapshots/` or `faces/`)
 - Share name: `xiaomi-nas`
-- Subfolder: `recordings`
+- Subfolder: `recordings` (⚠️ documented share subfolder — but cameras ACTUALLY write to `xiaomi_camera_videos/{device_id}/{YYYYMMDDHH}/`; see "Live camera dump layout" below. `recordings/` stays empty in production.)
 - User: `smbcam`
 - Setup script: `scripts/hafjet-xiaomi-samba-pc-office-setup.sh`
 - Writable/ACL fix: `scripts/hafjet-xiaomi-samba-fix-writable.sh`
@@ -136,6 +136,83 @@ Session deploy report pattern: `references/xiaomi-ingest-p1-deploy-report-templa
 - **ACL DONE:** `recordings` has `user:hafizi145:rwx` (+ defaults); `test -w` WRITABLE
 - Post-ACL: `.env` → `XIAOMI_RECORDINGS_DIR=/mnt/cctv/xiaomi-nas/recordings`, `STABLE_SECONDS=45`; restart **ingest :8092 only**; `/health` must show real recordings path (not `test-drop`)
 - Production ACL approval phrase + dual ACL: `references/production-acl-approval.md`
+
+### ⚠️ Live camera dump layout — `recordings/` is NOT where cameras write (verified 2026-08-08)
+
+Xiaomi cameras connected to the Samba share actually dump to:
+
+```
+/mnt/cctv/xiaomi-nas/xiaomi_camera_videos/{device_id}/{YYYYMMDDHH}/NNMSS_<epoch>.mp4
+```
+
+- `{device_id}` per camera (seen: `94f827062753` active, `788b2a9c88dc`, `788b2aa0d9fe`)
+- `{YYYYMMDDHH}` = per-hour folder (e.g. `2026080810`), filename `08M38S_1786154918.mp4` = 8min38s + unix epoch
+- **`recordings/` stays EMPTY in production** — the ingest watcher (`XIAOMI_RECORDINGS_DIR=/mnt/cctv/xiaomi-nas/recordings`, non-recursive `root.iterdir()`) will never fire for real camera dumps; a manual drop into `recordings/` is the only way the current pipeline triggers.
+- **Fix options (awaiting Tuan approval):** A) point `XIAOMI_RECORDINGS_DIR` at `xiaomi_camera_videos` + make `scan_once()` recursive; B) small cron that syncs new files from `xiaomi_camera_videos/**` into `recordings/`.
+
+### ✅ Pilihan A IMPLEMENTED (2026-08-08) — recursive scan of `xiaomi_camera_videos`
+
+Tuan approved and the code was deployed (BLOCKED on ACL — see below):
+
+- `watcher.py`: added `_iter_files(root)` using `os.walk` — recursive yield of video candidates, skipping hidden dirs (`.thumbnails`) and any file older than `BACKFILL_HOURS`.
+- `config.py`: `BACKFILL_HOURS = _int("XIAOMI_BACKFILL_HOURS", 24)` — **critical guard**: `xiaomi_camera_videos` holds ~5K+ historical files; without a backfill cutoff the watcher would try to ingest every old clip on first boot (CPU/disk storm on i3). HAFJET set `XIAOMI_BACKFILL_HOURS=2` so only recent clips are claimed.
+- `ALERT_NEW_MINUTES = _int("XIAOMI_ALERT_NEW_MINUTES", 30)` — alert Telegram ONLY for files with mtime ≤30 min old; backfill clips are ingested silently (no alert spam).
+- `.env` → `XIAOMI_RECORDINGS_DIR=/mnt/cctv/xiaomi-nas/xiaomi_camera_videos`.
+- Compile checks pass; service restart pattern per the restart pitfall below.
+
+**✅ ACL RESOLVED (2026-08-08, same session):** Tuan ran `~/fix_acl_xiaomi_camera_videos.sh`
+interactively → `WRITE OK`. After ACL, restart xiaomi-ingest (venv pattern below) and verify:
+`curl -s http://127.0.0.1:8092/health` → `recordings_dir=.../xiaomi_camera_videos`, watcher_alive=true,
+then watch `processed_ok` climb (24+ files ingested in first minutes, `processed_fail` stays low).
+`cctv-worker` MainPID must remain unchanged. Full detail in `references/xiaomi-ingest-telegram-alert-2026-08-08.md`.
+
+**⚠️ Partial-file pitfall — `moov atom not found` (verified 2026-08-08):** Xiaomi cameras write MP4
+streamingly; the watcher claims a file after `STABLE_SECONDS=45` of no size/mtime change, but a clip
+can still be mid-write (large rolling files, ~30s–2min). ffprobe then fails `moov atom not found`
+(rc=1) and the clip lands in `failed/{y}/{m}/{d}/` — counted in `processed_fail`, never alert-spammed.
+Not harmful (ingest continues), but the clip is lost. If this becomes frequent, either raise
+`STABLE_SECONDS` for large clips or add a retry that re-probes the file once after a few minutes
+before final failure. To verify a suspected partial file: `ffprobe -v error -show_format <file>` →
+`moov atom not found` = incomplete/streaming write.
+
+**Verifying alert with a "new" clip (test recipe):** because `ALERT_NEW_MINUTES=30` suppresses
+alerts for backfill, an existing real clip (e.g. `08M38S_...`) will NOT alert when ingested.
+To prove the alert path, copy a known-good archived clip back into `xiaomi_camera_videos/{id}/{YYYYMMDDHH}/`
+with a fresh mtime (`cp ... "test_new_$(date +%s).mp4"`), wait stability 45s → expect
+`telegram alert sent ok=True` in the log and a thumbnail in `thumbs/`.
+
+### Xiaomi RTSP via miloco + go2rtc (infra approved 2026-08-08, no cameras yet)
+
+Tuan approved setting up `~/xiaomi-rtsp` on Office PC with Docker Compose: **miloco + micam + go2rtc** (Xiaomi official RTSP bridge — Tuan must login Xiaomi account in Miloco before adding cameras; add none until then). Reference repo: `PC-Office/mi-camera-ha-rtsp-guide` (compose runs miloco+micam+go2rtc, publishes each camera to local RTSP, keeps H.265 + creates H.264 browser aliases). Do not touch Frigate / cctw-worker / xiaomi-ingest while doing this.
+
+### Telegram alert on new recording (2026-08-08, Fasa A)
+xiaomi-ingest sends a Telegram alert (photo thumbnail + caption) to group **`-5330700835`**
+("CCTV ALERT") for every successfully ingested clip ≥10s, cooldown 5 min.
+
+- New module `app/telegram_alert.py`: `send_recording_alert(thumb_path, original_name, recorded_at, duration_s)`.
+  Uses stdlib-only **urllib multipart/form-data** (no `requests` dep). Returns bool; caller wraps in
+  try/except so **alert failure never fails the ingest**.
+- Caption format: `📁 Xiaomi Recording Baru` / Kamera (device_id from Xiaomi filename `{device_id}_{YYYYMMDD}_{HHMMSS}.mp4`) / Masa (dd/mm HH:MM MYT) / Tempoh (int saat).
+- Env: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CCTV_CHAT_ID=-5330700835`, `XIAOMI_ALERT_MIN_DURATION=10`,
+  `XIAOMI_ALERT_COOLDOWN_SECONDS=300` (add to `~/projects/hafjet-xiaomi-ingest/.env`).
+- Hook in `watcher.py` `process_file()` AFTER `store.insert_video()` success.
+- Full recipe + service restart pitfall: `references/xiaomi-ingest-telegram-alert-2026-08-08.md`.
+
+### ⚠️ Restart xiaomi-ingest — NEVER `pkill -f "python -m app.main"`
+`cctv-worker` ALSO runs as `python -m app.main` (different cwd/venv) — a `pkill -f` match kills BOTH.
+Always:
+1. Find listener: `ss -tlnp | grep 8092` → capture PID.
+2. **`kill <PID>`** (specific PID only), `sleep 3`, confirm `ss -tlnp | grep 8092` empty.
+3. Check process env first: `tr '\0' '\n' < /proc/PID/environ | grep VIRTUAL_ENV` — the process exe may
+   resolve to `/usr/bin/python3.14` but it runs with `VIRTUAL_ENV=.../hafjet-xiaomi-ingest/.venv`;
+   plain `python3` shells fail `import dotenv/uvicorn`.
+4. Restart with venv + env:
+   ```bash
+   cd ~/projects/hafjet-xiaomi-ingest
+   VIRTUAL_ENV=$PWD/.venv PATH=$PWD/.venv/bin:$PATH nohup .venv/bin/python -m app.main > /mnt/cctv/logs/xiaomi-ingest.log 2>&1 &
+   ```
+5. Verify: `curl -s http://127.0.0.1:8092/health` (watcher_alive=true) AND `systemctl is-active cctv-worker`
+   still `active` with **unchanged MainPID**.
 
 ### P1 Deploy Verification Checklist (added 2026-08-01)
 

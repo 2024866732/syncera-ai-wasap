@@ -32,6 +32,9 @@ Schema gotchas that bite anyone querying `event` for alerting or visitor counts 
 - Event IDs are `epoch.float-randomsuffix` — sort by `start_time`, dedupe by ID when resuming.
 - CPU detector on i3-2100 is noisy: filter `data.top_score >= 0.55` (matches Frigate `min_score`).
 - `python3` (3.11) on the VPS has NO supabase module — use **`python3.10`** for Supabase SDK (or SQL Editor for DDL; PostgREST cannot run DDL).
+- **Alert channel = TELEGRAM (keputusan 2026-08-08):** WhatsApp proactive alerts ALWAYS fail 131047 (24h session window; sent=True from HTTP 200 ≠ delivered — check message_delivery_status table). CCTV alerts go to Telegram group -5330700835 (group CCTV ALERT — Tuan betulkan dari draft awal -5098600919 yang salah) via Bot API; WhatsApp stays for customer service only. WAJIB guna parse_mode: HTML — nama kamera outdoor_shop ada underscore yang diinterpretasi Telegram Markdown sebagai italic tak berpasangan → HTTP 400 Bad Request. Full recipe: references/frigate-alert-channel-telegram.md.
+- **Snapshot path (Frigate 0.17, untuk thumbnail alert):** /mnt/cctv/frigate/media/clips/{camera}-{event_id}.jpg (e.g. outdoor_shop-1786161172.002571-y08b8j.jpg, ~100-200KB). Thumb kecil: clips/thumbs/{camera}/{event_id}.webp. Kirim via sendPhoto multipart dengan caption HTML — bold guna <b> (bukan *...* — Markdown asterisk tidak berfungsi dengan parse_mode HTML). Jika snapshot tiada, fallback sendMessage teks biasa. Implemented 2026-08-08 in cctv_alert_poller.py (Office PC): snapshot_path() + _send_photo().
+- **Label alert mengikut kamera (keputusan 2026-08-08):** entrance (TC74) → 🛎️ Customer Masuk Kedai; outdoor_shop (C560WS) → 🚶 Orang Lalu Depan Kedai. Kedua-dua hantar snapshot. Snapshot kadang dijana lewat (event baru mungkin tiada .jpg serta-merta — poller fallback ke teks dan hantar lagi bila cron seterusnya).
 
 ### 1. Dual-credential camera config (critical)
 Different cameras use DIFFERENT RTSP accounts. One `.env` set is NOT enough — use a `_C3` suffix for the second camera.
@@ -97,3 +100,4 @@ Stop Frigate FIRST during 401/IP-block loops — watchdog retries extend the cam
 - `references/tp-link-rtsp-401-ip-block.md` — full 401 debugging narrative + resolution steps.
 - `references/soak-test-procedure.md` — monitor script pattern + guard logic + report cadence.
 - `references/frigate-event-db-queries.md` — 0.17 event schema gotchas (score in `data` JSON, NULL columns), visitor-count coalesce recipe, alert-poller pattern, supabase-py via python3.10.
+- `references/frigate-alert-channel-telegram.md` — WhatsApp 131047 root cause for proactive alerts, decision to move CCTV alerts to Telegram group -5330700835 (draft awal -5098600919 SALAH), bot-in-group verification, Tailscale serve single-root overwrite pitfall.

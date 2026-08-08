@@ -656,22 +656,29 @@ async def verify_webhook(
 5. Click "Verify and Save"
 6. Subscribe to "messages" field
 
-**Complete .env template for WhatsApp AI Bot:**
+**Complete .env template for WhatsApp AI Bot (Production):**
 ```bash
+# App
+APP_ENV=production
+APP_HOST=0.0.0.0
+APP_PORT=8200
+APP_DEBUG=false
+
 # Ollama
 OLLAMA_HOST=127.0.0.1
 OLLAMA_PORT=11434
 OLLAMA_MODEL=qwen2.5:7b
+OLLAMA_REQUEST_TIMEOUT=20
 
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# Database (Supabase PostgreSQL)
-DB_HOST=db.your-project.supabase.co
-DB_PORT=5432
-DB_NAME=postgres
-DB_USER=postgres
+# Database (local PostgreSQL for dashboard)
+DB_HOST=localhost
+DB_PORT=5440
+DB_NAME=hafjet_ai
+DB_USER=hafjet
 DB_PASSWORD=your_password
 
 # WhatsApp Meta Cloud API
@@ -679,10 +686,136 @@ WHATSAPP_TOKEN=your_access_token
 WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
 WHATSAPP_VERIFY_TOKEN=your_verify_token
 WHATSAPP_BUSINESS_ACCOUNT_ID=your_waba_id
+WHATSAPP_APP_SECRET=your_app_secret
 WHATSAPP_GRAPH_API_VERSION=v21.0
 
 # Owner
 OWNER_PHONE_NUMBER=60169808736
+DEFAULT_LANGUAGE=ms
+
+# Cost Controls
+MAX_OUTBOUND_MESSAGES_PER_DAY=100
+OUTBOUND_WARNING_THRESHOLD=80
+ENABLE_MARKETING_MESSAGES=false
+ENABLE_BROADCAST=false
+
+# Azure Forwarding (disabled by default)
+ENABLE_AZURE_FORWARDING=false
+AZURE_BOT_BASE_URL=
+AZURE_BOT_API_KEY=
+```
+
+### Production WhatsApp Cloud API Architecture (Aug 2026)
+
+**CTO Decision:** Official WhatsApp Cloud API as primary channel. Azure Bot as backup/experimental only.
+
+**Architecture:**
+```
+Customer WhatsApp → Meta Cloud API → Oracle FastAPI Webhook
+                                        ↓
+                                  Smart Router
+                                        ↓
+                          ┌─────────────┼─────────────┐
+                          ↓             ↓             ↓
+                    Direct DB      Ollama AI    Human Handoff
+                    (prices,      (complex      (escalation)
+                     stock,        queries)
+                     status)
+                          ↓             ↓             ↓
+                          └─────────────┼─────────────┘
+                                        ↓
+                              WhatsApp Cloud API Reply
+```
+
+**Smart Routing Module:**
+```python
+class IntentClassifier:
+    """Classify customer intent from message text"""
+    
+    PRICE_PATTERNS = [r'harga', r'price', r'berapa', r'cost']
+    STOCK_PATTERNS = [r'stok', r'stock', r'ada.*stok']
+    REPAIR_STATUS_PATTERNS = [r'status.*repair', r'HAF-\d+', r'bila.*siap']
+    HUMAN_PATTERNS = [r'staff', r'manager', r'marah', r'refund', r'warranty']
+    
+    @classmethod
+    def classify(cls, message: str) -> str:
+        message_lower = message.lower().strip()
+        # Check human handoff first (highest priority)
+        for pattern in cls.HUMAN_PATTERNS:
+            if re.search(pattern, message_lower):
+                return "human_handoff"
+        # Check other intents...
+        return "general"  # Default to Ollama
+```
+
+**Cost Controls Configuration:**
+```bash
+MAX_OUTBOUND_MESSAGES_PER_DAY=100
+OUTBOUND_WARNING_THRESHOLD=80
+ENABLE_MARKETING_MESSAGES=false
+ENABLE_BROADCAST=false
+```
+
+**Production Database Schema (Supabase):**
+```sql
+-- customers
+CREATE TABLE IF NOT EXISTS customers (
+    id SERIAL PRIMARY KEY,
+    phone VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    language_preference VARCHAR(10) DEFAULT 'ms',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- messages (with dedup)
+CREATE TABLE IF NOT EXISTS messages (
+    id SERIAL PRIMARY KEY,
+    whatsapp_message_id VARCHAR(100) UNIQUE,
+    customer_phone VARCHAR(50) NOT NULL,
+    direction VARCHAR(10) CHECK (direction IN ('inbound', 'outbound')),
+    message_type VARCHAR(50) DEFAULT 'text',
+    message_text TEXT,
+    status VARCHAR(50) DEFAULT 'received',
+    latency_ms INTEGER,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ai_requests (for monitoring)
+CREATE TABLE IF NOT EXISTS ai_requests (
+    id SERIAL PRIMARY KEY,
+    customer_phone VARCHAR(50),
+    route_type VARCHAR(50) DEFAULT 'llm',
+    model VARCHAR(50),
+    latency_ms INTEGER,
+    confidence FLOAT,
+    status VARCHAR(50) DEFAULT 'success',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Health Check Endpoint (Production):**
+```python
+@app.get("/api/health")
+async def health_check():
+    ollama_ok = await ollama_client.health_check()
+    supabase_ok = False
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.close()
+        conn.close()
+        supabase_ok = True
+    except:
+        pass
+    
+    return {
+        "api": "healthy",
+        "supabase": "healthy" if supabase_ok else "unhealthy",
+        "ollama": "healthy" if ollama_ok else "unhealthy",
+        "whatsapp_configured": bool(settings.whatsapp_token),
+        "timestamp": datetime.now().isoformat()
+    }
 ```
 
 ## Cloud Provider Comparison (Aug 2026)

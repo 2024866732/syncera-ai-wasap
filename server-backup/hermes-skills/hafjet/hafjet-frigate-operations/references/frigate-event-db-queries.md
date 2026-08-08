@@ -2,6 +2,8 @@
 
 Applies to HAFJET Frigate 0.17.2 (`/home/hafizi145/frigate/config/frigate.db`, office PC). Read-only pattern for building alert pollers and daily analytics without touching the live Frigate config.
 
+> **⚠️ CHANNEL UPDATE (2026-08-08):** alert delivery is now **Telegram** (group `-5330700835`), NOT WhatsApp. The poller sends directly to `https://api.telegram.org/bot<TOKEN>/sendMessage` with `parse_mode: HTML` (Markdown breaks on the `outdoor_shop` underscore). The WhatsApp `/cctv-alert` endpoint + `send_whatsapp_smart()` below still exist on Azure but are no longer the alert path — kept for reference/rollback. See `references/frigate-alert-channel-telegram.md`.
+
 ## Schema facts (VERIFIED 2026-08-05)
 - `event` columns include: `id, label, camera, start_time, end_time, top_score, false_positive, zones, thumbnail, has_clip, has_snapshot, region, box, area, sub_label, ratio, score, model_hash, detector_type, model_type, data`.
 - **`score`, `top_score`, `false_positive` are ALL NULL** in 0.17 rows. The actual confidence is inside `data` JSON:
@@ -52,8 +54,10 @@ Measured result (2026-08-04): `outdoor_shop: 84, entrance: 46` → 130 visitors/
 - Read back for dashboard: `GET {SUPABASE_URL}/rest/v1/visitor_daily?order=date.desc&limit=30` with anon key works once the table + RLS policy exist.
 - Dashboard = single self-contained HTML: fetch the REST URL above with `apikey`+`Authorization` headers set to the anon key, render stat cards (last day / 7-day total / max) + table. No backend needed; inject the URL + key at build time (replace placeholders) — never hardcode the service_role key client-side.
 
-## Delivery status
-Fasa A components built + unit-tested 2026-08-05; deploy pending Tuan approval:
-- `/cctv-alert` endpoint added to `syncera-ai-wasap/bots/hafjet-azure/webhook_listener.py` (needs Azure env: CCTV_ALERT_TOKEN, CCTV_ALERT_TARGET, CCTV_ALERT_ENABLED).
-- Poller + visitor scripts drafted in cache (`cctv_alert_poller.py`, `cctv_visitor_count.py`) — deploy to office `~/cctv-analysis/` + cron (`*/2 * * * *` poller, `30 15 * * *` count) after approval.
-- Note: bot listener in that repo also has a Flask sibling `whatsapp_webhook_v2.py` (VPS :8080) — confirm which bot is live for the alert target before deploying.
+## Delivery status (2026-08-05 — DEPLOYED, 131047 lesson learned)
+- `/cctv-alert` endpoint LIVE on Azure bot (`hafjet-whatsapp-bot` App Service, `hafjet-bot-rg`), env set: `CCTV_ALERT_TOKEN`, `CCTV_ALERT_TARGET` (60198021500), `CCTV_ALERT_ENABLED=true`.
+- Poller + visitor scripts live on office `~/cctv-analysis/` with crons (`*/2 * * * *` poller, `30 15 * * *` count) and `.env` (CCTV_ALERT_URL/TOKEN + SUPABASE_URL/SERVICE_ROLE_KEY).
+- **⚠️ CRITICAL: the first live alert DID NOT reach the owner — Meta error 131047.** The send API returned HTTP 200 (`sent=True` on the poller) but the delivery callback showed `failed / 131047 "Re-engagement message"`. Root cause: the owner (60198021500) never messages the bot, so the 24h session window expired; session `type: text` messages outside the window are ALWAYS dropped. Diagnose with `SELECT wamid,status,error_code FROM message_delivery_status WHERE customer_phone=...` (100% failed = confirmed).
+- **Fix (deployed):** bot now routes alert sends through `send_whatsapp_smart()` — session text if the target is within the 24h window, otherwise a Meta **template** message (`cctv_alert`, category Utility, body `🛎️ Customer masuk kedai — Kamera: {{1}} pada {{2}}`) which works anytime. Template must be created/approved in Meta first (WhatsApp Manager → Message Templates); the WABA ID is NOT discoverable via the messaging Graph token — get it from the dashboard. Full pattern: see `whatsapp-webhook-dev` skill `references/outbound-alert-endpoints.md`.
+- Quick test while template pending: owner sends ANY message to the bot → opens a fresh 24h window for the next session-text alert (temporary).
+- Note: bot listener in that repo also has a Flask sibling `whatsapp_webhook_v2.py` (VPS :8080) — confirm which bot is live for the alert target before deploying (the LIVE Azure `webhook_listener.py` is 3628 lines, NOT the 414-line repo copy — always fetch live from Kudu VFS before patching).

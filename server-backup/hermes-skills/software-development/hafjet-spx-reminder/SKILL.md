@@ -12,7 +12,7 @@ description: Class-level skill for building and operating the SPX self-collectio
 - **Pilot before scale**: daily cap + status filter before rolling out to all orders.
 - **No hardcoded secrets**: cookies live in `spx_session` DB table, never code or `.env`.
 - **Cooldown aware**: per-order 12h gap between reminders; daily cap via `messages` table.
-- **24h policy**: free-form within 24h of last inbound, template if outside window. (Template activation is ON HOLD until WhatsApp templates are approved.)
+- **24h policy**: free-form within 24h of last inbound, template if outside window. (**Templates ACTIVE since 2026-08-08** — `spx_ready_pickup` and `spx_ready_collection3` registered and tested in production. See `references/whatsapp-template-delivery.md` for full implementation details, error 131047 root cause analysis, and smart-send pattern.) **✅ SPX phone fetch status (2026-08-08): RESOLVED.** Tuan refreshed SPX cookies via dashboard → `POST /api/spx/fetch-phones` ran (returned 504 timeout but server-side `asyncio` tasks completed). All 42 masked phones now real numbers (verified via `hex(recipient_phone)` on Azure — zero asterisks). **Important:** 504 Gateway Timeout from Azure's ~230s load balancer limit does NOT mean the fetch failed — tasks continue server-side. Always verify via DB query, not endpoint response. **PITFALL:** 2 Return_Outbound orders were `is_paused=1` — the reminder cron's `get_spx_due_orders()` filter `WHERE is_paused=0` excludes them silently. Unpause via `UPDATE spx_self_collection_orders SET is_paused=0` before reminders can send.
 
 ## Database
 - `spx_self_collection_orders` — orders with `entity_id`, nullable `recipient_phone`, `spx_status` (string), `hafjet_reminder_state`.
@@ -244,6 +244,18 @@ For 2315 orders at 50/page = 47 pages × 30s = **~23.5 min** order sync + phone 
 - Send window: 08:00–21:00 MYT via `ZoneInfo("Asia/Kuala_Lumpur")`; outside → return
 - WhatsApp send failed → **do NOT update DB stage** — retry next cycle
 - DB update failed AFTER WhatsApp sent → log CRITICAL, continue (anti-duplicate prevents re-send)
+
+### ⚠️ 2026-08-08 — Three Reminder Blockers Found & Fixed
+
+After enabling SPX reminders in production, THREE bugs prevented any delivery:
+
+**Bug 1 — Wrong DB column name:** `_check_spx_reminders()` built `order_dict["followup_stage"]` from `order.get("reminder_status", "none")` but the DB column is `hafjet_reminder_state`. All orders always had `followup_stage="none"` — anti-duplicate logic was completely broken (every cycle treated as first contact). **Fix:** `order.get("hafjet_reminder_state", "none")`.
+
+**Bug 2 — Missing template keys:** `_SPX_TEMPLATES` had only 3 keys (`ready_collection`, `final_reminder`, `first_reminder`). Missing keys (`collection_failed`, `remind1`, `remind2`, `remind3`, `remind4`) fell back to `"spx_ready_collection"` default which **does not exist** at Meta → all template sends failed with unknown template error. **Fix:** Added all 5 missing keys.
+
+**Bug 3 — Wrong template for `collection_failed`:** Initially mapped `collection_failed → spx_ready_collection3` (final reminder template) which was NOT active at Meta. Only `spx_ready_pickup` is active. **Fix:** `collection_failed → spx_ready_pickup`.
+
+**Debugging pattern:** Cron ran (`_check_spx_reminders` logged "executed successfully" in container log) but no delivery_status entries appeared because skips don't log unless `sent_count > 0 or error_count > 0`. The `is_paused=1` exclusion in `get_spx_due_orders()` is silent. To trace: grep container logs for `SPX-REMINDER`, query `hex(recipient_phone)` to confirm real digits, check `hafjet_reminder_state` vs `is_paused` for due orders.
 
 ### Pausing Orders via Raw DB (Kudu VFS)
 
@@ -768,6 +780,18 @@ old_string = "r'[^;\s]+'"     # WRONG — patch sees \s, stores \\s in file
 - `references/status-filter-mismatch.md` — SPX status display-name vs DB value mismatch fix.
 - `references/websocket-pong-format.md` — WS heartbeat format fix.
 - `references/write-file-escape-pitfall.md` — **NEW (Jul 2026):** `write_file()` double-quote escaping breaks Python scripts. Always use single quotes. Kudu scripts, DB verifiers, any Python written via `write_file()`.
+- `references/whatsapp-template-delivery.md` — **NEW (2026-08-08):** WhatsApp template delivery implementation. Error 131047 root cause, template registration, smart-send pattern (`send_whatsapp_template`, `_check_24h_window`, `send_whatsapp_smart`), delivery status tracking, SPX reminders toggle with `get_runtime_bool()` bug fix.
+
+### 🔍 Production DB Debugging via Kudu (2026-08-08)
+
+Kudu command API (`POST /api/command`) is the primary way to query Azure production SQLite. **Critical limitations:**
+- No shell pipes (`|`), semicolons (`;`), or redirections (`2>/dev/null`) — each command runs as a single process
+- `sqlite3` can't open `/home/data/bot_data.db` from Kudu's working directory — must use Python with `sqlite3.connect()`
+- Output may mask digit groups (e.g., `+60123456789` displayed as `+601****6789`) — always verify with `hex()`:<br>
+  `SELECT hex(recipient_phone) FROM spx_self_collection_orders WHERE ...`<br>
+  `2B3630313233343536373839` = `+60123456789` (real), `2A2A2A2A` = `****` (masked)
+- Best pattern: write diagnostic Python script → upload via Kudu VFS → run via `api/command`
+- Container logs: `/appsvctmp/volatile/logs/runtime/container.log` (read with Python, not grep)
 
 ## Deployment Pattern (Jul 2026)
 

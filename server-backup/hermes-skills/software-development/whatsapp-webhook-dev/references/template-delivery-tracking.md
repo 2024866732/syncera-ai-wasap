@@ -99,15 +99,76 @@ CREATE TABLE message_delivery_status (
 );
 ```
 
-## Cronjob Dashboard Toggle
+## SPX Template Mapping
+
+Template names in code MUST match exact Meta-approved names:
 
 ```python
-"spx_reminders_enabled": {"type": "bool", "default": "true"},  # in VALID_SETTINGS
+_SPX_TEMPLATES = {
+    "ready_collection": "spx_ready_pickup",      # Active Meta template
+    "final_reminder": "spx_ready_collection3",    # Fallback template
+    "first_reminder": "spx_ready_pickup",         # Same as ready_collection
+}
+```
+
+Update `_check_spx_reminders()` to use smart send:
+```python
+template_name = _SPX_TEMPLATES.get(next_stage, "spx_ready_pickup")
+ok = await send_whatsapp_smart(phone, text,
+                               template_name=template_name,
+                               template_params=[text])
+```
+
+## Cronjob Dashboard Toggle (with Pitfall Fix)
+
+```python
+"spx_reminders_enabled": {"type": "bool", "default": "false"},  # SAFETY: default paused
 
 async def _check_spx_reminders():
-    if not get_runtime_bool("spx_reminders_enabled", True):
+    if not get_runtime_bool("spx_reminders_enabled", False):
+        log.info("[SPX-REMINDER] ⏸ Paused by dashboard toggle")
         return  # paused
 ```
+
+**⚠ CRITICAL PITFALL:** `get_runtime_bool(key, default=True)` IGNORES DB value "false".
+The function only returns `True` when DB value is `"true"/"1"/"yes"` — everything else
+(including `"false"` or missing key) returns the Python `default` parameter.
+If `default=True` and toggle is set to `"false"` in DB, reminders WILL STILL RUN.
+
+**Fix:** Always pass `default=False` when the desired safe default is OFF:
+```python
+get_runtime_bool("spx_reminders_enabled", False)  # Safe: default = paused
+```
+
+**Toggle via dashboard API:**
+```bash
+# Pause
+curl -X PUT /api/settings -H "X-API-Key: ..." -d '{"spx_reminders_enabled":"false"}'
+# Resume (only after verifying template is Meta-approved)
+curl -X PUT /api/settings -H "X-API-Key: ..." -d '{"spx_reminders_enabled":"true"}'
+```
+
+## Template Test Pattern
+
+Test directly via Meta Graph API (curl) BEFORE relying on cron scheduler:
+```bash
+curl -X POST "https://graph.facebook.com/v21.0/${PHONE_ID}/messages" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"messaging_product":"whatsapp","to":"60198021500","type":"template",
+       "template":{"name":"spx_ready_pickup","language":{"code":"ms"},
+       "components":[{"type":"body","parameters":[
+         {"type":"text","text":"NAME"},{"type":"text","text":"TRACKING"}
+       ]}]}}'
+```
+
+Verify delivery:
+```sql
+SELECT status, error_code, timestamp FROM message_delivery_status
+WHERE customer_phone='60198021500' ORDER BY timestamp DESC LIMIT 5;
+```
+
+Expected: `sent` → `delivered` (no error 131047).
 
 ## Key Lessons
 1. Outbound count ≠ delivery — Meta accepts API call then rejects in callback
@@ -115,3 +176,40 @@ async def _check_spx_reminders():
 3. Session messages outside 24h ALWAYS fail (error 131047)
 4. Template messages work anytime but must be Meta-approved
 5. Pause toggle saves API calls for cron/automation
+
+## 📊 Data Quality Prerequisite — Phone Numbers Must Be Complete
+
+SPX reminders will silently skip ALL orders if `recipient_phone` contains `***` (masked).
+
+```python
+# Line 577 in _check_spx_reminders():
+if not phone or "***" in phone:
+    skipped_count += 1
+    continue  # ← silently skips
+```
+
+**Diagnosis query:**
+```sql
+SELECT COUNT(*), SUM(CASE WHEN recipient_phone LIKE '%*%' THEN 1 ELSE 0 END) as masked
+FROM spx_self_collection_orders
+WHERE recipient_phone IS NOT NULL AND recipient_phone != '' AND recipient_phone != '-';
+```
+
+**Fix:** Phone numbers must be fetched from SPX Self-Collection API (or manual CSV) BEFORE enabling reminders. The `bulk_map_phones()` / `fetch_spx_phone()` workflow must complete.
+
+**Production incident (2026-08-08):** 42 orders had masked phones (`+601****6789`). After enabling reminders, zero messages sent — all skipped silently.
+
+## 🔇 Log Visibility Pitfall — Silent Skip
+
+When ALL orders in a cycle are skipped (no valid phones, `sent_count=0`, `error_count=0`), the cron produces NO log output at all:
+
+```python
+# Only fires when sent or errors exist:
+if sent_count > 0 or error_count > 0:
+    log.info(f"[SPX-REMINDER] Cycle done: sent={sent_count} ...")
+```
+
+**Fix (recommended):** Always log cycle summary to confirm the cron is running:
+```python
+log.info(f"[SPX-REMINDER] Cycle done: sent={sent_count} skipped={skipped_count} ...")
+```
