@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 54
+        "completed": 55
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-08-10T07:00:00+00:00",
-      "last_run_at": "2026-08-09T07:03:56.201040+00:00",
+      "next_run_at": "2026-08-11T07:00:00+00:00",
+      "last_run_at": "2026-08-10T07:02:38.803444+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -63,15 +63,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 50
+        "completed": 51
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-08-10T13:00:00+00:00",
-      "last_run_at": "2026-08-09T13:02:06.546632+00:00",
+      "next_run_at": "2026-08-11T13:00:00+00:00",
+      "last_run_at": "2026-08-10T13:00:50.141345+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -106,15 +106,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 45
+        "completed": 46
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-08-10T14:00:00+00:00",
-      "last_run_at": "2026-08-08T14:00:36.460668+00:00",
+      "next_run_at": "2026-08-11T14:00:00+00:00",
+      "last_run_at": "2026-08-09T14:01:14.349661+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -149,15 +149,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 44
+        "completed": 45
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-08-10T09:00:00+00:00",
-      "last_run_at": "2026-08-09T09:01:21.423405+00:00",
+      "next_run_at": "2026-08-11T09:00:00+00:00",
+      "last_run_at": "2026-08-10T09:02:03.853048+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -192,15 +192,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 38
+        "completed": 39
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-08-10T09:00:00+00:00",
-      "last_run_at": "2026-08-09T09:01:07.520935+00:00",
+      "next_run_at": "2026-08-11T09:00:00+00:00",
+      "last_run_at": "2026-08-10T09:01:38.198131+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -237,15 +237,15 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 30
+        "completed": 31
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-08-10T03:00:00+00:00",
-      "last_run_at": "2026-08-09T03:10:43.417707+00:00",
+      "next_run_at": "2026-08-11T03:00:00+00:00",
+      "last_run_at": "2026-08-10T03:13:22.270625+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -283,15 +283,15 @@
       "schedule_display": "0 15 * * *",
       "repeat": {
         "times": null,
-        "completed": 26
+        "completed": 27
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-14T17:05:27.034793+00:00",
-      "next_run_at": "2026-08-09T15:00:00+00:00",
-      "last_run_at": "2026-08-08T15:00:40.644893+00:00",
+      "next_run_at": "2026-08-10T15:00:00+00:00",
+      "last_run_at": "2026-08-09T15:01:19.618617+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -462,15 +462,15 @@
       "schedule_display": "0 0 * * *",
       "repeat": {
         "times": null,
-        "completed": 13
+        "completed": 14
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-27T12:46:17.963804+00:00",
-      "next_run_at": "2026-08-10T00:00:00+00:00",
-      "last_run_at": "2026-08-09T00:00:31.294146+00:00",
+      "next_run_at": "2026-08-11T00:00:00+00:00",
+      "last_run_at": "2026-08-10T00:00:29.885960+00:00",
       "last_status": "error",
       "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'openai-codex' -> 'xai-oauth'; model 'gpt-5.6-terra' -> 'grok-4.5'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=7b74334921e6 provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
       "last_delivery_error": null,
@@ -508,15 +508,15 @@
       "schedule_display": "every 30m",
       "repeat": {
         "times": null,
-        "completed": 561
+        "completed": 608
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-28T12:38:06.628044+00:00",
-      "next_run_at": "2026-08-09T14:01:56.927284+00:00",
-      "last_run_at": "2026-08-09T13:31:56.927284+00:00",
+      "next_run_at": "2026-08-10T14:16:04.416499+00:00",
+      "last_run_at": "2026-08-10T13:46:04.416499+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -669,5 +669,5 @@
       "workdir": null
     }
   ],
-  "updated_at": "2026-08-09T14:00:55.814705+00:00"
+  "updated_at": "2026-08-10T14:00:03.338652+00:00"
 }
