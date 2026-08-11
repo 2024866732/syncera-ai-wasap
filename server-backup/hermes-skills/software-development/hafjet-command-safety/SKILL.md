@@ -190,6 +190,16 @@ to approve prompts — any command that lands in `pending_approval` stalls forev
    approvals.mode=off. Use plain commands on the explicit filename
    (`tail -8 /tmp/pickup_live_20260805_110800.log`, `grep -cE 'pattern' <file>`)
    or read_file / search_files instead.
+5. **Do NOT pipe a long batch through `tail -N`/`head -N` at launch — redirect
+   to a log file instead** (learned 2026-08-11 pickup-reminder cron). The
+   `| tail -40` form keeps only the FINAL lines, so the middle of the output —
+   where per-recipient failures are logged (`⚠️ no phone`, `⚠️ 470 blocked`,
+   `❌ HTTP 400 ->`) — is lost once the process exits. You are then forced to
+   reconstruct failure causation from a dry run instead of the live log. Correct:
+   `python3 ... > /tmp/pickup_live_$(date +%Y%m%d_%H%M%S).log 2>&1` (background),
+   then after exit use `search_files` on the log for `470 blocked`, `no phone`,
+   `HTTP [0-9]+ ->` to classify failures precisely. The final `🏁 Done.
+   Sent=X Failed=Y` line alone does NOT tell you the 470 vs data-quality split.
 
 ## When Tuan says "deny"
 Do not retry, rephrase, or achieve the same outcome another way. Stop the
