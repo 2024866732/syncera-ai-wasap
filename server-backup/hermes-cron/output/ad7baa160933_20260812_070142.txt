@@ -1,0 +1,103 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+web_extract tak jalan — cuba open_page untuk detail utama.Ambil sikit lagi detail open-source & Meta.**📡 HAFJET Tech & Open-Source AI Weekly**  
+*Minggu ~5–12 Ogos 2026 · Ringkas, scannable*
+
+---
+
+## 🔥 Berita Teknologi Paling Panas
+
+**Nvidia + Wall Street: chip AI jadi “asset class” ~USD 500B**  
+Jensen Huang bersenggoti dengan Apollo, Blackstone, BlackRock, Brookfield, Goldman Sachs & KKR. Matlamat: gerakkan **lebih USD 500 bilion** modal pihak ketiga biar hyperscaler/enterprise boleh biayai data center & GPU macam biayai infrastruktur (bukan belanja sekejap je). Huang: chip ni sekarang *revenue-generating, long-lived, fungible*. Big concept — Wall Street endorse.[[1]](https://www.cnbc.com/2026/08/10/nvidia-wall-street-asset-managers-500-billion-ai-push.html)
+
+**Gemini app pecah 1 bilion MAU**  
+Sundar umum Gemini app (app je, bukan AI Mode Search) dah **1B monthly active users** — product ke-14 Google hit bilion. Voice ~63% user; generate >150 juta imej sehari; iOS >100 juta user. Pacak megah, setanding ChatGPT yang hit 1B lebih awal.[[2]](https://techcrunch.com/2026/08/11/googles-gemini-app-surges-to-one-billion-users/)
+
+**CoreWeave naik spending plan 2026**  
+Revenue Q2 double ke ~USD 2.58B, beat estimate. Capex full-year naik ke **USD 35–39B**. Backlog ~USD 104B + >USD 25B commitment baru. Saham lonjak ~14% after-hours. AI cloud demand masih goni panas.[[3]](https://www.reuters.com/technology/coreweave-edges-past-quarterly-revenue-estimates-2026-08-11/)
+
+**River AI — startup 2 bulan, raise USD 1.1B**  
+Founder Igor Babuschkin (ex-xAI/DeepMind/OpenAI). Lead: General Catalyst + AMP; ikut Nvidia, AMD Ventures, YC, Temasek. Visi: rebuild stack end-to-end supaya agent **trainable personal** (bukan ganti worker je). API fine-tune open models (RL + LoRA). Valuation vibe super hot.[[4]](https://techcrunch.com/2026/08/11/general-catalyst-leads-1-1b-round-into-2-month-old-river-ai/)
+
+**OpenAI pre-IPO liquidity**  
+Tender ~**USD 7B** secondary sale @ valuation ~**USD 852B** — employee liquidity sebelum IPO potential. COO Brad Lightcap keluar start something new. ChatGPT desktop app preview **untuk Linux** (Ubuntu 24.04/26.04, Debian 13, Fedora 43/44) — .deb/.rpm, x64 + ARM64. Sohor gak dengan developer community.[[5]](https://www.cnbc.com/2026/08/10/openai-wraps-7-billion-share-sale-ahead-of-potential-ipo-.html)
+
+**Lain yang hangat**  
+- Joby Aviation beli defense tech ~USD 500M; air taxi + dual-use.  
+- Boeing jual bahagian aviation tech (self-flying/drone related) ke Archer.  
+- Physical AI stealth startup (ex-Meta AI research director) raise ~USD 10.25M.
+
+---
+
+## 🤖 Dunia Open-Source AI Minggu Ni
+
+**Nvidia Nemotron 4 — target ≥1 trilion parameter, open**  
+Report: largest Nemotron 4 ~**1T+ params**, rival top open models dunia. Training belum siap; earliest maybe late fall. Nvidia juga drop **Nemotron 3.5 Lightning** (open 30B MoE, ~3B active) untuk high-volume agent tasks + **NeMo Switchyard** (open model-routing library, potong cost agent workload big). Statement: every company/country perlu frontier open models untuk safety & innovation.[[6]](https://www.reuters.com/business/nvidia-is-developing-nemotron-4-open-source-models-information-reports-2026-08-11/)
+
+**Meta Muse Glimmer**  
+Open agentic model (Apache 2.0, Hugging Face) — tool calling, multi-step, multimodal, 100+ bahasa. Optimized always-on **local** agent; bit quant under ~20GB, single consumer GPU. Compatible llama.cpp / MLX / Ollama / vLLM. Local agent stack makin real.
+
+**Transparency & policy**  
+Anthropic commit watermark text/file (C2PA) ikut EU AI Act vibe; Spotify AI Persona badges; industri ke arah label AI content.
+
+**Lain**  
+xAI Grok Bot (always-on agents dalam apps, beta SuperGrok/Cursor tier). Microsoft MAI-Code flash lebih murah/cepat dalam Copilot. Tencent Hunyuan WorldClaw: text → explorable 3D worlds.
+
+---
+
+## ⭐ Projek GitHub Naik Bukit
+
+*(Trending snapshot ~12 Ogos 2026)*
+
+| Repo | Kenapa sohor |
+|------|----------------|
+| **msitarzewski/agency-agents** | “AI agency” penuh — specialized agents + personality/process. ~144k⭐, ratusan stars/day |
+| **PrimeIntellect-ai/prime-agent** | Self-improving agent coding + long autonomous tasks. Stars hari ni gila (~1k+/day) |
+| **paperclipai/paperclip** | Open-source app manage agents at work |
+| **addyosmani/agent-skills** | Production engineering skills untuk coding agents |
+| **anthropics/skills** | Public Agent Skills repo (huge base) |
+| **stablyai/orca** | ADE / fleet parallel agents (desktop, mobile, VPS) |
+| **HKUDS/DeepTutor** | Lifelong personalized tutoring |
+| **calesthio/OpenMontage** | Open agentic video production studio (pipelines + skills) |
+| **semantica-agi/semantica** | Graph-native infra for context & accountable AI |
+| **vitali87/code-graph-rag** | RAG + knowledge graph untuk monorepo multi-language |
+
+Tema jelas: **agent skills, multi-agent ops, local/self-host, graph/RAG memory** — bukan chatbot biasa je.
+
+---
+
+## 📌 Apa Kito Patut Tahu
+
+1. **Money follow compute** — Nvidia tak jual chip je; dia bantu Wall Street jadikan GPU/data center *financeable infrastructure*. Capex AI (CoreWeave dsb.) masih naik, backlog gila.  
+2. **Open weights vs closed** — Nvidia (Nemotron 4), Meta (Muse Glimmer) push open/local agent; closed labs still raise gila (River, OpenAI tender). Hybrid world.  
+3. **Agent era, bukan chat era** — GitHub, Grok Bot, Nemotron Lightning, River “trainable personal agents” — semua point ke always-on, tool-use, multi-step.  
+4. **Linux + local stack** — ChatGPT Linux app + open models yang fit single GPU = opportunity untuk setup macam HAFJET (self-host, cost control).  
+5. **Safety/transparency naik** — watermark, AI labels, open-model cyber risk discussion selepas agent hacks. Audit-first tetap betul.  
+6. **Valuation frothy** — 2-month-old @ USD 1.1B seed = market masih spekulatif. Pilih tools yang solve real ops, jangan FOMO je.
+
+**Angle HAFJET (practical):**  
+- Pantau **Nemotron / Muse Glimmer / Ollama-compatible** untuk agent local (WhatsApp bot, OCR, SPX reminder stack).  
+- **Model routing** (gaya NeMo Switchyard) = potong cost API.  
+- Skills repos (agent-skills, Anthropic skills, agency-agents pattern) boleh inspirasi Hermes skill packs.  
+- Budget-conscious: neocloud pricing naik; prefer open + own hardware where sensible.
+
+---
+
+## 🔗 Sumber utama
+- https://www.cnbc.com/2026/08/10/nvidia-wall-street-asset-managers-500-billion-ai-push.html  
+- https://www.reuters.com/business/nvidia-is-developing-nemotron-4-open-source-models-information-reports-2026-08-11/  
+- https://techcrunch.com/2026/08/11/googles-gemini-app-surges-to-one-billion-users/  
+- https://www.reuters.com/technology/coreweave-edges-past-quarterly-revenue-estimates-2026-08-11/  
+- https://techcrunch.com/2026/08/11/general-catalyst-leads-1-1b-round-into-2-month-old-river-ai/  
+- https://www.cnbc.com/2026/08/10/openai-wraps-7-billion-share-sale-ahead-of-potential-ipo-.html  
+- https://techcrunch.com/2026/08/11/openai-launches-chatgpt-desktop-app-for-linux/  
+- https://github.com/trending  
+- https://futuretools.io/news  
+
+---
+
+Itu je ringkas minggu ni, Tuan Hafizi — market AI masih **pacak megah**, open-source agent stack makin bersenggoti, duit Wall Street masuk full force. Kalau nak deep-dive mana-mana item (Nemotron deploy path, Muse local test, atau skill pack idea), just cakap.
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").

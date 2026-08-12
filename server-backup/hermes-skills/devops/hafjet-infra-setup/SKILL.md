@@ -332,50 +332,47 @@ WantedBy=multi-user.target
 
 **Inline Keyboard (10 buttons):** Approve Option 1/2, Revise, New Captions, New Visual, New Both, Change Schedule, Reject, Manual Instruction
 
-### Hermes Gateway Endpoint Discovery
+### Content generation endpoints (updated Phase 1 — Aug 2026)
 
-**Port 8787 (Gateway) — NOT 9119:**
-- Hermes gateway runs on `:8787` with API key auth (config: `gateway.api_key`)
-- Port 8080 = Web server (dashboard only)
-- Port 9119 = NOT listening (was assumption, wrong)
+| Path | Port | When to use |
+|------|------|-------------|
+| **HAFJET Content API** (proven Phase 1) | **`:9119`** | Default for n8n Generate node. systemd `hafjet-content-api`, OpenRouter backend |
+| Hermes gateway | `:8787` | Only if `gateway.api_key` set + cron job exists for `/api/cron/fire` |
+| xAI REST | api.x.ai | Optional direct LLM; not wired as default n8n path |
 
-**Cron fire endpoint (if using Hermes for content generation):**
+**n8n Generate (Phase 1):**
 ```
-POST http://host.docker.internal:8787/api/cron/fire
-Headers: Authorization: Bearer <API_KEY>
-Body: {"job_id": "<CRON_JOB_ID>"}
+POST http://host.docker.internal:9119/api/generate
+Headers: X-API-Key: {{ $env.CONTENT_API_TOKEN }}, Content-Type: application/json
 ```
+Requires compose `extra_hosts: host.docker.internal:host-gateway` and `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`.
 
-**No `/api/cron/hafjet-content-generate` endpoint exists in Hermes** — that was a placeholder.
+**Ops bible:** `references/hafjet-content-phase1-ops.md` lives under skill `automation-workflow-dev`.  
+Also see local path: `~/.n8n/content-api/`.
 
-### Generate Content Node Options (n8n)
-
-| Option | Endpoint | Auth | Notes |
-|--------|----------|------|-------|
-| xAI API (Grok) | `https://api.x.ai/v1/chat/completions` | Bearer xAI API Key | Standard REST, text + image (grok-2-image) |
-| Hermes Cron Fire | `http://host.docker.internal:8787/api/cron/fire` | Bearer Hermes API Key | Requires pre-created cron job in Hermes |
-| SuperGrok | Web UI only (OAuth) | — | No programmatic API |
-
-**Recommended: xAI API direct** (has API key, standard REST).
+**n8n 2.8 activate:** need `workflow_published_version` + matching `workflow_history` + `activeVersionId` — not just `active=1`.  
+**Pause schedule without killing callbacks:** disable Schedule Trigger node only; keep workflow active.
 
 ### Testing Checklist
 - [ ] `curl -I https://n8n.hafjet.my` → HTTP/2 200
-- [ ] `curl https://n8n.hafjet.my/healthz` → `{"status":"ok"}`
-- [ ] `systemctl status cloudflared` → active (running)
-- [ ] `getWebhookInfo` → URL = n8n.hafjet.my, no errors
-- [ ] Execute "Send Draft to Telegram" → draft + buttons arrive
-- [ ] Press "New Captions" / "Revise" → callback executes, routes correctly
-- [ ] **NO live publish** (Approve Option 1/2) during test
+- [ ] `curl -s http://127.0.0.1:9119/health` → content-api ok
+- [ ] From n8n container: fetch `host.docker.internal:9119/health` OK
+- [ ] `systemctl --user status hafjet-content-api` → active
+- [ ] `systemctl status cloudflared` → active
+- [ ] Manual Trigger → draft + inline keyboard in Telegram 1485374469
+- [ ] Approve → Publish Checklist only (no example.com / no Meta publish)
+- [ ] Schedule node stays disabled until CTO UI sign-off
 
 ### Pitfalls & Fixes
 
 | Issue | Fix |
 |-------|-----|
-| `curl: (7) Connection refused` on :9119 | Hermes gateway is on :8787, not :9119 |
-| "The connection cannot be established" in n8n HTTP Request | Use `host.docker.internal:8787` for Hermes, or `api.x.ai` for xAI |
-| Webhook still shows trycloudflare.com | Deactivate → Activate workflow; wait 5s |
-| `allowed_updates` only has `callback_query` | Normal for Callback Trigger only; add `message` if using Telegram Trigger |
-| Telegram message not sent from n8n | Check node "Send Draft to Telegram": Credential selected, Chat ID = 1485374469 |
+| Generate ENOTFOUND `host.docker.internal` | Add `extra_hosts: host-gateway`; recreate with `~/.local/bin/docker-compose` |
+| `$env.CONTENT_API_TOKEN` empty in node | `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` + pass token in compose env |
+| `:9119` connection refused | Start/enable `hafjet-content-api` user service |
+| active=1 but logs "0 published workflows" | Insert published_version + history for versionId; restart n8n |
+| Webhook still trycloudflare.com | Deactivate → Activate; wait 5s |
+| Telegram message not sent | Credential on every TG node; Chat ID 1485374469 |
 
 ## UpCloud Trial Deployment (Aug 2026)
 
@@ -566,6 +563,32 @@ sudo docker compose up -d
 - Port must be set in BOTH Dockerfile AND main.py (port mappings ignored with host mode)
 - Ollama must listen on `0.0.0.0` (not just `127.0.0.1`) for container access
 - `.env` file must be in project root and referenced via `env_file:` in docker-compose.yml
+
+### Oracle SRE: Docker `unhealthy` + 4GB swap (2026-08-12)
+
+**Playbooks:** `references/oracle-sre-healthcheck-swap-2026-08.md` · `references/oracle-a1-python-slim-healthcheck-swap.md` (short checklist)
+
+Live box (re-verify before act): `hafjet-oracle` · TS `100.124.99.52` · public `149.118.152.50` · SSH `-i /tmp/hafjet-oracle-key ubuntu@…` · `~/HAFJET-AI-WhatsApp-Bot` · container `hafjet-ai-whatsapp-bot` · service `whatsapp-api` · **:8200 host network**.
+
+**`docker ps` unhealthy ≠ app down.** Read `State.Health.Log` + host `curl /api/health` before restart/rebuild.
+
+| Trap | Rule |
+|------|------|
+| Healthcheck `CMD curl` on `python:3.12-slim` | Slim has **no curl** → forever unhealthy while Uvicorn is fine |
+| Preferred fix | Pure-Python healthcheck (urllib) in **compose only** — no apt, no image rebuild |
+| Recreate | `sudo docker compose up -d --force-recreate --no-deps whatsapp-api` only — never bounce DB |
+| Nested SSH YAML edit | Quotes around health URL get stripped → healthcheck `SyntaxError`. Patch via **base64-delivered** remote Python; verify `inspect .Config.Healthcheck.Test` |
+| Git | Stage **only** `docker-compose.yml` unless CTO expands scope. Push may fail (`no upstream` / GitHub `Host key verification failed`) → local commit OK; do not force |
+| Swap | Oracle image often **0 swap**. Safe 4G: `fallocate /swapfile` → `mkswap` → `swapon` → fstab → `vm.swappiness=10` |
+
+```yaml
+healthcheck:
+  test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8200/api/health', timeout=5)"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+```
 
 ### 🚨 iptables Firewall on Oracle VM (CRITICAL — hit Aug 2026)
 

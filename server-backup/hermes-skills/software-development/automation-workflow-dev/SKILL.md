@@ -43,66 +43,39 @@ Quick Tunnels are temporary and rotate on restart. Every new `cloudflared tunnel
 - Verify: `dig n8n.hafjet.my` → resolves to Cloudflare IPs (e.g., `104.21.x.x`, `172.67.x.x`)
 - Propagation typically 5 min - 2 hrs; test with `curl -I https://n8n.hafjet.my`
 
-**Hermes Cron Job Integration for AI Content Generation (No xAI API Key Needed)**
-- **Architecture**: n8n → HTTP POST → Hermes `/api/cron/fire` → Cron job runs agent with xAI OAuth (SuperGrok) → Returns structured JSON
-- **Prerequisites**: Hermes running on port 8787 with `xai-oauth` provider authenticated; `grok-4.5` model available
-- **Cron Job Creation** (CLI):
-  ```bash
-  hermes cron create "once in 1min" \
-    --name "hafjet-content-generator" \
-    --provider "xai-oauth" \
-    --model "grok-4.5" \
-    --prompt "<SYSTEM_PROMPT_TEMPLATE>" \
-    --deliver local
-  ```
-  - `once in 1min` = manual trigger schedule (runs once, then triggered via `/api/cron/fire`)
-  - `--deliver local` = output returned to API caller, not sent to Telegram
-  - Pin model/provider to avoid config drift errors
-- **Get Job ID**: `hermes cron list | grep hafjet-content-generator` → copy ID
-- **Get Hermes API Key**: `grep -A 3 "gateway:" ~/.hermes/config.yaml | grep api_key`
-- **n8n HTTP Request Node Config**:
-  - Method: POST
-  - URL: `http://host.docker.internal:8787/api/cron/fire`
-  - Headers: `Authorization: Bearer <HERMES_API_KEY>`, `Content-Type: application/json`
-  - Body (JSON):
-    ```json
-    {
-      "job_id": "<CRON_JOB_ID>",
-      "payload": {
-        "topic": "={{$json.topic}}",
-        "platform": "={{$json.platform}}",
-        "tone": "santai_kelantan",
-        "content_type": "caption",
-        "additional_context": "={{$json.context}}"
-      }
-    }
-    ```
-  - Timeout: 300000ms (5 min); Retry: 2x with 5s interval
-- **Expected Output Format** (JSON from cron job):
-  ```json
-  {
-    "success": true,
-    "content": { "option_1": "...", "option_2": "..." },
-    "image_prompt": "...",
-    "hashtags": ["#tag1", "#tag2"],
-    "character_count": 180
-  }
-  ```
-- **Fallback Cron Job** (OpenRouter via Hermes):
-  ```bash
-  hermes cron create "once in 1min" \
-    --name "hafjet-content-generator-fallback" \
-    --provider "openrouter" \
-    --model "x-ai/grok-2-latest" \
-    --prompt "<SAME_SYSTEM_PROMPT>" \
-    --deliver local
-  ```
-- **Error Handling**:
-  - Timeout (5 min) → retry 2x
-  - 401 Auth failed → check API key in config.yaml
-  - 404 Job not found → verify job_id
-  - JSON parse error → log raw response, fallback to OpenRouter cron job
-  - Model config drift → pin model/provider explicitly in cron job
+**Hermes Cron Job Integration for AI Content Generation (optional path)**
+- Preferred when `gateway.api_key` is set and `/api/cron/fire` works.
+- Architecture: n8n → POST Hermes `/api/cron/fire` → cron agent → JSON back to n8n.
+- If `gateway.api_key` is empty / fire path unavailable → use **local Content API** (Phase 1 proven path below), not a broken `:9119` stub without a listener.
+
+**Secrets (HAFJET):** Never ask for API keys in Telegram/chat — only server env paths. Check `~/.hermes/.env` / `~/.n8n/.env` first.
+
+**HAFJET Content API (Phase 1 / 1.5 — Aug 2026)**
+- **Where n8n lives**: Hermes Azure only (`hafjet-n8n`), **not** Oracle. Data: `~/.n8n/`. UI: `https://n8n.hafjet.my`.
+- **Service**: `~/.n8n/content-api/app.py` · port **9119** · systemd user `hafjet-content-api.service`.
+- **Auth**: `CONTENT_API_TOKEN` → n8n header `X-API-Key: {{ $env.CONTENT_API_TOKEN }}`.
+- **Compose must include**: `extra_hosts: ["host.docker.internal:host-gateway"]`, `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`, pass `CONTENT_API_TOKEN`; use `~/.local/bin/docker-compose`.
+- **Captions**: `POST http://host.docker.internal:9119/api/generate` (OpenRouter text models, e.g. gpt-4o-mini).
+- **Images**: `POST .../api/generate-image` via **Google AI Studio** (`GOOGLE_API_KEY`) → Gemini `generateContent` + `responseModalities: ["TEXT","IMAGE"]`. Default `gemini-2.5-flash-image`. Saves under `static/images/`. **Not** xAI by default; OpenRouter `/v1/images` may 402 while chat works. See `references/hafjet-content-image-gen-google.md`.
+- **n8n image flow**: Generate Content → Generate Image (**continueOnFail**) → Merge → IF ok Download file → Telegram `sendPhoto`+keyboard; else text draft+keyboard. Checklist includes `image_url` when present. Google **429 quota** = non-fatal (keep text path).
+- **Telegram photo**: internal URL not public — n8n must download binary then multipart upload.
+- Ops: `references/hafjet-content-phase1-ops.md` · Images: `references/hafjet-content-image-gen-google.md`
+
+**n8n 2.8 activation / publish model (critical)**
+- Setting `workflow_entity.active=1` alone is **not enough**.
+- Need matching rows:
+  1. `workflow_entity.activeVersionId = versionId`
+  2. `workflow_published_version (workflowId, publishedVersionId=versionId)`
+  3. `workflow_history` row with same `versionId` + full `nodes`/`connections`
+- After DB change: `docker restart hafjet-n8n` → logs must show `Activated workflow "…"` and `1 published workflows`.
+- **Pause schedule without killing Telegram callbacks**: keep workflow **active**, set Schedule Trigger node `"disabled": true`. Deactivating whole workflow stops callback webhooks too.
+- Disk JSON under `~/.n8n/workflows/*.json` is **export only** — SQLite is source of truth.
+
+**Phase 1 content workflow product rules**
+- HITL Telegram chat `1485374469`; inline keyboard required on draft (approve_1/2, new_captions, new_visual, revise, reject).
+- Approve → **Publish Checklist** (copy-ready caption + visual prompt). **No** auto-publish; never call `*.example.com`.
+- Switch after Answer Callback: always `$('Telegram Callback Trigger').item.json.callback_query.data`.
+- Stop bleeding first: disable schedule / fix generate before leaving failing cron active (was 2× daily ENOTFOUND).
 
 **n8n Login / Owner Setup Gotcha (2026-08-01)**
 Even with `N8N_BASIC_AUTH_ACTIVE=true`, the UI still shows the owner creation form that validates "Must be a valid email".
@@ -275,6 +248,9 @@ services:
 - `scripts/probe-automation-env.sh` — one-shot verification of node/npm/n8n/ctx7 paths and versions 
 - `references/n8n-docker-compose.md` — docker-compose setup patterns for Azure Ubuntu + Telegram webhooks 
 - `references/n8n-telegram-approval-workflow.md` — Telegram inline keyboard approval pattern: Switch data-referencing pitfall, inline keyboard JSON, force_reply, MYT cron conversion, workflow validation 
-- `references/hafjet-content-automation-spec.md` — **HAFJET Content Automation full system prompt**: brand config, content pillars, approval workflow, inline keyboard spec, caption standards, publishing rules, reporting format. Reference this when building n8n workflows for HAFJET social media automation. 
-- `references/n8n-quick-tunnel-haftet.md` — **Quick Tunnel rotation pattern** for n8n Telegram webhooks (update both .env + compose.yml, sg docker -c, 502 propagation, log verification of "Editor is now accessible via"). 
+- `references/hafjet-content-automation-spec.md` — **HAFJET Content Automation full system prompt**: brand config, content pillars, approval workflow, inline keyboard spec, caption standards, publishing rules, reporting format. Reference this when building n8n workflows for HAFJET social media automation.
+- `references/hafjet-content-phase1-ops.md` — **Phase 1/1.5 ops**: content-api :9119, compose extra_hosts + env access, n8n 2.8 publish/activate SQLite checklist, pause-schedule-without-killing-callbacks, smoke tests.
+- `references/hafjet-content-image-gen-google.md` — **Google Gemini image** via content-api: models, 429 quota fallback, n8n sendPhoto binary path, never paste keys in chat.
+- `references/hafjet-content-image-gen-google.md` — Google Gemini image via content-api (models, 429 fallback, sendPhoto binary, no keys in chat)
+- `references/n8n-quick-tunnel-haftet.md` — Quick Tunnel rotation for n8n Telegram webhooks 
 - **Cross-skill**: Cloudflare Tunnel setup → load `self-hosted-deployment`, see `references/cloudflare-tunnel.md` 

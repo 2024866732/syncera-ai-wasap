@@ -26,7 +26,16 @@ n8n workflow → HTTP POST → Hermes /api/cron/fire
 - xAI OAuth authenticated in Hermes config (`provider: xai-oauth`)
 - Model `grok-4.5` available via OAuth
 - n8n can reach `http://host.docker.internal:8787`
-- Hermes API key from `~/.hermes/config.yaml` → `gateway.api_key`
+- Hermes API key from `~/.hermes/config.yaml` → `gateway.api_key` (**if empty / missing, skip this path**)
+
+## Fallback when gateway.api_key is empty (Phase 1 live default)
+
+Do **not** invent Hermes endpoints. Use **HAFJET Content API** on port **9119**:
+
+- Ops: `references/hafjet-content-phase1-ops.md`
+- n8n URL: `http://host.docker.internal:9119/api/generate`
+- Header: `X-API-Key: {{ $env.CONTENT_API_TOKEN }}`
+- Service: systemd user `hafjet-content-api` · code `~/.n8n/content-api/`
 
 ---
 

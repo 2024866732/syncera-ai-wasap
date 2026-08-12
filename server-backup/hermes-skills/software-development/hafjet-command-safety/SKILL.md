@@ -200,6 +200,14 @@ to approve prompts — any command that lands in `pending_approval` stalls forev
    then after exit use `search_files` on the log for `470 blocked`, `no phone`,
    `HTTP [0-9]+ ->` to classify failures precisely. The final `🏁 Done.
    Sent=X Failed=Y` line alone does NOT tell you the 470 vs data-quality split.
+6. **Dry-run counts are upper bounds, not send plans (verified 2026-08-12):**
+   `--dry` counts dual-number `NO TELEFON` cells (`6011.../0104...`) as "sent"
+   because no HTTP call happens — LIVE they fail as HTTP 400. Expect
+   `live_sent = dry_sent − dual_number_cells` (dry 608 → live 606 with 2 such
+   cells). Use the dry run for pending-count sanity + header check, never as an
+   exact send forecast. Also prefer writing the live log to
+   `~/.hermes/logs/pickup_run_<ts>.log` (persists across reboots) over `/tmp`,
+   which is tmpfs RAM on this box.
 
 ## When Tuan says "deny"
 Do not retry, rephrase, or achieve the same outcome another way. Stop the
