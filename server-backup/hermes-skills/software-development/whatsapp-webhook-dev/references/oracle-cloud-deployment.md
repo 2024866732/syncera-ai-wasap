@@ -32,6 +32,35 @@ Deploy WhatsApp Cloud API bots to Oracle Cloud Infrastructure (OCI) Always Free 
 - Only overages (beyond Always Free limits) are charged
 - Monitor billing at `https://cloud.oracle.com/billing`
 
+### Docker Rebuild vs Restart for Env Changes (2026-08-14)
+
+**Problem:** When adding new environment variables to `.env` (e.g., `INTERNAL_API_KEY`), simply restarting the container does NOT load the new values. Docker containers only read `env_file` at build time, not at restart.
+
+**Symptom:** Container logs show "INTERNAL_API_KEY not configured" even after adding the key to `.env` and restarting.
+
+**Solution:** Must rebuild the container (not just restart) to pick up new environment variables:
+
+```bash
+# ❌ WRONG — won't load new env vars
+sudo docker compose restart
+
+# ✅ CORRECT — rebuilds with new env
+sudo docker compose down
+sudo docker compose up -d --build
+```
+
+**When to rebuild vs restart:**
+
+| Change Type | Action | Example |
+|-------------|--------|---------|
+| Code changes (.py files) | Restart only | `sudo docker compose restart` |
+| New env vars in .env | Rebuild | `sudo docker compose down && sudo docker compose up -d --build` |
+| Dockerfile changes | Rebuild | `sudo docker compose down && sudo docker compose up -d --build` |
+| Volume data changes | Restart only | Database schema updates |
+| Image updates | Rebuild | `sudo docker compose pull && sudo docker compose up -d` |
+
+**Quick check:** If container logs show old env values, rebuild is needed.
+
 ### Ollama Docker Networking (2026-08-05)
 
 **Problem:** Ollama listens on `127.0.0.1:11434` by default. Docker containers cannot access localhost of the host.

@@ -187,3 +187,45 @@ CREATE INDEX idx_daily_counter_date ON daily_message_counter(date);
 3. **route_type in ai_requests**: Track whether response came from LLM, Supabase, or human handoff
 4. **daily_message_counter**: Cost control without querying full message table
 5. **TIMESTAMPTZ**: Timezone-aware timestamps for global deployments
+
+## Dashboard Auto-Refresh Pattern (2026-08-14)
+
+**Pattern:** Use `setInterval()` to auto-refresh dashboard data from live API endpoints.
+
+```javascript
+// Auto-refresh every 30 seconds
+setInterval(refresh, 30000);
+
+async function refresh() {
+    try {
+        const statsRes = await fetch(`${API_BASE}/api/stats`);
+        const stats = await statsRes.json();
+        
+        // Update KPIs
+        document.getElementById('kpi-total').textContent = stats.total_messages || 0;
+        document.getElementById('kpi-p95').textContent = stats.p95_latency_ms || 0;
+        document.getElementById('kpi-handoff').textContent = stats.human_handoff_count || 0;
+        
+        // Update route type distribution
+        document.getElementById('route-supabase').textContent = stats.direct_lookup_count || 0;
+        document.getElementById('route-llm').textContent = stats.llm_request_count || 0;
+        
+        // Update cost control
+        if (stats.cost_control) {
+            document.getElementById('kpi-daily-outbound').textContent = stats.cost_control.daily_outbound_count || 0;
+            document.getElementById('cost-marketing').textContent = stats.cost_control.marketing_enabled ? 'Enabled' : 'Disabled';
+        }
+        
+        // Update last update time
+        document.getElementById('last-update').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+    } catch (error) {
+        console.error('Failed to fetch stats:', error);
+    }
+}
+```
+
+**Key points:**
+- All data comes from `/api/stats` endpoint (live, no mock)
+- Show "Loading..." or "No live data yet" when no data
+- Auto-refresh interval: 30 seconds (configurable)
+- Show last update time for user feedback

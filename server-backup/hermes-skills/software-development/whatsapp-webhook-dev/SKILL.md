@@ -286,6 +286,8 @@ APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
 
 17g. **⚠ Repetitive/duplicate replies from overlapping static + AI fallback paths:** A common bug where a single inbound message produces multiple outbound replies. Root cause: static handler returns a greeting, but AI fallback ALSO returns a greeting for the same message, and webhook re-triggers create duplicates. **Symptom:** Screenshot shows 5-6 near-identical greeting messages from the bot for one inbound "hi". **Fix:** (1) Greeting detection must be in BOTH `_static_menu_handler()` AND `should_use_ai()` — return `False` for greetings so AI never processes them. (2) Add deduplication by `msg_id` with a 5-minute window. (3) Use canonical reply constants instead of generating variations. (4) Lower AI `temperature` to 0.3 and `max_tokens` to 150 for consistent output. See `references/reply-dedup-pattern.md` for the complete anti-duplicate architecture.
 
+17g2. **⚠ Webhook inline await causes Meta retry → duplicate replies (the "3 outbound" bug):** When the POST /webhook handler does `await _process_message(msg, value)` inline (blocking until AI reply is sent), Meta's webhook timeout (~10-20s) fires before the handler returns 200. Meta retries the webhook. With multiple gunicorn workers (`-w 2+`), each worker has its own in-memory dedup dict (`_processed_messages`), so the retry goes to a different worker and passes dedup → duplicate outbound. **Symptom:** 1 inbound produces 2-3 outbound messages within ~1 minute, often including a fallback "sistem sibuk" before the correct AI reply. **Root cause chain:** (1) AI takes 75s → webhook blocks → Meta times out → retries. (2) Gunicorn `-w 2` → in-memory dedup is per-worker → cross-worker dedup fails. **Fix (two-part):** (1) Return 200 immediately from the webhook handler, process in background: `asyncio.create_task(_process_webhook_payload(data)); return JSONResponse({"status": "ok"})`. (2) Use `-w 1` in gunicorn so the in-memory dedup dict is shared across all requests. The background task still checks `_is_duplicate(msg_id)` before processing. **Verified fix (2026-08-14):** Changed from inline `await _process_message()` to `asyncio.create_task()` + `-w 1`. Result: 1 inbound = 1 outbound, zero duplicates.
+
 17h. **⚠ Meta App category for WhatsApp bots is "Messaging" not "Business":** When selecting an app category in Meta Developer Portal for a WhatsApp Bot, choose **Messaging** (not "Business and pages" or "Messenger bots for business"). "Messaging" is the correct category for apps whose primary function is sending/receiving messages via WhatsApp Business Platform. The "Messenger bots for business" category is specifically for Facebook Messenger bots, not WhatsApp.
 
 17i. **⚠ Meta Data Deletion URL requirement:** Meta requires a Data Deletion Instruction URL for app review. This can be the same URL as your Privacy Policy page with an added section (Section 7.5) explaining how users can request data deletion. Include: contact methods (WhatsApp/email), expected response time (1-3 business days), deletion timeframe (30 days), and legal retention exceptions. Host on GitHub Pages alongside your Privacy Policy.
@@ -431,6 +433,14 @@ az webapp config appsettings set -g <rg> -n <app> --settings STARTUP_COMMAND="gu
 az webapp config set -g <rg> -n <app> --generic-configurations '{"healthCheckPath": "/health"}'
 ```
 This is a one-time config — survives deploys. Without it on Free tier, cold starts may trigger false unhealthy-restarts.
+
+17ae. **⚠ DB seed data vs code mismatch — updating code does NOT update pre-seeded DB rows:** When code seeds DB tables via `INSERT ... ON CONFLICT DO NOTHING` (e.g., `ai_faqs`, `ai_business_info`, `keyword_rules`), the seed ONLY runs when the table is EMPTY. Existing rows with old data persist indefinitely. **Symptom:** Code updated to "9:00 AM - 7:00 PM" but customer still sees "10:00 AM - 9:00 PM" because `ai_faqs` was seeded with the old value on first run. **Fix:** Always UPDATE the DB directly after updating seed code:
+```python
+# After deploying code changes, update pre-seeded DB rows:
+c.execute("UPDATE ai_faqs SET answer = REPLACE(answer, 'old text', 'new text')")
+c.execute("UPDATE ai_business_info SET address_hours = REPLACE(address_hours, 'old time', 'new time')")
+```
+**Verification:** After deploying, search ALL DB tables for old strings: `SELECT id, column FROM table WHERE column LIKE '%old_pattern%'`. Common affected tables: `ai_faqs`, `ai_business_info`, `ai_knowledge_items`, `bot_settings`.
 
 17ae. **⚠ SQLite on Azure uses ephemeral storage — data lost on restart/redeploy:** `/home/site/wwwroot/` is NOT persistent across container restarts (Azure may move your app to a different container). `bot_data.db` will be wiped. **For production:** Mount an Azure Files share to `/home/site/wwwroot/data/` and point `DB_PATH` there, OR migrate to Azure SQL/MySQL. **For dev/testing:** Accept data loss on restart, or add a startup script that backs up/restore from blob storage.
 
@@ -581,13 +591,173 @@ ngrok http 8443 --config ~/.config/ngrok/ngrok.yml
 
 **⚠ ngrok free tier (`*.ngrok-free.dev`) is unreliable for Meta webhook delivery** — connections drop, webhook POST requests from Meta may silently not reach your server. Use only for initial testing. Migrate to Azure for production. See `references/ngrok-free-tier-issues.md`.
 
+## Approval-Gated Deployment Workflow (Tuan Hafizi Requirement)
+
+**CRITICAL:** Never deploy, restart, migrate, or push to GitHub without explicit approval.
+
+### Workflow
+
+```
+Phase 1: Audit (NO changes)
+    ↓
+Phase 2: Implementation (NO production changes)
+    ↓
+Phase 3: Present changes for approval
+    ↓
+Phase 4: Deploy (ONLY after approval)
+```
+
+### Phase 1: Audit
+
+Before any implementation, audit the current state:
+1. Repository structure
+2. Docker Compose configuration
+3. .env.example variables
+4. Webhook and API routes
+5. Database schema
+6. Dashboard data sources
+7. WhatsApp API type (official vs unofficial)
+
+**Output:** Gap report with:
+- Current status
+- Missing features
+- Security gaps
+- Priority fixes (P0 critical, P1 high, P2 medium)
+
+### Phase 2: Implementation
+
+After gap analysis, implement changes locally:
+1. Create/modify files
+2. Write tests
+3. Run tests locally
+4. **DO NOT** touch production
+
+### Phase 3: Present Changes
+
+Before any production action, present:
+- List of files changed
+- Description of each change
+- Impact assessment
+- Test results
+- Migration SQL (if any)
+- Rollback script (if any)
+
+**Wait for explicit "APPROVED" before proceeding.**
+
+### Phase 4: Deploy
+
+Only after approval:
+1. Upload files to server
+2. Apply migration (if approved)
+3. Rebuild container (if approved)
+4. Restart container (if approved)
+5. Verify health
+6. Commit + push (if approved)
+
+### Approval Gates
+
+| Action | Requires Approval |
+|--------|-------------------|
+| Restart production container | ✅ YES |
+| Change firewall/iptables | ✅ YES |
+| Migrate database | ✅ YES |
+| Push to GitHub | ✅ YES |
+| Change Meta webhook | ✅ YES |
+| Send real WhatsApp messages | ✅ YES |
+| Add INTERNAL_API_KEY to .env | ✅ YES |
+| Create files in repository | ❌ NO (local only) |
+| Run tests | ❌ NO |
+| Read logs | ❌ NO |
+
+### What NOT to Do
+
+- ❌ Do NOT deploy and ask for approval after
+- ❌ Do NOT restart container "to test"
+- ❌ Do NOT push to GitHub without showing diff
+- ❌ Do NOT migrate database without showing SQL
+- ❌ Do NOT change production config without approval
+
+### What TO Do
+
+- ✅ DO present all changes before execution
+- ✅ DO wait for explicit "APPROVED" before any production action
+- ✅ DO show diff/summary of changes
+- ✅ DO provide rollback scripts for migrations
+- ✅ DO test locally before deploying
+
+See `references/production-deployment-safety-protocol.md` for the full protocol.
+
+---
+
+## Gap Analysis Pattern
+
+Before implementing new features, perform a gap analysis:
+
+### Step 1: Audit Current State
+```bash
+# Check repository structure
+find . -type f -name "*.py" -o -name "*.yml" -o -name "*.env*" | sort
+
+# Check docker-compose.yml
+cat docker-compose.yml
+
+# Check .env.example
+cat .env.example
+
+# Check routes
+grep -n "@app\.\|@router\." src/main.py
+
+# Check database schema
+docker exec hafjet-ai-db psql -U hafjet -d hafjet_ai -c "\dt"
+```
+
+### Step 2: Compare Against Requirements
+
+Create a checklist:
+
+| Requirement | Current Status | Gap |
+|-------------|----------------|-----|
+| Webhook signature validation | ❌ Not implemented | Need X-Hub-Signature-256 |
+| Duplicate message protection | ❌ Not implemented | Need whatsapp_message_id unique |
+| API authentication | ❌ Not implemented | Need X-API-Key middleware |
+| Smart routing | ⚠️ Placeholder | Need Supabase direct lookup |
+| Cost control | ❌ Not implemented | Need outbound limiting |
+
+### Step 3: Prioritize Fixes
+
+- **P0 Critical:** Security, data integrity, production-blocking
+- **P1 High:** Core features, business logic
+- **P2 Medium:** Enhancements, nice-to-have
+
+### Step 4: Present Gap Report
+
+Format:
+```
+## Current Status
+- Repository: ✅ Complete
+- API: ✅ Running
+- Database: ⚠️ Schema mismatch
+
+## Gaps Found
+1. [P0] Webhook signature validation not implemented
+2. [P0] No duplicate message protection
+3. [P1] Smart routing is placeholder
+
+## Recommended Fixes
+1. Implement X-Hub-Signature-256 verification
+2. Add whatsapp_message_id unique constraint
+3. Implement Supabase direct lookup
+```
+
+---
+
 ## Hybrid Azure + Oracle Architecture (Aug 2026)
 
 For production WhatsApp bots, use Azure as the channel layer and Oracle as the AI engine.
 
 ### Architecture
 ```
-Customer WhatsApp → Azure Bot Service → Oracle VM (AI) → Response
+Customer WhatsApp → Meta Cloud API → Azure Bot Service → Oracle VM (AI) → Response
 ```
 
 ### API Contract (Azure ↔ Oracle)
@@ -909,7 +1079,11 @@ When adding a new routing path, update `_detect_routing()` and ensure `log_outbo
 
 ## See Also
 
+- `references/oracle-vm-deployment-pattern.md` — **Oracle VM deployment pattern**: Full deployment guide for Oracle Cloud VM with Azure Bot as channel layer. Includes SSH access, Docker commands, API endpoints, environment variables, firewall rules, and common issues.
 - `references/oracle-cloud-iptables-pitfall.md` — **Oracle Cloud iptables**: Each port needs explicit INPUT rule + netfilter-persistent save. Public IP blocked despite security list being open.
+- `references/oracle-cloud-docker-build-cache.md` — **Docker build cache corruption**: When `docker compose up -d --build` fails with "parent snapshot does not exist", clear cache with `docker builder prune -af` before rebuilding. Common on Oracle Cloud VM.
+- `references/database-migration-existing-tables.md` — **Database migration with existing tables**: Use `DO $$ BEGIN IF NOT EXISTS ...` blocks for idempotent migrations. Always add rollback scripts. Don't drop columns in rollback.
+- `references/api-auth-dev-mode-behavior.md` — **API auth dev mode**: When `INTERNAL_API_KEY` is not set in `.env`, authentication is skipped entirely (development mode). For production, generate key and add to `.env`.
 - `references/production-deployment-safety-protocol.md` — **Deployment safety protocol**: Audit → Present changes → Approval → Deploy. Never restart/migrate/push without approval.
 - `references/smart-routing-supabase-lookup.md` — **Smart routing with Supabase**: Direct DB lookup for simple queries (price, stock, repair status), Ollama for complex, human handoff for complaints.
 - `references/whatsapp-cost-control.md` — **Cost control module**: Outbound message limiting, daily counters, category-based filtering (service/utility/marketing).

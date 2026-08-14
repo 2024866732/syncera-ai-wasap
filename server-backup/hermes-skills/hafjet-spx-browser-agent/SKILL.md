@@ -495,6 +495,7 @@ See `references/spx-reminder-backend-pitfalls.md` for all 8 known backend bugs.
 - `references/spx-followup-engine.md` — follow-up stage mapping and test cases
 - `references/autopilot-v1-deployment-patterns.md` — CORS, auth, timeout tuning, rollout checklist
 - `references/spx-server-ops.md` — Server-side: phone fetch, reminder toggle, Kudu SQLite pitfalls, WhatsApp template testing
+- `references/message-data-model.md` — bot message tables + wamid linking; name-overwrite & synthetic-wamid bugs; WABA number verification (+601149561698); customer name backfill
 - `references/spx-reminder-backend-pitfalls.md` — Backend SPX reminder bugs: wrong column name (`reminder_status` vs `hafjet_reminder_state`), missing `_SPX_TEMPLATES` keys, `is_paused=1` blocking, template name mismatches
 
 ## Related Skills

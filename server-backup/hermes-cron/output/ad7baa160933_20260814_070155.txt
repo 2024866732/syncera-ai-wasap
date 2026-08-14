@@ -1,0 +1,87 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+# 📰 Laporan Teknologi & AI — 7–14 Ogos 2026
+
+*<small>Tag: Jumaat 14 Ogos 2026 | Disusun oleh Hermes-HAFJET untuk Tuan Hafizi</small>*
+
+---
+
+## 🔥 Berita Teknologi Paling Panas
+
+- **Databricks tutup funding $5B @ valuation $190B** — Revenue run-rate sudah lampaui **$7B** (+>80% YoY). Modal private ni goni besar untuk race AI agent + data platform lawan Snowflake. Sohor gila dalam enterprise AI stack.
+- **Meta + Nvidia tanam “very firm flag” dalam open-weight AI** — Kedua-dua lepaskan model open-weight (boleh download free) minggu ni. Meta keluar **Muse Glimmer** (versi open model paling berkuasa dia); Nvidia ikut dengan keluarga Nemotron. Motif jelas: lawan lab China + tolak bar OpenAI/Anthropic yang tutup.
+- **Nvidia bina Nemotron 4 ~1 trilion parameter (report)** — Menurut *The Information*/Reuters, flagship Nemotron 4 dijangka ≥1T params (~2× Nemotron 3 Ultra). Training belum siap; employee cakap mungkin ready **lewat musim luruh**. Belum ada tarikh rasmi.
+- **AMD beli Taalas (Toronto)** — Startup inference silicon yang “hardwire” model ke chip. AMD nak integrate dengan Instinct GPU + Helios rackscale + ROCm. Terms tak diumum; subject to closing conditions. Gerakan pacak megah lawan Nvidia di inference edge.
+- **Joby Aviation beli Resonant Sciences ~$500M** — Expand defense business: RF/sensing, low-observability, autonomy. Resonant TTM revenue >$100M (+~40% YoY), ~250 staff, majority cleared. Commercial eVTOL tetap separate.
+- **OpenAI expand Daybreak (cyber defense)** — Program Blue vs Red tier; model cyber (termasuk GPT-5.x-Cyber) untuk partner trusted. AWS Bedrock mula buka Daybreak models (11 Ogos). Defensive AI security jadi produk sebenar, bukan demo.
+- **Malaysia (Johor) tutup Network School Balaji** — Lesen NS0 Malaysia Sdn. Bhd. di Forest City ditarik (efektif 22 Jul). Balaji kononnya cari base baru (report Kazakhstan). Relevant sebab HAFJET operate dalam ecosystem MY tech/policy.
+
+---
+
+## 🤖 Dunia Open-Source AI Minggu Ni
+
+- **Open-weight race US vs China naik gear** — Meta Muse Glimmer + Nvidia Nemotron open downloads = US big tech tak nak kalah momentum open model dari DeepSeek/Moonshot/Alibaba. Developer stack self-host jadi lebih kuat.
+- **Nemotron 4 (in development)** — Kalau betul 1T open-ish family, ecosystem serving/quant/fine-tune akan bergoyang lagi. HAFJET patut pantau release notes + GGUF/vLLM support lepas drop.
+- **MCP security wake-up call: Ruflo CVE-2026-59726 (CVSS 10.0 / “RufRoot”)** — Noma Labs: platform agent open-source (67K+ stars) expose unauthenticated MCP bridge (port 3001 default) dengan **233 tools** termasuk shell, DB, agent mgmt, memory. Satu HTTP POST = RCE + curi LLM API keys. Lesson keras untuk mana-mana MCP/agent gateway yang kito deploy.
+- **Local/self-host stack terus sohor** — Trend August: PyTorch/HF serving, agent memory hubs, graph-native context, coding agents yang tahan long-run. Enterprise mula treat open AI sebagai **infra**, bukan toy.
+- **Tiny on-device models** — `cactus-compute/needle` (~14MB foundation model untuk phone/wearable/smart home) nampak dalam trending Python — arah edge AI ringan, relevan untuk device/voice stack.
+
+---
+
+## ⭐ Projek GitHub Naik Bukit
+
+*Snapshot rasmi `github.com/trending?since=weekly` (parse 14 Ogos 2026). Metric = ⭐ minggu ni.*
+
+| # | Projek | Memang Istimewa? | ⭐ Minggu |
+|---|---|---|---|
+| 1 | `PrimeIntellect-ai/prime-agent` | Self-improving RLM agent untuk coding + long autonomous tasks | 12,476 |
+| 2 | `TencentCloud/TencentDB-Agent-Memory` | Team memory hub: chat/skill/LLM-wiki/code-graph | 5,388 |
+| 3 | `zhaoxuya520/reverse-skill` | Skill router pack security research (authorized) | 5,270 |
+| 4 | `addyosmani/agent-skills` | Production engineering skills untuk coding agents | 4,562 |
+| 5 | `semantica-agi/semantica` | Graph-native infra untuk context + accountable AI | 4,073 |
+| 6 | `cloudflare/computer` | “Give your agent a computer” — agent desktop sandbox | 3,599 |
+| 7 | `firecrawl/pdf-inspector` | Rust PDF inspect/classify/extract (scanned vs text) | 3,251 |
+| 8 | `google/skills` | Agent Skills untuk Google products | 2,359 |
+| 9 | `esengine/DeepSeek-Reasonix` | DeepSeek-native terminal coding agent (prefix-cache) | 2,419 |
+| 10 | `huangruiteng/loopx` | Loop kernel long-running multi-agent teams | 1,967 |
+
+**Tema minggu ni:** coding agents + agent memory + skills packs + computer-use sandboxes. Hampir semua yang naik bukit berkaitan **agent orchestration**, bukan model base baru.
+
+---
+
+## 📌 Apa Kito Patut Tahu
+
+1. **Open-weight US dah serius** — Meta/Nvidia entry = peluang bigger untuk self-host/fine-tune di Oracle/PC Office tanpa gantung 100% pada closed API. Pantau Muse Glimmer + Nemotron weights bila stable.
+2. **Inference silicon race (AMD Taalas)** — Kalau inference cost turun, bot WhatsApp + OCR + voice stack HAFJET jadi lebih murah jangka panjang. Keep AMD Instinct/ROCm radar.
+3. **MCP/agent security = priority #1** — Ruflo CVSS 10.0 buktikan bridge tanpa auth = disaster. Audit semua MCP endpoints HAFJET (n8n, Hermes tools, xiaozhi bridges): jangan expose port ke WAN, wajib auth, least-privilege tools.
+4. **Agent memory & skills jadi “product layer”** — TencentDB Agent-Memory, google/skills, addyosmani/agent-skills, loopx — pattern sama dengan skill system Hermes. Worth study architecture memory (chat/skill/wiki/code-graph) untuk HAFJET ops knowledge.
+5. **Databricks $190B signal** — Enterprise budget AI data/agent masih gila. Kalau kito jual automation B2B (repair shop, POS, WhatsApp), framing “AI ops platform” still hot.
+6. **MY policy note** — Network School shutdown = reminder ecosystem “network state / special zone” sensitif. HAFJET stay compliant, low-drama, business-first.
+
+---
+
+## 📎 Sumber
+
+1. Databricks $5B / $190B — https://www.cnbc.com/2026/08/13/databricks-funding-round-190-billion-valuation.html  
+2. Databricks press (revenue run-rate) — https://www.databricks.com/company/newsroom/press-releases/databricks-grows-80-yoy-surpasses-7b-revenue-run-rate-scales  
+3. Reuters Databricks — https://www.reuters.com/legal/transactional/databricks-raises-5-billion-financing-190-billion-valuation-2026-08-13/  
+4. Meta + Nvidia open-weight — https://www.cnbc.com/2026/08/12/meta-nvidia-open-weight-ai-race-china.html  
+5. Meta Muse Glimmer (NYT) — https://www.nytimes.com/2026/08/10/technology/meta-ai-open-source.html  
+6. Meta open-weight (CBC) — https://www.cbc.ca/news/business/meta-open-weight-ai-9.7301484  
+7. Nvidia Nemotron 4 (Reuters) — https://www.reuters.com/business/nvidia-is-developing-nemotron-4-open-source-models-information-reports-2026-08-11/  
+8. AMD × Taalas (IR) — https://ir.amd.com/news-events/press-releases/detail/1296/amd-acquires-taalas-to-advance-compute-solutions-for-rapidly-growing-ai-inference-market  
+9. AMD Taalas (CNBC) — https://www.cnbc.com/2026/08/06/amd-buys-taalas-startup-that-hardwires-ai-models-into-its-silicon.html  
+10. Joby × Resonant (IR) — https://ir.jobyaviation.com/news-events/press-releases/detail/189/joby-aviation-to-scale-defense-business-through-acquisition  
+11. OpenAI Daybreak — https://openai.com/daybreak/  
+12. Ruflo CVE-2026-59726 (The Hacker News) — https://thehackernews.com/2026/07/ruflo-mcp-flaw-lets-unauthenticated.html  
+13. RufRoot analysis (Noma) — https://noma.security/blog/rufroot-the-mcp-bridge-vulnerability-that-turns-agents-into-rogue-admins-cve-2026-59726/  
+14. Network School MY (TechCrunch) — https://techcrunch.com/2026/08/02/malaysia-is-reportedly-shutting-down-balaji-srinivasans-network-school/  
+15. GitHub Trending (weekly) — https://github.com/trending?since=weekly  
+
+---
+
+Itu je ringkasan minggu ni, Tuan Hafizi — open-weight US naik, chip inference bergerak, agent GitHub gila sohor, tapi **MCP security** yang kena jaga dulu sebelum kito bersenggoti scale agent production.
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").

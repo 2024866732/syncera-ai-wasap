@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 58
+        "completed": 59
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-08-14T07:00:00+00:00",
-      "last_run_at": "2026-08-13T07:02:30.250237+00:00",
+      "next_run_at": "2026-08-15T07:00:00+00:00",
+      "last_run_at": "2026-08-14T07:01:57.656480+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -63,15 +63,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 54
+        "completed": 55
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-08-14T13:00:00+00:00",
-      "last_run_at": "2026-08-13T13:01:09.752162+00:00",
+      "next_run_at": "2026-08-15T13:00:00+00:00",
+      "last_run_at": "2026-08-14T13:00:55.259085+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -106,15 +106,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 49
+        "completed": 50
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-08-14T14:00:00+00:00",
-      "last_run_at": "2026-08-12T14:01:44.742990+00:00",
+      "next_run_at": "2026-08-15T14:00:00+00:00",
+      "last_run_at": "2026-08-13T14:00:36.364472+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -149,15 +149,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 48
+        "completed": 49
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-08-14T09:00:00+00:00",
-      "last_run_at": "2026-08-13T09:00:28.773960+00:00",
+      "next_run_at": "2026-08-15T09:00:00+00:00",
+      "last_run_at": "2026-08-14T09:00:26.831601+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -192,15 +192,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 42
+        "completed": 43
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-08-14T09:00:00+00:00",
-      "last_run_at": "2026-08-13T09:00:23.206761+00:00",
+      "next_run_at": "2026-08-15T09:00:00+00:00",
+      "last_run_at": "2026-08-14T09:00:20.455403+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -237,17 +237,17 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 34
+        "completed": 35
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-08-14T03:00:00+00:00",
-      "last_run_at": "2026-08-13T03:23:23.583243+00:00",
-      "last_status": "error",
-      "last_error": "TimeoutError: Cron job 'hafjet-pickup-reminder' idle for 601s (limit 600s) \u2014 last activity: waiting for non-streaming API response",
+      "next_run_at": "2026-08-15T03:00:00+00:00",
+      "last_run_at": "2026-08-14T03:23:42.019565+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -283,15 +283,15 @@
       "schedule_display": "0 15 * * *",
       "repeat": {
         "times": null,
-        "completed": 30
+        "completed": 31
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-14T17:05:27.034793+00:00",
-      "next_run_at": "2026-08-13T15:00:00+00:00",
-      "last_run_at": "2026-08-12T15:01:20.288912+00:00",
+      "next_run_at": "2026-08-14T15:00:00+00:00",
+      "last_run_at": "2026-08-13T15:00:45.671221+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -345,53 +345,6 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
-    },
-    {
-      "id": "073097a4cc44",
-      "name": "cctv-4h-check",
-      "prompt": "Check the HAFJET CCTV worker on the office PC (100.121.94.41) and report status.\n\nRun these commands via SSH (ssh hafizi145@100.121.94.41) and compile a report:\n\n1. ps aux | grep -v grep | grep 'app.main' \u2192 confirm worker PID and CPU%\n2. curl -s http://127.0.0.1:8091/health \u2192 camera status\n3. curl -s 'http://127.0.0.1:8091/api/events?limit=10' \u2192 events\n4. ls -lh /mnt/cctv/snapshots/ \u2192 snapshots\n5. tail -20 /tmp/cctv-worker.log \u2192 recent logs (check for crashes/reconnects)\n\nAlso check: grep -c 'Worker stopped\\|error\\|exception\\|traceback' /tmp/cctv-worker.log (case insensitive)\n\nReport format:\n=== CCTV Worker Check ===\nTimestamp:\nProcess: [PID] running / NOT RUNNING \u2014 CPU usage\nHealth: OK / ERROR\nEvents: total count\n  - newest event: timestamp, confidence\nSnapshots: count, total size\nLog anomalies: count of error/crash lines\nRecent log excerpt: last 5 lines\n\nIf the worker is NOT running, suggest: cd /home/hafizi145/projects/hafjet-cctv-worker && nohup .venv/bin/python -m app.main >> /tmp/cctv-worker.log 2>&1 & disown",
-      "skills": [],
-      "skill": null,
-      "model": null,
-      "provider": null,
-      "provider_snapshot": "opencode-zen",
-      "model_snapshot": "deepseek-v4-flash-free",
-      "base_url": null,
-      "script": null,
-      "no_agent": false,
-      "context_from": null,
-      "schedule": {
-        "kind": "once",
-        "run_at": "2026-07-24T07:26:34.362066+00:00",
-        "display": "once in 4h"
-      },
-      "schedule_display": "once in 4h",
-      "repeat": {
-        "times": 6,
-        "completed": 1
-      },
-      "enabled": false,
-      "state": "completed",
-      "paused_at": null,
-      "paused_reason": null,
-      "created_at": "2026-07-24T03:26:34.362117+00:00",
-      "next_run_at": null,
-      "last_run_at": "2026-07-24T07:27:18.436764+00:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'opencode-zen' -> 'nous'; model 'deepseek-v4-flash-free' -> 'tencent/hy3:free'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=073097a4cc44 provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
-      "last_delivery_error": null,
-      "deliver": "origin",
-      "origin": {
-        "platform": "telegram",
-        "chat_id": "1485374469",
-        "chat_name": "Hafizi",
-        "thread_id": "27726",
-        "user_id": "1485374469"
-      },
-      "enabled_toolsets": null,
-      "workdir": null,
-      "run_claim": null,
       "fire_claim": null
     },
     {
@@ -462,15 +415,15 @@
       "schedule_display": "0 0 * * *",
       "repeat": {
         "times": null,
-        "completed": 17
+        "completed": 18
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-27T12:46:17.963804+00:00",
-      "next_run_at": "2026-08-14T00:00:00+00:00",
-      "last_run_at": "2026-08-13T00:00:57.449096+00:00",
+      "next_run_at": "2026-08-15T00:00:00+00:00",
+      "last_run_at": "2026-08-14T00:01:21.608029+00:00",
       "last_status": "error",
       "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'openai-codex' -> 'xai-oauth'; model 'gpt-5.6-terra' -> 'grok-4.5'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=7b74334921e6 provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
       "last_delivery_error": null,
@@ -508,15 +461,15 @@
       "schedule_display": "every 30m",
       "repeat": {
         "times": null,
-        "completed": 748
+        "completed": 794
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-28T12:38:06.628044+00:00",
-      "next_run_at": "2026-08-13T14:26:20.059606+00:00",
-      "last_run_at": "2026-08-13T13:56:20.059606+00:00",
+      "next_run_at": "2026-08-14T14:05:13.796174+00:00",
+      "last_run_at": "2026-08-14T13:35:13.796174+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -669,5 +622,5 @@
       "workdir": null
     }
   ],
-  "updated_at": "2026-08-13T14:00:19.357137+00:00"
+  "updated_at": "2026-08-14T14:00:12.533272+00:00"
 }

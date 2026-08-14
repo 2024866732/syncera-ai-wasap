@@ -245,15 +245,55 @@ For 2315 orders at 50/page = 47 pages × 30s = **~23.5 min** order sync + phone 
 - WhatsApp send failed → **do NOT update DB stage** — retry next cycle
 - DB update failed AFTER WhatsApp sent → log CRITICAL, continue (anti-duplicate prevents re-send)
 
-### ⚠️ 2026-08-08 — Three Reminder Blockers Found & Fixed
+### ⚠️ Collected Orders Still Getting Reminders (2026-08-14 — FIXED)
 
-After enabling SPX reminders in production, THREE bugs prevented any delivery:
+**Problem:** Customer complaint: "dah ambil barang, masih terima SPX reminder." 3,670 Collected orders had `hafjet_reminder_state=Pending/remind1/remind4` — not marked as terminal.
+
+**Root cause — TWO bugs:**
+
+1. **`get_spx_due_orders()` missing terminal-status filter:** Query only checked `hafjet_reminder_state NOT IN ('Completed','CollectionFailed')` but did NOT filter by `spx_status`. Collected orders with `hafjet_reminder_state=Pending` were returned as "eligible".
+
+2. **`upsert_spx_order()` never auto-completes on terminal status:** When SPX sync updates `spx_status` to `Collected`, the function updates the status column but does NOT set `hafjet_reminder_state='Completed'`. So the order stays "eligible" forever.
+
+**Fix 1 — SQL filter in `get_spx_due_orders()`:**
+```sql
+AND spx_status NOT IN ('Collected', 'Returned', 'Cancelled', 'Collection Failed')
+```
+
+**Fix 2 — Auto-complete in `upsert_spx_order()`:**
+```python
+_TERMINAL = {"Collected", "Returned", "Cancelled", "Collection Failed"}
+if new_status in _TERMINAL and reminder_state not in ("Completed", "CollectionFailed"):
+    reminder_state = "Completed"
+# Then use COALESCE(?, hafjet_reminder_state) in the UPDATE SET
+```
+
+**Fix 3 — Bulk migration:**
+```sql
+UPDATE spx_self_collection_orders
+SET hafjet_reminder_state = 'Completed'
+WHERE spx_status IN ('Collected','Returned','Cancelled','Collection Failed')
+  AND hafjet_reminder_state NOT IN ('Completed','CollectionFailed');
+```
+Result: 3,670 orders → Completed. 0 remaining. 18 eligible orders left.
+
+**Verification:** After fix, `determine_followup()` also catches Collected via `_is_terminal('collected')` → returns (None, None) → skip. Belt-and-suspenders: SQL filter + upsert auto-complete + determine_followup terminal check.
+
+### ⚠️ 2026-08-08 → 2026-08-14 — Four Reminder Blockers Found & Fixed
+
+After enabling SPX reminders in production, FOUR bugs prevented delivery. Bugs 1-3 found 08-08; Bug 4 (the final one that actually unblocked delivery) found 08-14.
 
 **Bug 1 — Wrong DB column name:** `_check_spx_reminders()` built `order_dict["followup_stage"]` from `order.get("reminder_status", "none")` but the DB column is `hafjet_reminder_state`. All orders always had `followup_stage="none"` — anti-duplicate logic was completely broken (every cycle treated as first contact). **Fix:** `order.get("hafjet_reminder_state", "none")`.
 
 **Bug 2 — Missing template keys:** `_SPX_TEMPLATES` had only 3 keys (`ready_collection`, `final_reminder`, `first_reminder`). Missing keys (`collection_failed`, `remind1`, `remind2`, `remind3`, `remind4`) fell back to `"spx_ready_collection"` default which **does not exist** at Meta → all template sends failed with unknown template error. **Fix:** Added all 5 missing keys.
 
 **Bug 3 — Wrong template for `collection_failed`:** Initially mapped `collection_failed → spx_ready_collection3` (final reminder template) which was NOT active at Meta. Only `spx_ready_pickup` is active. **Fix:** `collection_failed → spx_ready_pickup`.
+
+**Bug 4 — `template_params=[text]` passed FULL message as ONE param (found 08-14):** `send_whatsapp_smart(phone, text, template_name=..., template_params=[text])` passed the entire reminder text as a single body parameter. But the Meta template `spx_ready_pickup` declares TWO body parameters (`{{1}}`=name, `{{2}}`=tracking). Sending one long string as a single param → Meta rejected silently → log showed `WhatsApp FAILED stage=remind1` with **no delivery_status entry** (Meta never sends a status callback for a rejected template). **Fix:** build `template_params = [str(order.get("recipient_name","Customer")), str(order.get("spx_tracking_number","?"))]`. After this fix: 4/5 delivered (1 failed with 131026 = invalid number). **Diagnosis gotcha:** a template that Meta rejects shows `send_whatsapp_template()` returning `None` (HTTP non-200) with NO row in `message_delivery_status` — you must grep the container log for `WhatsApp FAILED`, not query delivery status. Manual curl with correct 2-param payload (`{"type":"text","text":"Name"},{"type":"text","text":"SPXMY..."}`) → HTTP 200 accepted confirms the template itself is fine.
+
+**Error codes (Meta):**
+- `131047` = "Re-engagement message" — session message sent outside 24h window; needs template.
+- `131026` = "Message undeliverable" — the phone is NOT a valid WhatsApp number (no WhatsApp account). This is NOT a system bug; the scraped SPX number is wrong/non-WhatsApp. Skip that order.
 
 **Debugging pattern:** Cron ran (`_check_spx_reminders` logged "executed successfully" in container log) but no delivery_status entries appeared because skips don't log unless `sent_count > 0 or error_count > 0`. The `is_paused=1` exclusion in `get_spx_due_orders()` is silent. To trace: grep container logs for `SPX-REMINDER`, query `hex(recipient_phone)` to confirm real digits, check `hafjet_reminder_state` vs `is_paused` for due orders.
 
@@ -792,6 +832,16 @@ Kudu command API (`POST /api/command`) is the primary way to query Azure product
   `2B3630313233343536373839` = `+60123456789` (real), `2A2A2A2A` = `****` (masked)
 - Best pattern: write diagnostic Python script → upload via Kudu VFS → run via `api/command`
 - Container logs: `/appsvctmp/volatile/logs/runtime/container.log` (read with Python, not grep)
+
+### 🔗 Conversation Dashboard Linking — real wamid + name-aware upsert (2026-08-14)
+
+Investigation of "why doesn't SPX delivery show in the conversation dashboard" surfaced TWO infra bugs in the WhatsApp message pipeline (not SPX-specific, but surfaced via SPX delivery tracking):
+
+**Bug A — customer name overwritten by inbound text:** `db_logger._save_inbound()` used `content[:20]` as the `customers.name` on INSERT. A customer replying "Saya di sini" got `name='Saya di sini'` instead of their SPX name. **Fix:** `_resolve_customer_name(conn, phone, content)` resolves in priority order: (1) existing name → keep; (2) SPX `recipient_name` (join `spx_self_collection_orders` by phone, `ORDER BY updated_at DESC`) → use; (3) non-generic inbound → `content[:20]`; (4) generic greeting (`"saya di sini"`, `"hi"`, `"hai"`, `"salam"`, etc.) or `<3 chars` → empty name.
+
+**Bug B — synthetic `out_*` wamid instead of real Meta wamid:** `log_outbound()` generated `f"out_{datetime.now().timestamp()}"` when no wamid was passed, so `messages.wamid` never matched `message_delivery_status.wamid` (real `wamid.HBg...`) → conversation thread couldn't link outbound ↔ delivery receipts. **Fix:** `send_whatsapp_message()`, `send_whatsapp_template()`, `send_whatsapp_smart()` now RETURN the real wamid string (parse `result["messages"][0]["id"]`) or `None`, instead of `bool`. All `log_outbound()` call sites pass the returned wamid. **Truthiness is backward-compatible:** a non-empty wamid string is truthy, `None` falsy — existing `if sent:` / `if ok:` checks keep working without change.
+
+**Historical backfill is NOT possible:** pre-fix outbound rows stored `out_<timestamp>` (from `datetime.now().timestamp()`), which has no mapping to the real Meta `wamid.HBg...` — cannot be reconstructed retroactively. Only messages sent AFTER the fix link correctly. Don't waste effort backfilling delivery status for old rows.
 
 ## Deployment Pattern (Jul 2026)
 

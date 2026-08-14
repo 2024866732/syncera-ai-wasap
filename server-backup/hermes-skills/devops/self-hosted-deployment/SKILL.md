@@ -1021,6 +1021,11 @@ cd backups-$(date +%Y%m%d) && tar xzf config.tar.gz -C ~/.hermes/
 - `references/upcloud-deployment.md` — UpCloud Python SDK, server lifecycle, zone capacity, SSH key injection, performance benchmarks
 - `references/cloudflare-tunnel.md` — Cloudflare Tunnel Quick + Named tunnel setup for public HTTPS
 - `references/fastapi-route-ordering.md` — FastAPI route registration order pitfall (literal vs parameterized)
+- `references/nginx-docker-permissions.md` — Nginx Docker container 403 error from volume mount permission issues
+- `references/smart-routing-pattern.md` — WhatsApp bot smart routing: intent classification → direct DB lookup → Ollama fallback → human handoff
+- `references/cost-control-pattern.md` — Outbound message limiting, daily counters, category-based blocking (marketing/broadcast disabled by default)
+- `references/idempotent-migration-pattern.md` — Safe, repeatable database migrations with IF NOT EXISTS and DO blocks
+- `references/api-auth-middleware-pattern.md` — X-API-Key authentication middleware with hmac.compare_digest for constant-time comparison
 
 ---
 
