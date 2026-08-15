@@ -20,4 +20,6 @@ M2U PDF→expenses auto after first OK: SUPABASE_SECRET_KEY; category_source=man
 §
 n8n @ n8n.hafjet.my; content-api :9119. Never paste keys TG. Pause=node disabled; HITL 1485374469. Image 429→text fallback.
 §
-Hermes-Bot-Mode=desktop plugin only (~/.hermes/desktop-plugins/); install on Hermes Desktop host, NOT gateway/headless (Azure Hermes-Server / PC Office headless inactive).
+Hermes-Bot-Mode=desktop plugin only (~/.hermes/desktop-plugins/); NOT gateway/headless.
+§
+AI Live Streamer skill hafjet-ai-live-streamer: LiveTalking=RTX WSL2 hafjet@100.119.32.87 only. Locks: multi-RTMP arch; synthetic avatar PoC; static catalog JSON; Aina persona; comment mode OPEN. Design-approve before install. Pause CCTV YOLO batch during live.

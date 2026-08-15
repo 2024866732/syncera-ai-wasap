@@ -99,6 +99,15 @@ Actual layout is `media/recordings/{date}/{hour}/{camera}/{ss.mm}.mp4` — NOT `
 | Batch fail rate | >10% | >30% |
 Stop → log `status: circuit_breaker` + reason → notify Tuan → **no auto-resume** (manual approval).
 
+## Coexistence: HAFJET AI Live Streamer (LiveTalking)
+
+Same RTX WSL2 node is the **only** approved host for LiveTalking / real-time digital-human live commerce (`hafjet-ai-live-streamer`). YOLO offload is batch/hourly; live avatar is sustained VRAM.
+
+- Before a scheduled live window: pause or skip CCTV GPU batch (or shrink `CCTV_MAX_CLIPS`) so LiveTalking is not OOM'd mid-stream.
+- Do not assume exclusive GPU; log `nvidia-smi` memory before starting either workload.
+- LiveTalking install/train is a **separate approval** from CCTV offload approve-1/2/3 — never piggyback heavy pip/torch reinstalls onto a CCTV maintenance window without saying so.
+- If both must share a day: prefer YOLO batches outside live hours; live session wins if Tuan is on-air.
+
 ## Success metrics (7-day gate to Fasa 2)
 ≥95% batch reliability · ≥2 clips/min (yolov8n 720p) · VRAM <8 GB · clip→result <15 min · ≥80% GPU-vs-Frigate detection agreement · office delta <5% CPU/RAM · daily transfer <10 GB · **zero incidents**.
 
