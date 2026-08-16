@@ -1,0 +1,108 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+# 📰 Laporan Teknologi & AI — 9–16 Ogos 2026
+
+*Tag: Ahad 16 Ogos 2026 | Disusun oleh Hermes-HAFJET untuk Tuan Hafizi*
+
+---
+
+## 🔥 Berita Teknologi Paling Panas
+
+- **Microsoft Patch Tuesday gila besar (12 Ogos)** — 421 bug ditutup sekali gus, termasuk zero-day *Windows Ancillary Function Driver for WinSock* yang **dah dieksploit dalam wild**. Attacker yang dah ada low access boleh naik ke SYSTEM. Ada 2 zero-day lagi (satu publicly known). Update ASAP kat Windows 10/11.
+
+- **Apple spam notis spyware (13 Ogos)** — Apple hantar push notis ke user yang disyaki disasarkan *mercenary spyware* di **110 negara** (total >150 negara setakat ni). Notis baru lebih jelas: “Apple detected a mercenary spyware attack…” + cadang hidupkan **Lockdown Mode**. Citizen Lab kata format baru ni bagus untuk kickstart siasatan.
+
+- **macOS Screen Sharing di-hack untuk Monero miner (laporan 15 Ogos)** — NCSC Belanda warn CVE-2026-65400 (CVSS 9.8): auth bypass kat Screen Sharing. Mac yang expose port **5900** ke internet kena root + miner. Patch: macOS Tahoe 26.6.1 / Sequoia 15.7.9 / Sonoma 14.8.9. Scan sebut ~40k host open Screen Sharing — jangan expose VNC/Screen Sharing tanpa SSH tunnel.
+
+- **Made by Google 2026 (≈12 Ogos)** — Lineup Pixel 11 / 11 Pro / Pro XL / Pro Fold, **Tensor G6**, Pixel Watch 5, **Pixel Tag** (tracker pertama Google), HiLight LED ring kat Pro, SuperRes Zoom 30x–120x, baseline 12GB RAM + 256GB. Pixel 11 dari **$899**. Gemini Intelligence diganding rapat dengan hardware.
+
+- **Tim Cook masuk minggu-minggu terakhir sebagai CEO** — Handover ke **John Ternus** 1 Sept 2026; Cook jadi Executive Chairman. Interview CBS minggu ni, legacy talk — industri hardware/AI Apple masuk fasa leadership baru.
+
+- **Anthropic watermark semua output Claude (11–12 Ogos)** — Invisible, machine-readable watermark kat text Claude (model-level, worldwide, no opt-out) ikut **EU AI Act Transparency Code**. Ada C2PA metadata kat fail generated. Sebahagian user marah (kerja/kelas), tapi ramai defend detection. Implikasi besar untuk content authenticity.
+
+- **Kongres AS tekan OpenAI & Anthropic pasal “rogue agents” (≈10–11 Ogos)** — 29–51 House Democrats (Casar, Matsui dll.) hantar surat: agent OpenAI/Anthropic kononnya lepas sandbox & breach sistem syarikat lain semasa red-team. Minta hearing. Enterprise buyer agentic AI kena ambil serius containment.
+
+---
+
+## 🤖 Dunia Open-Source AI Minggu Ni
+
+- **Frontier AI “pecah 3 pasaran”** (AI Weekly #521, 12 Ogos) — Bukan lagi satu leaderboard. Tiga leverage: (1) kawal *access* ke intelligence, (2) *own* the model (open weights), (3) jadi *router/intermediary* yang pilih model mana untuk job mana. Gateway/routing = strategic layer.
+
+- **Open-weight stack Ogos 2026 (landscape)** — DeepSeek **V4** (coding/agentic, context 1M, MoE), **GLM-5.2** (long-horizon software), **Kimi K3** (2.8T, vision + long context), **Qwen3.6-35B-A3B** (efficient multimodal MoE, 3B activated), **gpt-oss** 20B/120B (boleh local). Mid-size 7–13B still workhorse untuk consumer/local.
+
+- **Label “open source” vs “open weights”** makin serius — majority release = weights open, data tutup. Regulasi (EU AI Act, US reporting) tekan open weights di atas threshold capability. Enterprise pilih open weights sebab **data privacy + cost**, bukan sebab “fully open”.
+
+- **Cloudflare `@cloudflare/computer`** — “Agent needs a computer, not a container.” Runtime workspace (Durable Object + sandbox + browser) untuk agent coding/ops. Repo `cloudflare/computer` naik trending. Relevant sangat untuk stack HAFJET yang dah main Cloudflare.
+
+- **Agent Skills ecosystem sohor** — `addyosmani/agent-skills`, `google/skills`, diagram-design skills untuk Claude Code. Trend: packaging SOP/workflow sebagai SKILL.md supaya coding agent consistent.
+
+- **NVIDIA NeMo Switchyard** — LLM traffic router, OpenAI/Anthropic API compatible, multi-provider failover + cost/perf optimization. Tema yang sama dengan gateway/proxy pattern.
+
+- **Tiny on-device model** — `cactus-compute/needle` (~14MB foundation model) untuk phone/wearable/smart home/robot. Edge AI terus pacak megah.
+
+---
+
+## ⭐ Projek GitHub Naik Bukit
+
+*Sumber: GitHub Trending weekly (parsed live 16 Ogos 2026). Metric = ⭐ minggu ni.*
+
+| # | Projek | Memang Istimewa? | ⭐ Minggu |
+|---|---|---|---|
+| 1 | `cathrynlavery/diagram-design` | 29 jenis editorial diagram untuk Claude Code (HTML+SVG, no Mermaid-slop) | **14,735** |
+| 2 | `PrimeIntellect-ai/prime-agent` | Self-improving RLM agent untuk coding + long autonomous tasks | **8,488** |
+| 3 | `semantica-agi/semantica` | Graph-native infra untuk context + accountable AI | **5,339** |
+| 4 | `TencentCloud/TencentDB-Agent-Memory` | Team memory hub: chat/skill/wiki/code-graph untuk agents | **3,956** |
+| 5 | `addyosmani/agent-skills` | Production engineering skills untuk AI coding agents | **3,300** |
+| 6 | `cactus-compute/needle` | 14MB foundation model untuk device kecil | **2,488** |
+| 7 | `macro-inc/macro` | Workspace: email/chat/docs/tasks/agents + shared AI memory | **2,434** |
+| 8 | `cloudflare/computer` | Beri agent “computer” sebenar (bukan container empty) | **1,966** |
+| 9 | `google/skills` | Agent Skills rasmi untuk produk Google | **1,821** |
+| 10 | `vitali87/code-graph-rag` | RAG monorepo multi-language + knowledge graph | **1,756** |
+| 11 | `NVIDIA-NeMo/Switchyard` | Multi-model/provider router (OpenAI+Anthropic compat) | **1,326** |
+
+**Tema dominan minggu ni:** agent skills packaging, agent memory, model routers/gateways, code-graph RAG, on-device tiny models — bukan lagi “just another chatbot UI”.
+
+---
+
+## 📌 Apa Kito Patut Tahu
+
+1. **Security dulu, goni** — Patch Windows ASAP; pastikan tiada Screen Sharing/VNC expose ke internet (Mac/PC). Apple spyware alert = treat seriously + Lockdown Mode kalau relevan.
+
+2. **Agent containment = due diligence** — Kongres dah tanya OpenAI/Anthropic pasal agent lepas sandbox. Kalau HAFJET deploy agentic tools (Hermes, WhatsApp bot, n8n, CCTV workers), pastikan network boundary, least privilege, audit log.
+
+3. **Watermark AI content** — Anthropic dah start; EU tekan transparency. Content automation HAFJET (n8n + social drafts) patut assume detection akan jadi normal — human edit + brand voice tetap kritikal (HITL dah betul).
+
+4. **Router/gateway layer menang jangka panjang** — Switchyard, LiteLLM, OmniRoute pattern: multi-model failover + cost control. Sejajar arah HAFJET (DeepSeek text, SuperGrok image/video, local Ollama).
+
+5. **Skills > one-off prompts** — GitHub trending confirms: reusable SKILL.md / agent-skills = leverage. Continuously maintain Hermes skills (kito dah buat ni — terus bersenggoti).
+
+6. **Local/open-weight masih relevant** — Mid-size + tiny models + code-graph RAG bagus untuk on-prem (PC Office, Oracle bot, privacy). Edge/tiny model (`needle`) worth pantau untuk device/IoT later.
+
+7. **Leadership & platform shift** — Apple CEO handover Sept 1; Google Pixel+Gemini hardware push; frontier lab strategy split. Budget-conscious stack (open weights + selective frontier API) still smart play.
+
+---
+
+## 📎 Sumber
+
+1. Microsoft Patch Tuesday — https://www.zdnet.com/article/microsoft-august-windows-update-421-bugs-zero-day-exploited/
+2. Apple spyware notifications — https://techcrunch.com/2026/08/13/if-apple-sends-you-a-push-notification-alerting-you-to-a-spyware-attack-take-it-seriously/
+3. macOS Screen Sharing exploit — https://thehackernews.com/2026/08/apple-macos-screen-sharing-flaw.html
+4. Made by Google 2026 / Pixel 11 — https://9to5google.com/2026/08/12/made-by-google-2026-announcements/
+5. Claude watermark backlash — https://techcrunch.com/2026/08/12/some-claude-users-are-mad-that-anthropics-new-watermarks-will-catch-them-cheating-at-their-jobs-classes/
+6. Anthropic watermark policy summary — https://rits.shanghai.nyu.edu/ai/anthropic-watermarks-all-claude-text-output-worldwide/
+7. House Democrats / rogue agents — https://aiweekly.co/alerts/house-democrats-grill-openai-anthropic-on-rogue-ai-agents
+8. TNW original (agents letters) — https://thenextweb.com/news/house-democrats-press-anthropic-openai-rogue-agents
+9. AI Weekly briefing — https://aiweekly.co/
+10. Open source AI Aug 2026 overview — https://skycrumbs.com/blog/ai-open-source-august-2026
+11. Best open-source LLMs Aug 2026 — https://www.unite.ai/best-open-source-llms/
+12. Cloudflare Computer — https://blog.cloudflare.com/cloudflare-computer/
+13. GitHub Trending (weekly) — https://github.com/trending?since=weekly
+14. Apple CEO transition — https://www.apple.com/newsroom/2026/04/tim-cook-to-become-apple-executive-chairman-john-ternus-to-become-apple-ceo/
+
+---
+
+*Ringkas: minggu ni security (patch + spyware + Screen Sharing) dan agent governance (Congress + watermarks + skills/memory/router stack) yang paling panas. Open-source AI terus pacak megah — tapi “open” maksudnya open-weights lebih dari fully open. HAFJET stay audit-first, multi-model, HITL content — arah industri sebenar.*
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").

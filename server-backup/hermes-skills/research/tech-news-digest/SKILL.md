@@ -2,7 +2,7 @@
 name: tech-news-digest
 description: Produce structured technology and AI news digest reports in Malay with Kelantan dialect. Covers web searching, article extraction, GitHub trending, and formatted delivery for solo founder/director consumption.
 trigger: top technology news, AI news roundup, open source AI digest, GitHub trending, tech digest, weekly tech report, AI industry news summary, tech news this week
-version: 7
+version: 8
 ---
 
 # Tech News & AI Digest
@@ -20,6 +20,20 @@ Produce a concise, scannable technology and AI news digest report. Triggered on 
 
 ## Workflow
 
+### 0. Ground the date window (mandatory, before composing)
+
+Cron and interactive sessions both drift if the model invents "this week" from memory.
+
+```bash
+TZ=Asia/Kuala_Lumpur date '+%Y-%m-%d %H:%M %Z'
+TZ=Asia/Kuala_Lumpur date -d '7 days ago' '+%Y-%m-%d'   # week start
+```
+
+- Put the resulting range in the report title (`9–16 Ogos 2026`).
+- **Headline stories** (🔥 section) must have a publish/update date inside that window, or clear same-week corroboration across ≥2 sources.
+- Older but still-useful material (model landscape roundups, evergreen "best LLMs of 2026") goes in **🤖 Open-Source AI** as *background/context*, never dressed as breaking news.
+- Ambiguous datelines (`8/5/25` vs `8/5/26`, "Updated Aug 2026" on a 2023 post) → verify from article body/meta before inclusion; if unclear, drop or label as landscape only.
+
 ### 1. Search (parallel, 3 queries minimum)
 
 ```
@@ -28,9 +42,11 @@ web_search("open source AI news this week <year>", limit=10)
 web_search("trending GitHub repositories AI machine learning <month> <year>", limit=5)
 ```
 
-Add a 4th query if a specific variant is requested. Run all searches in a single tool call round for parallelism.
+Prefer month-specific queries (`August 2026`, not only bare `2026`) after Stage 1 so results skew current. Add a 4th query if a specific variant is requested. Run all searches in a single tool call round for parallelism.
 
 ### 2. Extract Details from Best Results (3-5 URLs)
+
+**Do not call `web_extract` on this host** (ddgs backend — hard fail). Task templates that say "use web_extract" are overridden; never include `web_extract` in a parallel batch "just in case".
 
 **First — consider Deep Search instead.** When you only need digest-level detail (snippets, dates, headline facts), running 4-6 targeted `web_search` queries per story is faster, lighter, and cron-safe — no extraction tooling needed at all. See `references/deep-search-fallback.md` for the full pattern. Reserve extraction for when you need exact quotes, benchmark numbers, or full paragraphs.
 
@@ -88,17 +104,24 @@ Structure with clear sections (adapt section names per request):
 
 ## Pitfall: web_extract Backend Limitation
 
-**Symptom:** `web_extract` returns `"DuckDuckGo (ddgs) is a search-only backend and cannot extract URL content."` and repeated calls loop identically.
+**Symptom:** `web_extract` returns `"DuckDuckGo (ddgs) is a search-only backend and cannot extract URL content."` and repeated calls loop identically. Tool-loop warnings (`same_tool_failure_warning`, count climbing past 3–15) fire when the agent keeps batching it.
 
 **Root cause:** Hermes sessions configured with `web_extract_backend=ddgs` cannot fetch article text. This is a hard limitation, not transient.
 
-**Override explicit task instructions:** Autonomous cron prompts may *literally* command "use web_extract to get details from 3-5 URLs" (this is a common fixed task template). That instruction must be overridden on this backend — do NOT attempt it even once; substitute the curl+file or browser fallback below immediately. Attempting it only wastes a turn before hitting the identical ddgs error.
+**Override explicit task instructions:** Autonomous cron prompts may *literally* command "use web_extract to get details from 3-5 URLs" (this is a common fixed task template). That instruction must be overridden on this backend — do NOT attempt it even once; substitute deep-search or curl+file immediately. Attempting it only wastes a turn before hitting the identical ddgs error.
+
+**Critical anti-loop rule (Aug 2026 cron):**
+- Zero `web_extract` calls per digest session on ddgs — not "try once", not "batch 5 URLs while curling".
+- Do **not** mix `web_extract` into multi-tool parallel rounds with `terminal`/`web_search`. One failed extract in a batch still burns the turn and tempts retries.
+- After any accidental failure, the next action must be curl+`html-extract.py`, deep-search, or compose — never another `web_extract`.
 
 **Fix immediately:** Choose one of two fallbacks (prefer the lighter one first):
 
 1. **Deep Search fallback (lightest — cron-safe, zero extraction)** — Run 4-6 targeted web_search queries instead of extracting pages. Search snippets from multiple sources converge into reliable composites. See `references/deep-search-fallback.md` for the full pattern. Prefer this when speed and simplicity matter.
 
-2. **Browser fallback (full extraction)** — Use browser_navigate + browser_snapshot or browser_console. Heavier but gives full article text. See `references/web-extract-browser-fallback.md` for the extraction sequence.
+2. **curl+file extraction (cron default for full text)** — Sequential `curl -sL -A "Mozilla/5.0" -o /tmp/….html URL`, then `python3 /tmp/html-extract.py` (copy from `scripts/html-extract.py`). Validated end-to-end on TechCrunch, The Hacker News, ZDNET, 9to5Google, Skycrumbs, Unite.AI (Aug 2026 cron).
+
+3. **Browser fallback (full extraction, interactive/heavy)** — Use browser_navigate + browser_snapshot or browser_console when curl returns empty shells. See `references/web-extract-browser-fallback.md`.
 
 Do NOT retry web_extract in a loop — it will keep failing identically.
 
@@ -106,6 +129,19 @@ Browser fallback summary:
 ```
 browser_navigate(url)  →  browser_console("document.querySelector('article').innerText")
 ```
+
+## Pitfall: Stale or Evergreen Results Pollute "This Week"
+
+**Symptom:** Stage 1 searches for `… this week 2026` return hub homepages, year-round "best LLMs of 2026" listicles, or articles with misleading datelines (e.g. Sherwood `8/5/25` gpt-oss piece, Unite.AI pages *Published 2023 / Updated 2026*).
+
+**Fix:**
+1. Run Workflow §0 date grounding first.
+2. Prefer Stage 2 queries with **explicit month + day cues** (`August 12 2026 Patch Tuesday`, `Made by Google 2026 Pixel 11`).
+3. When extracting, read the **byline date inside the body**, not only the SERP snippet year.
+4. Split coverage:
+   - 🔥 = confirmed same-week events (CVE, Patch Tuesday, product launch, regulatory letter, CEO timeline milestone that hit press this week)
+   - 🤖 = open-source landscape + releases; may include slightly older context if labeled
+5. Never promote an unverified-old release as "minggu ni".
 
 ## Pitfall: Paywalled / Blocked Pages
 
@@ -116,7 +152,7 @@ Some sources (NYT, WSJ, some Substacks) return bot-detection blocks (e.g., DataD
 
 ## Pitfall: Looping on Identical Tool Calls
 
-If `web_extract` fails more than once, the agent tends to retry the same call. **Break the loop on the 2nd identical failure** — switch to browser tool immediately. Same applies to any tool failing >2 times in consecutive turns.
+If `web_extract` fails **once**, stop forever for that session and switch to curl/deep-search (do not wait for a 2nd failure). For other tools: break the loop on the 2nd identical failure. Same applies to any tool failing >2 times in consecutive turns.
 
 ## Pitfall: GitHub Trending Listicles Hide Repo Names in Search Snippets
 
@@ -179,6 +215,20 @@ When running as a scheduled cron job (no user present):
 
 In this environment, `web_extract` consistently fails with DuckDuckGo error. **Do not attempt web_extract at all** — go directly to deep-search, curl+file, or browser fallback.
 
+### Known-good cron path (validated 2026-08-16)
+
+```
+1. skill_view(tech-news-digest) + scripts
+2. 3× web_search (broad) in parallel
+3. TZ=Asia/Kuala_Lumpur date window
+4. 5–8× targeted web_search (deep) — month-specific
+5. curl GitHub weekly trending → github-trending-parser.py
+6. curl 4–6 article URLs sequentially → html-extract.py
+7. Compose 4-section BM+Kelantan report; deliver as final response (no send_message)
+```
+
+Never insert `web_extract` or `execute_code` into this path.
+
 ## Output Template
 
 ```
@@ -230,13 +280,15 @@ In this environment, `web_extract` consistently fails with DuckDuckGo error. **D
 - `scripts/github-trending-parser.py` — Parse saved GitHub Trending HTML → `repo | desc | total | period_stars`. Handles Box-row attrs, skips `sponsors/`, prefers weekly stars.
 
 ## Verification Checklist
+- [ ] Date window grounded via `TZ=Asia/Kuala_Lumpur date` (title matches real week)
 - [ ] At least 3 web_search queries executed in parallel
+- [ ] 🔥 headlines verified inside the week window (stale/evergreen demoted or dropped)
 - [ ] Details grounded via deep-search and/or curl/browser extract (not fabricated)
 - [ ] Report has all 4 standard sections (or as customized)
 - [ ] GitHub section uses official trending parse or verified named repos; weekly stars preferred
 - [ ] Source links included at end
 - [ ] Language tone matches casual Malay + Kelantan dialect naturally
-- [ ] No `web_extract`, no `python3 -c`, no `python3 <<`, no shell `&` fan-out in one terminal call
+- [ ] Zero `web_extract` calls; no `python3 -c`, no `python3 <<`, no shell `&` fan-out in one terminal call
 
 ## Note: GIF Integration
 
