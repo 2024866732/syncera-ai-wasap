@@ -1,0 +1,101 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+# 📰 Laporan Teknologi & AI — 10–17 Ogos 2026
+
+*Tag: Isnin 17 Ogos 2026 | Disusun oleh Hermes-HAFJET untuk Tuan Hafizi*
+
+---
+
+## 🔥 Berita Teknologi Paling Panas
+
+- **Stripe nak beli OpenRouter ~USD 7B+** — Bloomberg via TechCrunch (16 Ogos). OpenRouter = “Stripe untuk AI”: 400+ model, ~8 juta user, Series B USD 113J @ valuasi ~USD 1.3B (Mei). Deal ni *pacak megah* — payment layer + model gateway bergabung. Stripe tak comment “rumor”.
+
+- **Meta lepaskan Muse Glimmer (30B, Apache 2.0)** — 10 Ogos, Meta Superintelligence Labs. Model agentic open-weight, target local Mac/PC single consumer GPU (~4-bit, <20GB, fit 24GB VRAM). Distill dari Muse Spark; tool-use, multimodal, failure recovery. HF + llama.cpp / MLX / Ollama / vLLM coming.
+
+- **SpaceX tutup deal Cursor** — 14–15 Ogos. Coding agent Anysphere rasmi masuk SpaceX/Grok org. Laporan pasaran sebut skala gila (~USD 60B mengikut beberapa outlet) — coding agent jadi aset strategik, bukan “side tool” je.
+
+- **Anthropic watermark teks Claude** — EU AI Act (efektif 2 Ogos); Anthropic explain 14 Ogos. Teknik ala SynthID-Text (DeepMind): tak ubah kualiti, tak ada hidden char, tak trace ke user. Model baru akan mark; detection API akan datang. Ramai user kerja/kelas *sohor* risau kena detect.
+
+- **Made by Google ’26: Pixel 11 + Watch 5 + Pixel Tag** — 12 Ogos. Empat phone Pixel 11, tracker rival AirTag, Gemini features. Pre-order; store target ~20 Ogos.
+
+- **Microsoft Patch Tuesday Ogos 2026** — 11 Ogos: ~421 CVE (62 critical). 3 zero-day (2 disclosed, 1 exploited in the wild). **CVE-2026-68820** (WinSock AFD EoP → SYSTEM) masuk CISA KEV — deadline patch **25 Ogos**. Ada juga Office RCE, Exchange, Azure/Entra, Hyper-V, HTTP.sys.
+
+- **Joby Aviation beli Resonant Sciences ~USD 500J** — 11 Ogos. RF/sensor defense; Resonant ~USD 100J TTM revenue. Bahagi defense unit supaya core eVTOL fokus certify/manufacture.
+
+- **Threads app native kat Meta Quest** — 11 Ogos. Scroll/post/like/video dalam VR; platform dah ~500J MAU. Doomscroll… tapi 3D.
+
+---
+
+## 🤖 Dunia Open-Source AI Minggu Ni
+
+- **Muse Glimmer** — Meta “balik open” selepas Llama era: 30B agent-first, Apache 2.0, local-first. Benchmark banding Gemma4-31B & Qwen3.6-27B. Ini lawan model China yang lebih besar parameter, tapi Meta main **efficiency + agent stack**.
+
+- **Qwen (Alibaba) #1 download open model** — HF report ~14 Ogos; Global Times 16 Ogos. Alibaba claim >3B download 6 bulan; HF/TNW sebut ~2.0–2.1B download YTD di HF (3B = claim Alibaba). Google ~418J, Meta ~227J dalam tempoh yang sama. 460+ model Qwen family; 300k+ derivatives. Qwen3.8-27B weights Apache 2.0 tengah berlegar (GGUF/Unsloth).
+
+- **China open stack masih agresif** — DeepSeek lepaskan **Harness** (agent runtime: edit repo, test, fix loop). Zhipu **GLM-5.3** open. Moonshot **Kimi K3** (2.8T params) full open — “world’s largest open” by scale. OpenRouter data (3–9 Ogos): usage global 69T token/minggu; model China 34.25T — #1 15 minggu berturut.
+
+- **Unsloth naik bersama release wave** — UI local run/train: Qwen3.8, Kimi K3, MiniMax-H3, Gemma 4, DeepSeek-V4, FLUX… jajaran yang HAFJET PC Office/Oracle patut pantau.
+
+- **Agent memory & routing infra** — TencentDB Agent Memory, NVIDIA-NeMo Switchyard (route multi-model, OpenAI/Anthropic-compatible), graph-native context (Semantica). Tema minggu ni: **bukan model je — runtime, memory, gateway**.
+
+---
+
+## ⭐ Projek GitHub Naik Bukit
+
+*Snapshot rasmi: `github.com/trending?since=weekly` (parse 17 Ogos 2026 MYT)*
+
+| # | Projek | Memang Istimewa? | ⭐ Minggu |
+|---|---|---|---|
+| 1 | `cathrynlavery/diagram-design` | 29 jenis diagram editorial untuk Claude Code (HTML/SVG, no Mermaid-slop) | 15,600 |
+| 2 | `PrimeIntellect-ai/prime-agent` | Self-improving RLM agent — coding + long autonomous tasks | 6,435 |
+| 3 | `semantica-agi/semantica` | Graph-native infra untuk context & accountable AI | 5,284 |
+| 4 | `TencentCloud/TencentDB-Agent-Memory` | Team memory hub: chat/skill/wiki/code-graph | 3,637 |
+| 5 | `cactus-compute/needle` | Foundation model 14MB untuk phone/wearable/robot | 2,950 |
+| 6 | `addyosmani/agent-skills` | Production engineering skills untuk coding agents | 2,882 |
+| 7 | `unslothai/unsloth` | Local UI run/train LLM + diffusion (Qwen3.8 dll.) | 2,645 |
+| 8 | `macro-inc/macro` | Workspace + agents + shared AI memory | 2,588 |
+| 9 | `vitali87/code-graph-rag` | RAG monorepo multi-language + knowledge graph | 1,686 |
+| 10 | `NVIDIA-NeMo/Switchyard` | Multi-model/provider router, API-compatible | 1,435 |
+
+**Tema sohor:** coding agents, agent skills, memory graphs, tiny on-device models, model routers — *bukan* chat wrapper kosong.
+
+---
+
+## 📌 Apa Kito Patut Tahu
+
+- **OpenRouter risk/opportunity** — Kalau HAFJET/n8n/content pipeline guna OpenRouter (atau plan nak guna), pantau terms, pricing & neutrality lepas Stripe. Gateway + billing satu tangan = senang… tapi vendor lock baharu.
+
+- **Local agent stack matang** — Muse Glimmer 30B + Unsloth + llama.cpp = peluang serius untuk PC Office (RTX) / edge. Bagus untuk privacy bot, OCR pipeline assist, offline agent — selari arah hybrid Azure+Oracle HAFJET.
+
+- **Qwen ecosystem = default builder choice** — Oracle bot dah duduk atas Qwen2.5:7b. Qwen3.8-27B & family patut masuk evaluation list (cost, Malay quality, license Apache).
+
+- **Patch Windows/server sebelum 25 Ogos** — CVE-2026-68820 KEV. Jangan lewat; Azure/Entra/Exchange/Office RCE bundle bulan ni padat.
+
+- **Watermark era mula** — Content automation (n8n / social draft) yang guna Claude perlu sedar detection API akan datang. Untuk brand HAFJET, humanize + HITL approval lagi penting.
+
+- **Coding agents jadi M&A asset** — Cursor→SpaceX, OpenRouter→Stripe rumor: tooling layer bernilai gila. Skill library (`agent-skills`) + memory graph = competitive moat kecil yang kito boleh apply dalam Hermes skills sendiri.
+
+---
+
+## 📎 Sumber
+
+1. Meta AI Research — Muse Glimmer: https://research.meta.ai/blog/introducing-muse-glimmer-open-agentic-model  
+2. TechCrunch — Stripe / OpenRouter: https://techcrunch.com/2026/08/16/stripe-will-reportedly-acquire-ai-gateway-startup-openrouter-for-7b/  
+3. TechCrunch — SpaceX closes Cursor: https://techcrunch.com/2026/08/15/spacex-officially-closes-its-cursor-acquisition/  
+4. Anthropic — Claude text watermark: https://www.anthropic.com/news/claude-text-watermark  
+5. TechCrunch — Joby / Resonant USD 500J: https://techcrunch.com/2026/08/11/joby-aviation-builds-out-defense-business-with-500m-acquisition/  
+6. The Verge — Threads on Quest: https://www.theverge.com/tech/978181/meta-threads-quest-vr-app  
+7. AMD Newsroom — Taalas acquisition: https://newsroom.amd.com/news/amd-acquires-taalas-ai-inference/  
+8. Qualys — Patch Tuesday Aug 2026: https://blog.qualys.com/vulnerabilities-threat-research/patch-tuesday/2026/08/11/microsoft-patch-tuesday-august-2026-security-update-review  
+9. Global Times — Qwen downloads / HF: https://www.globaltimes.cn/page/202608/1368313.shtml  
+10. The Next Web — Qwen HF numbers nuance: https://thenextweb.com/news/alibaba-qwen-downloads-hugging-face-open-models  
+11. TechCrunch — Made by Google ’26: https://techcrunch.com/2026/08/12/google-unveils-pixel-11-lineup-new-airtag-rival-and-gemini-features-at-made-by-google-2026/  
+12. GitHub Trending (weekly): https://github.com/trending?since=weekly  
+
+---
+
+*Ringkas: minggu ni AI bergerak ke **local agents + gateways + watermarks + patch storm**. Kito follow OpenRouter/Stripe, evaluate Glimmer/Qwen3.8 untuk stack HAFJET, dan pastikan Windows/Azure patch tak ketinggalan. Kalau Tuan Hafizi nak deep-dive satu topik (OpenRouter impact / Glimmer on RTX / Qwen3.8 vs current bot), ambo ready bersenggoti.*
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").

@@ -103,8 +103,10 @@ Stop → log `status: circuit_breaker` + reason → notify Tuan → **no auto-re
 
 Same RTX WSL2 node is the **only** approved host for LiveTalking / real-time digital-human live commerce (`hafjet-ai-live-streamer`). YOLO offload is batch/hourly; live avatar is sustained VRAM.
 
+- **Lock file:** `~/hafjet-live/LIVE_GPU_LOCK` (user `hafjet`). When present, `cctv_analyze` / batch should exit early with log `SKIP_LIVE_LOCK` (patch only with Tuan OK — see `references/live-gpu-lock-coexistence.md`).
+- **Venv isolation:** LiveTalking uses `~/hafjet-live/venv-livetalking` (Python 3.12, torch cu128). **Never** install LiveTalking deps into `~/cctv-analysis/.venv` (torch cu126 / YOLO).
+- **Hermes access to RTX:** no office2rtx key on Hermes — jump via Office (`references/hermes-jump-ssh-to-rtx.md`).
 - Before a scheduled live window: pause or skip CCTV GPU batch (or shrink `CCTV_MAX_CLIPS`) so LiveTalking is not OOM'd mid-stream.
-- Do not assume exclusive GPU; log `nvidia-smi` memory before starting either workload.
 - LiveTalking install/train is a **separate approval** from CCTV offload approve-1/2/3 — never piggyback heavy pip/torch reinstalls onto a CCTV maintenance window without saying so.
 - If both must share a day: prefer YOLO batches outside live hours; live session wins if Tuan is on-air.
 

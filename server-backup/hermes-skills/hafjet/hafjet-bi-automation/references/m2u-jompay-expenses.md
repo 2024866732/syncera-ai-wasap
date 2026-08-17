@@ -26,7 +26,7 @@ total_amount        = decimal
 category            = vendor.default_category (E-PAY → utilities)
 category_source     = manual
 status              = completed
-receipt_number      = M2U Reference ID
+receipt_number      = M2U Reference ID (e.g. 260871731M) — NOT only JomPAY D8… code
 notes               = biller/ref/jompay/time/pdf name
 items               = optional single-line summary
 ```
@@ -36,7 +36,7 @@ Idempotent pre-check:
 ```text
 SELECT where receipt_number = ? OR whatsapp_message_id = ?
 AND deleted_at IS NULL
-→ if row exists: print existing, exit 0
+→ if row exists: print existing, exit 0 (do not double-insert)
 ```
 
 ## E-PAY specifically
@@ -44,16 +44,18 @@ AND deleted_at IS NULL
 - Biller **2360**
 - vendor_id **`6c8e862b-b3b1-405f-95c8-2bbe65dfd665`**
 - category **`utilities`** (not stock_purchase)
-- After any mistaken stock_purchase insert: update expense + fix `vendors.default_category`
+- **Pitfall (2026-08-15):** vendor `default_category` was still `stock_purchase` while mid-August E-PAY rows already used `utilities`. After insert, if category wrong: UPDATE expense + set `vendors.default_category='utilities'`.
+- Prefer vendor default after it is fixed; still force utilities for biller 2360 if default drifts.
 
 ## Runtime
 
-- Python: `/usr/bin/python3` + supabase from user site-packages
+- Write script to `/tmp/*.py` then `/usr/bin/python3` (no heredoc; Hermes venv may lack pip/supabase)
 - Env: read `~/.hermes/.env` in script (`SUPABASE_URL` + `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`)
 - Refuse `sb_publishable_*` for writes
-- Never echo secrets; summarize month totals after insert
+- Never echo secrets; print month rollup after insert
+- PDF text: `read_file` on cached doc path works (anydoc) when terminal blocked
 
 ## Example success (2026-08-15)
 
-- Ref `260871731M`, RM 77.00, utilities, expense id recorded
-- Vendor default aligned utilities after discovering mid-August E-PAY rows already used utilities while early-August used stock_purchase
+- Ref `260871731M`, RM 77.00, utilities, id `5a79028f-…`
+- Vendor default aligned to utilities after category fix

@@ -14,10 +14,12 @@ SPX: cron 15min 08-21 MYT; spx_ready_pickup=[name,tracking]; hafjet_reminder_sta
 §
 HAFJET ops: ~/HAFJET-Operating-Manual-v1.md. Content: Brand HAFJET+Raub, Threads/IG/FB/TikTok, BM casual, CTA wa.me/60198021500, 12:30&20:30 MYT.
 §
-M2U PDF→expenses auto: secret key; category_source=manual; receipt_number=M2U Ref ID. E-PAY 2360→vendor 6c8e862b default_category=utilities. Lori→misc+notes. Shopee e33a06c1…
+Expense TG PDF/img auto-log: SECRET_KEY; manual category; idempotent receipt_number. Vendors: E-PAY/JomPAY2360→6c8e862b util; TNB→c7f2b782; Sewa→9aadb46c; Shopee e33a06c1; TnG cbc64606. Labels win (Lori/Makan→misc+notes).
 §
 n8n n8n.hafjet.my (Hermes): Content Automation cron 12:25/20:25 MYT; API :9119; img OpenRouter gemini-flash-image; HITL TG 1485374469; no auto-social; no keys in TG.
 §
 Hermes-Bot-Mode=desktop plugin only (~/.hermes/desktop-plugins/); NOT gateway/headless.
 §
-AI Live Streamer: B hybrid; repo ~/projects/hafjet-ai-live-streamer; G1 green :8740; await approve G1→G2 RTX. Comments auto×4; static catalog; synthetic first; LIVE_GPU_LOCK vs CCTV YOLO.
+AI Live Streamer: ~/projects/hafjet-ai-live-streamer; skill hafjet-ai-live-streamer. RTX Office hafjet@100.119.32.87.
+§
+Personal buy: uni/Edu OK. MBA 13\" M5 16/512 (not 15\"). Has iPad Air M4 + 2×27\" HDMI+DP (no USB-C). Cash~RM3.1k, no CC; S/L PayLater ~1.25-1.5%/mo—prefer Edu+GC or 0% short. Desk: USBC→HDMI+DP + MagSafe.

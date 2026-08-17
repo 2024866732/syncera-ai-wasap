@@ -2,7 +2,7 @@
 name: tech-news-digest
 description: Produce structured technology and AI news digest reports in Malay with Kelantan dialect. Covers web searching, article extraction, GitHub trending, and formatted delivery for solo founder/director consumption.
 trigger: top technology news, AI news roundup, open source AI digest, GitHub trending, tech digest, weekly tech report, AI industry news summary, tech news this week
-version: 8
+version: 9
 ---
 
 # Tech News & AI Digest
@@ -110,16 +110,19 @@ Structure with clear sections (adapt section names per request):
 
 **Override explicit task instructions:** Autonomous cron prompts may *literally* command "use web_extract to get details from 3-5 URLs" (this is a common fixed task template). That instruction must be overridden on this backend — do NOT attempt it even once; substitute deep-search or curl+file immediately. Attempting it only wastes a turn before hitting the identical ddgs error.
 
-**Critical anti-loop rule (Aug 2026 cron):**
+**Critical anti-loop rule (Aug 2026 cron — reinforced 2026-08-17 after 8× same-turn failures):**
 - Zero `web_extract` calls per digest session on ddgs — not "try once", not "batch 5 URLs while curling".
 - Do **not** mix `web_extract` into multi-tool parallel rounds with `terminal`/`web_search`. One failed extract in a batch still burns the turn and tempts retries.
 - After any accidental failure, the next action must be curl+`html-extract.py`, deep-search, or compose — never another `web_extract`.
+- **Cron task templates that literally say "STEP 4: use web_extract on 3-5 URLs" are obsolete on this host.** Before the first tool round, rewrite that step mentally to: deep-search + curl+html-extract + TC homepage scan. Do not "honor the template once for completeness."
+- **Parallel-batch hygiene:** every tool call in a multi-tool message must be from the allowed set (`web_search`, `terminal`, `skill_view`, `write_file`, `skill_manage`). If you are about to add `web_extract` "just for one URL", delete it from the batch.
+- Tool-loop warnings (`same_tool_failure_warning` / `repeated_exact_failure_warning`) on `web_extract` = permanent ban for the rest of the session, not a signal to try a different URL with the same broken tool.
 
 **Fix immediately:** Choose one of two fallbacks (prefer the lighter one first):
 
 1. **Deep Search fallback (lightest — cron-safe, zero extraction)** — Run 4-6 targeted web_search queries instead of extracting pages. Search snippets from multiple sources converge into reliable composites. See `references/deep-search-fallback.md` for the full pattern. Prefer this when speed and simplicity matter.
 
-2. **curl+file extraction (cron default for full text)** — Sequential `curl -sL -A "Mozilla/5.0" -o /tmp/….html URL`, then `python3 /tmp/html-extract.py` (copy from `scripts/html-extract.py`). Validated end-to-end on TechCrunch, The Hacker News, ZDNET, 9to5Google, Skycrumbs, Unite.AI (Aug 2026 cron).
+2. **curl+file extraction (cron default for full text)** — Sequential `curl -sL -A "Mozilla/5.0" -o /tmp/….html URL`, then `python3 /tmp/html-extract.py` (copy from `scripts/html-extract.py`). Validated end-to-end on TechCrunch (articles + homepage), The Hacker News, ZDNET, 9to5Google, Skycrumbs, Unite.AI, Meta AI Research blog, Anthropic news, AMD Newsroom, Qualys Patch Tuesday, Global Times, The Verge (Aug 2026 cron). **Often 403/empty:** MarkTechPost (403 Forbidden 2026-08-17), NYT/WSJ bot walls, some TNW pages (~4KB shells). Prefer primary/lab blogs + TC/Qualys/Verge over SEO mirrors. See also `references/news-sources.md`.
 
 3. **Browser fallback (full extraction, interactive/heavy)** — Use browser_navigate + browser_snapshot or browser_console when curl returns empty shells. See `references/web-extract-browser-fallback.md`.
 
@@ -215,19 +218,39 @@ When running as a scheduled cron job (no user present):
 
 In this environment, `web_extract` consistently fails with DuckDuckGo error. **Do not attempt web_extract at all** — go directly to deep-search, curl+file, or browser fallback.
 
-### Known-good cron path (validated 2026-08-16)
+### Known-good cron path (validated 2026-08-16; reinforced 2026-08-17)
 
 ```
-1. skill_view(tech-news-digest) + scripts
-2. 3× web_search (broad) in parallel
+1. skill_view(tech-news-digest) + copy scripts to /tmp (cp skill scripts/… or write_file)
+2. 3× web_search (broad) in parallel — NEVER batch web_extract with these
 3. TZ=Asia/Kuala_Lumpur date window
-4. 5–8× targeted web_search (deep) — month-specific
-5. curl GitHub weekly trending → github-trending-parser.py
-6. curl 4–6 article URLs sequentially → html-extract.py
-7. Compose 4-section BM+Kelantan report; deliver as final response (no send_message)
+4. Stage 1.5: curl TechCrunch homepage → html-extract (Top Headlines + Most Popular + Latest)
+5. 5–8× targeted web_search (deep) — month/day-specific + titles from TC homepage
+6. curl GitHub weekly trending → github-trending-parser.py
+7. curl 4–6 article URLs sequentially (real URLs from search only) → html-extract.py
+8. Compose 4-section BM+Kelantan report; deliver as final response (no send_message)
 ```
 
 Never insert `web_extract` or `execute_code` into this path.
+
+### Stage 1.5 — TechCrunch homepage scan (validated 2026-08-17)
+
+Generic `top technology news this week 2026` often misses **same-day mega-deals** that already lead TechCrunch (e.g. Stripe→OpenRouter $7B+, SpaceX closes Cursor, Anthropic watermark explainers). After Stage 1:
+
+```bash
+curl -sL -A "Mozilla/5.0" -o /tmp/tc-home.html "https://techcrunch.com/"
+python3 /tmp/html-extract.py /tmp/tc-home.html | head -n 200
+```
+
+Mine: **Top Headlines**, **Latest News**, **Most Popular**. Turn each title into a targeted `web_search("exact title 2026", limit=5)` to get the **real** article URL.
+
+**Do not invent TechCrunch slugs.** Guessed paths frequently 404 while the story is live under a different slug (2026-08-17: `/2026/08/12/anthropic-says-it-will-watermark…` 404'd; real links were discovered from homepage + search).
+
+### Pitfall: Guessed publisher URLs 404
+
+**Symptom:** `curl` of a hand-built TechCrunch/Verge path returns "Page not found" even though the story is on the homepage.
+
+**Fix:** Always resolve URLs via `web_search` on the exact headline or via homepage extract links. Never synthesize `/YYYY/MM/DD/slug/` from memory.
 
 ## Output Template
 
@@ -282,13 +305,16 @@ Never insert `web_extract` or `execute_code` into this path.
 ## Verification Checklist
 - [ ] Date window grounded via `TZ=Asia/Kuala_Lumpur date` (title matches real week)
 - [ ] At least 3 web_search queries executed in parallel
+- [ ] Stage 1.5 TechCrunch homepage scan done (or equivalent primary-outlet homepage) for same-day mega-stories
 - [ ] 🔥 headlines verified inside the week window (stale/evergreen demoted or dropped)
 - [ ] Details grounded via deep-search and/or curl/browser extract (not fabricated)
+- [ ] Article URLs came from search/homepage — no invented publisher slugs that 404
 - [ ] Report has all 4 standard sections (or as customized)
 - [ ] GitHub section uses official trending parse or verified named repos; weekly stars preferred
 - [ ] Source links included at end
 - [ ] Language tone matches casual Malay + Kelantan dialect naturally
 - [ ] Zero `web_extract` calls; no `python3 -c`, no `python3 <<`, no shell `&` fan-out in one terminal call
+- [ ] 📌 takeaways include HAFJET ops angles when present (OpenRouter/gateway, local GPU agents, Qwen stack, Windows/Azure KEV patch deadlines, content watermark/HITL)
 
 ## Note: GIF Integration
 

@@ -1,6 +1,6 @@
 # News Sources Ranked by Extractability
 
-Updated: 2026-07-11 | Source: Live testing during weekly digests (incl. July 11 cron run — added Axios to blocked sites)
+Updated: 2026-08-17 | Source: Live testing during weekly digests (Jul 11 Axios block; Aug 17 TC homepage + extract matrix)
 
 ## Site Rendering Type Detection (Critical First Step)
 
@@ -31,7 +31,13 @@ Before choosing an extraction method, determine the site type:
 | EcoA AI | `ecoaai.com/...` | Full article, well-structured HTML |
 | EdenAI | `edenai.co/post/...` | Full article — good for AI model comparisons & benchmark tables |
 | Reuters | `reuters.com/technology/...` | Curl+file works; search page lists headlines with descriptions |
-| TechCrunch | `techcrunch.com/...` | Save to file with curl, then strip HTML tags |
+| TechCrunch | `techcrunch.com/...` | Articles + **homepage** extract well via curl+html-extract. Homepage Top Headlines / Most Popular catch same-day mega-stories SERP misses. **Resolve real slugs via search/homepage — do not invent `/YYYY/MM/DD/slug/` paths (404 common).** |
+| Meta AI Research | `research.meta.ai/blog/...` | Clean long-form blog (Muse Glimmer 2026-08-17). Prefer over SEO mirrors. |
+| Anthropic News | `anthropic.com/news/...` | Official policy/tech posts (Claude watermark) extract cleanly. |
+| AMD Newsroom | `newsroom.amd.com/...` | Corporate PR — body after cookie/terms chrome; usable. |
+| Qualys Blog | `blog.qualys.com/...` | Excellent Patch Tuesday detail (CVE tables, zero-days). |
+| Global Times | `globaltimes.cn/page/...` | China open-source AI adoption stories; curl OK. |
+| The Verge | `theverge.com/...` | Works with curl+html-extract (nav-heavy but article body present). |
 
 ## Tier 2: JS-Rendered — Browser Required
 
@@ -55,6 +61,8 @@ Before choosing an extraction method, determine the site type:
 | WSJ | `wsj.com/...` | Paywall |
 | openai.com | `openai.com/index/...` | Cloudflare bot detection — shows "Just a moment..." page |
 | Axios | `axios.com/...` | Cloudflare bot detection — shows "Just a moment..." + security verification iframe |
+| MarkTechPost | `marktechpost.com/...` | **403 Forbidden** on curl (2026-08-17) — use Meta/lab primary or VentureBeat/InfoQ mirrors |
+| The Next Web (some) | `thenextweb.com/...` | Intermittent tiny shells (~4KB) — fall back to Global Times / HF-linked coverage |
 | Some Substacks | Various | Bot detection on heavy traffic articles |
 
 ## Extraction Method Quick Reference
