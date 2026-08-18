@@ -1,0 +1,66 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+# 📰 Laporan Teknologi & AI — 11–18 Ogos 2026
+
+*Tuan Hafizi, ni ringkasan yang paling sohor untuk minggu ni — fokus benda yang boleh beri kesan pada stack AI, kos infra, dan automasi HAFJET.*
+
+## 🔥 Berita Teknologi Paling Panas
+
+- **Stripe dilapor mahu ambil alih OpenRouter melebihi US$7 bilion.**  
+  Kalau jadi, ini besar sungguh: AI gateway/model-routing yang selama ni neutral boleh masuk bawah pemain pembayaran/fintech besar. Untuk HAFJET, pantau risiko perubahan harga, polisi API dan vendor lock-in. [1]
+
+- **Anthropic terbitkan penerangan watermark teks Claude.**  
+  Penggunaan watermark bertujuan bantu kesan kandungan yang dijana AI. Bagus untuk provenance, tapi ada pengguna bimbang ia boleh membuka identiti penggunaan AI dalam kerja atau pembelajaran. Ini isu yang kito kena ambil kira untuk content automation—HITL dan rekod sumber makin penting. [2][3]
+
+- **Lonjakan amaran spyware kepada pengguna Apple.**  
+  Penyelidik melaporkan jumlah pengguna Apple menerima amaran serangan spyware yang “luar biasa”. Jangan sohor sangat dengan notifikasi biasa: jika dapat amaran rasmi Apple, anggap serius, kemas kini OS segera dan buat audit akaun. [4]
+
+- **AI neocloud makin panas: Groq kumpul US$350 juta.**  
+  Groq dilapor mengumpul dana baharu untuk bergerak daripada pembuat cip AI kepada penyedia neocloud—tanda pasaran compute AI makin bersenggoti, bukan setakat perang model. [3]
+
+- **Anthropic annualized revenue dilapor mencecah US$65 bilion.**  
+  Angka ini, jika tepat, tunjuk enterprise AI masih pacak megah walaupun pasaran model sangat kompetitif. Untuk bisnes kecil, mesejnya mudah: pilih tool ikut ROI kerja sebenar, bukan ikut hype semata-mata. [3]
+
+## 🤖 Dunia Open-Source AI Minggu Ni
+
+- **Meta “Glimmer” — model open-weight untuk jalan atas hardware sendiri.**  
+  TechCrunch melaporkan Meta melepaskan Glimmer sebagai model open-weight yang boleh dimuat turun dan dijalankan secara lokal; ia dibezakan dengan Muse Spark yang kekal API tertutup. Ini relevan untuk strategi HAFJET: model lokal boleh kurangkan pergantungan API dan jaga data, tapi kena timbang RAM/GPU dan kualiti. [3]
+
+- **Meta terus tonjolkan arah open-source untuk robotik bantuan.**  
+  Dalam saluran rasmi Meta AI, mereka ketengahkan penggunaan model mereka bagi assistive robotics di University of Pittsburgh. Bukan release model baharu minggu ni, tetapi signal bahawa open model sedang bergerak ke edge/robotics sebenar—bukan chat sahaja. [5]
+
+- **Claude watermark = trend baharu “AI content provenance”.**  
+  Benda ni penting untuk workflow n8n/content HAFJET: simpan prompt, model, tarikh dan semakan manusia supaya hasil tak bercampur-aduk goni tanpa jejak audit. [2]
+
+## ⭐ Projek GitHub Naik Bukit
+
+*Snapshot GitHub Trending mingguan semasa semakan. Bukan semuanya model AI tulen, tapi yang ni paling berguna untuk builder/agent workflow.*
+
+| Projek | Apa dia buat | ⭐ minggu ini |
+|---|---|---:|
+| **cathrynlavery/diagram-design** | Koleksi 27 jenis diagram editorial untuk Claude Code, output HTML/SVG sendiri | **16,260** |
+| **PrimeIntellect-ai/prime-agent** | Agen RLM yang self-improving untuk coding workflow dan tugasan autonomi panjang | **4,328** |
+| **cactus-compute/needle** | Foundation model 14MB untuk peranti kecil: telefon, wearable, smart-home & robot | **3,627** |
+| **macro-inc/macro** | Workspace bersatu: email, chat, dokumen, tugasan, agen dan shared AI memory | **2,724** |
+| **3b1b/manim** | Enjin animasi matematik/teknikal; berguna untuk explainers dan bahan latihan | **1,724** |
+
+## 📌 Apa Kito Patut Tahu
+
+- **OpenRouter:** Jangan ubah production routing sebab khabar acquisition lagi belum rasmi. Tetapi elok ada pelan keluar: abstraction layer, model fallback dan had kos ikut provider.
+- **Content automation:** Watermark/provenance makin jadi isu. Workflow HAFJET patut terus kekalkan **HITL sebelum posting** dan rekodkan sumber imej/teks AI.
+- **Lokal vs cloud:** Model kecil seperti Needle tunjuk arah edge AI makin matang. Namun server Hermes 1GB RAM bukan tempat sesuai untuk eksperimen model; guna node GPU/PC Office bagi inference.
+- **Keselamatan Apple:** Kemas kini iPhone/iPad/Mac, aktifkan 2FA, dan jangan klik pautan daripada “alert” selain notifikasi rasmi sistem/Apple.
+- **Agen coding:** Prime Agent dan diagram-design menarik untuk R&D, tetapi jangan terus masuk pipeline production. Audit repo, lesen dan sandbox dahulu—biar kemas, jangan gopoh.
+
+## 📎 Sumber
+
+1. TechCrunch — Stripe/OpenRouter: https://techcrunch.com/2026/08/16/stripe-will-reportedly-acquire-ai-gateway-startup-openrouter-for-7b/  
+2. Anthropic Newsroom — *How Claude’s text watermark works*: https://www.anthropic.com/news  
+3. TechCrunch — Liputan AI, Groq, Anthropic, Meta Glimmer & keselamatan: https://techcrunch.com/  
+4. TechCrunch — Amaran spyware Apple: https://techcrunch.com/  
+5. Meta AI Blog — Open-source & assistive robotics: https://ai.meta.com/blog/  
+6. GitHub Trending (weekly): https://github.com/trending?since=weekly
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").

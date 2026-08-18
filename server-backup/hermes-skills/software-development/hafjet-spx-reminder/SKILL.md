@@ -260,13 +260,30 @@ For 2315 orders at 50/page = 47 pages × 30s = **~23.5 min** order sync + phone 
 AND spx_status NOT IN ('Collected', 'Returned', 'Cancelled', 'Collection Failed')
 ```
 
-**Fix 2 — Auto-complete in `upsert_spx_order()`:**
+**Fix 2 — Auto-complete in `upsert_spx_order()` (both UPDATE *and* INSERT):**
+
+A common regression is putting terminal handling only inside `if existing:`. SPX incremental sync can first discover an order after it was collected; the INSERT branch then writes its default `Pending`, leaving a `Collected + Pending` row even though the UPDATE branch looks correct.
+
+Compute canonical status/state **before** branching and bind the same values to both SQL paths:
 ```python
-_TERMINAL = {"Collected", "Returned", "Cancelled", "Collection Failed"}
-if new_status in _TERMINAL and reminder_state not in ("Completed", "CollectionFailed"):
-    reminder_state = "Completed"
-# Then use COALESCE(?, hafjet_reminder_state) in the UPDATE SET
+new_status = _safe_str(data.get("spx_status", "ReadyForCollection"))
+_TERMINAL = {"Collected", "Returned", "Cancelled", "Collection Failed", "CollectionFailed"}
+requested_state = _safe_str(data.get("hafjet_reminder_state", ""))
+reminder_state = "Completed" if new_status in _TERMINAL else (requested_state or None)
+
+if existing:
+    # UPDATE ... hafjet_reminder_state=COALESCE(?, hafjet_reminder_state)
+    # bind reminder_state
+else:
+    # INSERT ... bind new_status and (reminder_state or "Pending")
 ```
+
+`recipient_phone IS NULL` is **not** a reason to skip this transition. Phone presence gates WhatsApp sending only; a terminal SPX status must always suppress future reminders.
+
+**Regression tests required:**
+1. A new `Collected` order inserts with state `Completed`.
+2. A new `ReadyForCollection` order remains `Pending`.
+3. An existing terminal order is forced to `Completed` even when an inbound sync carries stale `Pending`.
 
 **Fix 3 — Bulk migration:**
 ```sql
@@ -857,6 +874,15 @@ Investigation of "why doesn't SPX delivery show in the conversation dashboard" s
 4. **Start:** `az webapp start -n hafjet-whatsapp-bot -g hafjet-bot-rg`
 
 Do NOT use `az webapp restart` — it may not clear in-memory bytecode cache.
+
+### Restart warm-up verification (Azure App Service)
+
+After an approved stop/start, a transient `403`, `503`, or request timeout can occur while the container is stopping or binding its listener. Do **not** diagnose from one early failed probe and do not declare recovery from one early `200` either.
+
+1. Poll `/health` with a bounded retry until the first `200` response.
+2. Then require **6 consecutive `HTTP 200` probes** (5 seconds apart) before running DB migrations or asking a customer to test a live WhatsApp flow.
+3. If it never reaches the first `200`, read the newest `LogFiles/StartupLogs/*_failure.log`; distinguish the current timestamp from stale historical `ContainerStartupFailure` text before deciding the container is broken.
+4. Verify a changed Python source file with Kudu VFS read-back **before** the restart; verify `/health` only proves process health, not a particular business branch.
 
 ### Production DB download (Kudu VFS — Jul 2026)
 

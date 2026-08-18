@@ -7,24 +7,38 @@ Canonical lock on RTX WSL2 (`hafjet`):
 ```
 
 Managed by live-streamer glue: `gpu_lock.py acquire|release|status`  
-(repo: `~/projects/hafjet-ai-live-streamer/avatar/livetalking_glue/`).
+(repo: `~/projects/hafjet-ai-live-streamer/avatar/livetalking_glue/`).  
+Consumer also acquires around speak: `speak_queue_consumer.py` (polish e2e).
 
-## CCTV analyze guard (apply with Tuan OK)
+## CCTV analyze guard — DIFF FIRST (2026-08-18)
 
-At top of `cctv_analyze.py` or hourly wrapper:
+**Target:** `~/cctv-analysis/cctv_analyze.py` (entry used by `run_batch.sh`)  
+**Status:** unified diff prepared in live-streamer repo  
+`docs/runbook-g2-task8-cctv-diff.md` — **NOT applied** until Tuan says **`OK Task 8 apply`**.
+
+Proposed (minimal, top of `main()` after helpers, before YOLO import):
 
 ```python
-from pathlib import Path
-if Path.home().joinpath("hafjet-live/LIVE_GPU_LOCK").is_file():
+live_lock = Path(os.path.expanduser("~/hafjet-live/LIVE_GPU_LOCK"))
+if live_lock.is_file():
     print("SKIP_LIVE_LOCK")
-    raise SystemExit(0)
+    log_line({"ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "status": "SKIP_LIVE_LOCK"})
+    sys.exit(0)
 ```
+
+Optional belt: same file check early in `run_batch.sh`.
+
+Verify after apply:
+1. `touch ~/hafjet-live/LIVE_GPU_LOCK` → `python3 cctv_analyze.py` prints `SKIP_LIVE_LOCK`, no YOLO load  
+2. `rm` lock → normal path  
+3. Do not leave lock stale  
+
+## Ops notes
 
 - Treat `SKIP_LIVE_LOCK` as success/skip for watchdogs (not batch failure).
 - Shared CB: temp warn 80 / stop 88°C; VRAM warn 8GB / stop 10.5GB; no auto-resume.
-- Never use PC Office as LiveTalking host.
-- If Tailscale `desktop-rhdusf3-1` offline, YOLO batch simply cannot run; live G2 preflight is BLOCKED the same way.
-- LiveTalking sustained VRAM ~3GB (wav2lip WebRTC speak, measured Task5); YOLO batches outside live windows when possible.
-- Venv isolation: never install into `~/cctv-analysis/.venv` for live stack (`venv-livetalking` only).
+- LiveTalking sustained VRAM ~3–3.6GB (wav2lip WebRTC); YOLO outside live windows when possible.
+- Venv isolation: never install LiveTalking into `~/cctv-analysis/.venv`.
+- Hermes→RTX: Office jump only (`hafjet-ai-live-streamer` pitfalls).
 
-See skill `hafjet-ai-live-streamer` + `references/g2-task5-webrtc-speak-capture.md`.
+See skill `hafjet-ai-live-streamer` + `references/polish-speak-queue-e2e.md`.

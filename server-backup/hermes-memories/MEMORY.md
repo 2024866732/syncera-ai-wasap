@@ -10,7 +10,7 @@ Supabase ksqrpttesrrnzatgagyh: schema hardened DEPLOYED. fixed_costs RM1300 from
 §
 Deploy: webhook_v2 ACTIVE :8080 (gunicorn ~/.local/bin py3.10). Hermes venv NO pip; guna /usr/bin/python3. Pickup cron: scripts/run_pickup_live.sh. TG file → MEDIA:.
 §
-SPX: cron 15min 08-21 MYT; spx_ready_pickup=[name,tracking]; hafjet_reminder_state; TM v5 autopilot; is_paused=1 blocks; Kudu no ; use VFS.
+SPX: cron 15min 08-21 MYT; spx_ready_pickup=[name,tracking]; hafjet_reminder_state; kiosk reply for pickup phrases only with active recent SPX context (normalized phone or unique name); TM v5; paused blocks; VFS.
 §
 HAFJET ops: ~/HAFJET-Operating-Manual-v1.md. Content: Brand HAFJET+Raub, Threads/IG/FB/TikTok, BM casual, CTA wa.me/60198021500, 12:30&20:30 MYT.
 §
@@ -20,6 +20,6 @@ n8n n8n.hafjet.my (Hermes): Content Automation cron 12:25/20:25 MYT; API :9119; 
 §
 Hermes-Bot-Mode=desktop plugin only (~/.hermes/desktop-plugins/); NOT gateway/headless.
 §
-AI Live Streamer: ~/projects/hafjet-ai-live-streamer; skill hafjet-ai-live-streamer. RTX Office hafjet@100.119.32.87.
+AI Live Streamer Hybrid B: G0–G5a + Polish CLOSED. G5b real TikTok private deferred; HITL/browser node now Windows TS 100.73.190.96 (not headless Office), host-key verify pending. Hermes orch→push→RTX worker+LT; session LIVE_GPU_LOCK; G4c/G5b/G6/G7 approval-gated.
 §
-Personal buy: uni/Edu OK. MBA 13\" M5 16/512 (not 15\"). Has iPad Air M4 + 2×27\" HDMI+DP (no USB-C). Cash~RM3.1k, no CC; S/L PayLater ~1.25-1.5%/mo—prefer Edu+GC or 0% short. Desk: USBC→HDMI+DP + MagSafe.
+Personal buy: MBA 13 M5 16/512 Edu OK; iPad Air M4; dual 27 HDMI+DP. Cash~3.1k; prefer Edu/0% over S/L PayLater.

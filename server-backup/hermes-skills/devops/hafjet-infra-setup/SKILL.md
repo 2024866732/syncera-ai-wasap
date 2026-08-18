@@ -477,6 +477,22 @@ oci compute instance launch \
 - Public key passed via `--ssh-authorized-keys-file` during instance creation.
 - Key saved at `/tmp/hafjet-oracle-key` (private) and `/tmp/hafjet-oracle-key.pub`.
 
+### Serial Console Recovery When Public SSH Times Out
+- Diagnose transport before changing credentials: `ssh: connect ... port 22: Connection timed out` means traffic is not reaching `sshd`; changing/re-sending the SSH key cannot fix it. `Permission denied (publickey)` means transport works but the key is not authorized.
+- OCI CLI can create an emergency serial-console connection without normal SSH:
+  ```bash
+  oci compute instance-console-connection create \
+    --instance-id "$INSTANCE_OCID" \
+    --ssh-public-key-file /secure/path/console-key.pub \
+    --wait-for-state ACTIVE
+  ```
+- **OCI instance console connections reject `ssh-ed25519` public keys** (`Invalid ssh public key type "ssh-ed25519"`). Generate a dedicated temporary RSA key for console recovery:
+  ```bash
+  ssh-keygen -t rsa -b 4096 -N '' -f /secure/path/oracle-console-recovery
+  ```
+- The create response includes `connection-string`; use that exact command, adding the recovery key using `-i` to both the outer SSH and the SSH command inside `ProxyCommand`.
+- Treat a serial-console key as short-lived. Deliver it only via an approved secure channel; after normal SSH is restored, delete the OCI console connection and recovery key. Any private key pasted into chat must be rotated.
+
 ### Oracle ARM VM Specs (Confirmed Aug 2026)
 | Resource | Value |
 |----------|-------|

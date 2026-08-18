@@ -7,3 +7,7 @@ Hardware: i3-2100 CPU-only, 1GB+4GB swap, Ubuntu 26.04. Cams TC74 / C560WS .226/
 Comms: Telegram, structured BM. Auto-task-chain; long jobs passive. SuperGrok summaries on request. n8n: basic auth hafizi145; owner email pre-seed; tunnel URL in .env+compose.
 §
 Preferences: Audit-first; approval-gated prod. Official WA Cloud API; hybrid Azure+Oracle. Gadget: Edu+GC > long BNPL; quote effective value.
+§
+Pelajar universiti; layak Apple Education (MY). Elak AppleCare+/insurans extended (pandangan fiqh gharar). Elak ansuran berbunga/PayLater panjang bila boleh (riba concern). Tiada credit card; ada Shopee PayLater & Lazada PayLater.
+§
+Setup Apple: rancang MBA 13" (bukan 15"); dah ada iPad Air M4 + Apple Pencil Pro + AirTag + USB-C→HDMI. Ada 2× monitor 27" (HDMI+DP, tiada USB-C). Perlu USB-C→DP untuk dual display. Cash ~RM3k band; consider Apple Store TRX (perjalanan ~2 jam) + Edu GC promo.

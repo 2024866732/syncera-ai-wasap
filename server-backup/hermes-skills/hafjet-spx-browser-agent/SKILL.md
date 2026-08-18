@@ -212,6 +212,16 @@ When integrating a new backend feature (like SPX follow-up engine), the deploy w
 
 **WhatsApp integration rule**: Send WhatsApp FIRST, update DB stage ONLY after send succeeds. If send fails, do NOT update DB — retry on next scheduler cycle. Anti-duplicate in `determine_followup()` prevents double-send.
 
+### Inbound pickup replies — kiosk route before AI/menu
+
+For pickup phrases such as `saya di sini`, `saya dah sampai`, `dah sampai`, or `saya sampai`, resolve SPX context **before** greeting/static-menu/AI routing. Return kiosk instructions only when a verified `ReadyForCollection` order has a recent reminder (within 24h):
+
+1. Prefer a normalized phone match (`+`, spaces, and Meta's no-`+` inbound ID must not prevent a match).
+2. If phone identity differs, allow a fallback only when there is **exactly one** recent active order with an unambiguous recipient-name match; include its tracking number.
+3. If neither context exists, return `None` so ordinary conversational handling continues — never send kiosk instructions merely because the phrase matched.
+4. Add regression tests for: normalized/alternate identity → kiosk + tracking; no SPX context → no kiosk; and assert the pickup check precedes the AI path.
+5. A VFS upload proves source delivery only. Do not claim the running Gunicorn process uses it until an approved restart/reload and a live inbound test have verified the route.
+
 ## Patch Tool Pitfall
 
 When editing files with the `patch` tool in `mode='replace'`, you MUST provide ALL THREE parameters: `path`, `old_string`, AND `new_string`. Common mistake: using `patch` in place of `path`, or omitting `old_string` or `new_string`. The error messages are:
