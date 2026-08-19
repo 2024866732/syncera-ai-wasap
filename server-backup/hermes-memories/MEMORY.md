@@ -10,7 +10,7 @@ Supabase ksqrpttesrrnzatgagyh: schema hardened DEPLOYED. fixed_costs RM1300 from
 §
 Deploy: webhook_v2 ACTIVE :8080 (gunicorn ~/.local/bin py3.10). Hermes venv NO pip; guna /usr/bin/python3. Pickup cron: scripts/run_pickup_live.sh. TG file → MEDIA:.
 §
-SPX: cron 15min 08-21 MYT; spx_ready_pickup=[name,tracking]; hafjet_reminder_state; kiosk reply for pickup phrases only with active recent SPX context (normalized phone or unique name); TM v5; paused blocks; VFS.
+SPX: reminder 15m 08-21; terminal→Completed; kiosk only active context. Desired auto-sync dashboard: 30m 09-19, toggle 15/30+manual; reuse phone only exact normalized SPX name with 1 valid unique history phone; no overwrite; VFS.
 §
 HAFJET ops: ~/HAFJET-Operating-Manual-v1.md. Content: Brand HAFJET+Raub, Threads/IG/FB/TikTok, BM casual, CTA wa.me/60198021500, 12:30&20:30 MYT.
 §

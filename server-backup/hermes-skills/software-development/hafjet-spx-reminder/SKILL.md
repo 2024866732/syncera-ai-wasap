@@ -838,6 +838,7 @@ old_string = "r'[^;\s]+'"     # WRONG — patch sees \s, stores \\s in file
 - `references/websocket-pong-format.md` — WS heartbeat format fix.
 - `references/write-file-escape-pitfall.md` — **NEW (Jul 2026):** `write_file()` double-quote escaping breaks Python scripts. Always use single quotes. Kudu scripts, DB verifiers, any Python written via `write_file()`.
 - `references/whatsapp-template-delivery.md` — **NEW (2026-08-08):** WhatsApp template delivery implementation. Error 131047 root cause, template registration, smart-send pattern (`send_whatsapp_template`, `_check_24h_window`, `send_whatsapp_smart`), delivery status tracking, SPX reminders toggle with `get_runtime_bool()` bug fix.
+- `references/terminal-state-invariant.md` — Verified UPDATE-and-INSERT terminal-state invariant, regression tests, safe production repair sequence, and independent DB verification.
 
 ### 🔍 Production DB Debugging via Kudu (2026-08-08)
 
@@ -1132,6 +1133,49 @@ Runs in user's real browser (bypasses anti-bot entirely). See `references/spx-br
 - Reverse-engineering anti-bot JS — rejected by Tuan as impractical
 - Headless Playwright — too heavy for 1GB Azure container, too slow, no display on Linux App Service
 - SAP header regex fix — deployed and functional but useless because underlying values are per-request tokens that expire immediately upon capture
+
+## Dashboard Auto-Sync + Name-History Phone Reuse (approved architecture — Aug 2026)
+
+Use this design when Tuan Hafizi asks to remove manual **Sync from SPX** work from the dashboard.
+
+### Auto-sync boundary
+- Implement server-side via the existing APScheduler process, never as a dashboard/browser auto-click. It must work while the dashboard is closed.
+- Default configuration: **enabled**, interval **30 minutes**, active only **09:00–19:00 MYT**. Dashboard may expose only `15` or `30` minutes plus an enable/disable toggle. Persist an explicit toggle value only after staff changes it; an absent setting must retain this enabled default.
+- Auto runs must sync **SPX order list/status only**. Do **not** invoke `show_secret`/phone-reveal in automatic cycles: SPX reveal is anti-bot/rate-limited and can strand an otherwise healthy status sync.
+- Preserve the existing manual Sync button. Manual sync may retain the separately bounded phone-fetch flow.
+- Persist `origin`, `last_attempt_at`, `last_success_at`, phase and safe error code in DB-backed sync state. Never overwrite a currently running sync; return a clear already-running state instead.
+- A stale run must fail safely after its idle threshold and allow a later cycle. `SPX_SESSION_EXPIRED` must set a safe failure/banner state; never log cookies.
+- Dashboard deployment remains Kudu VFS: upload referenced assets first and `index.html` last.
+
+### VFS baseline and dashboard-asset fidelity checklist (Aug 2026)
+
+When establishing a production baseline in a feature worktree, preserve the live artifact exactly before feature edits:
+1. Read back `/site/wwwroot/db_logger.py`, `/site/wwwroot/webhook_listener.py`, and `/site/wwwroot/dashboard/dist/index.html` through Kudu VFS.
+2. Parse the live `index.html` asset names. The browser URLs may be `/dashboard/assets/<hash>`, while their Kudu VFS storage paths are `/site/wwwroot/dashboard/dist/assets/<hash>`; download from the latter.
+3. Stage the referenced JS/CSS assets together with `index.html`; do not assume an old local `dist/` is production-equivalent.
+4. Do not tidy production-only whitespace or unrelated code during the baseline commit. Fidelity is more important than formatting. Also revert package-manager lockfile churn caused solely by a local `npm install` before committing the baseline.
+5. At deployment, upload any new hashed JS/CSS first, verify each VFS PUT, then atomically switch `index.html` last. Do not remove old assets until the new `index.html` and `/dashboard/` are verified live.
+
+### Safe reuse of a missing phone by SPX recipient name
+- Only use **SPX historical orders** as the initial source. Do not use generic `customers` names: SPX tracking-linked identity is stronger evidence.
+- Normalize names with `trim -> lowercase -> collapse internal whitespace`; matching is exact after normalization, never fuzzy.
+- Candidate phone must be a full normalized numeric value; reject `NULL`, empty, `-`, and any value containing `*`.
+- Assign only when the normalized name resolves to **exactly one distinct valid phone**. Zero candidates and multiple phones are both skip cases.
+- Never overwrite any existing non-placeholder phone value, including legacy/malformed values and browser-revealed values. Only `NULL`, blank, `-`, or values containing `*` are recognized missing targets. This enrichment changes only `recipient_phone`, never SPX terminal state or reminder stage.
+- Treat `SPX_SESSION_EXPIRED` distinctly in both order-list and manual phone-fetch paths: persist `phase='session_expired'`, `session_expired=true`, and a re-login-safe message. Do not collapse it into generic `failed`, and never log cookies.
+- Audit every decision with tracking + normalized name + outcome; phones in logs/API results must be masked. A batch dashboard action for existing missing rows must reuse the identical helper and must never send a WhatsApp message directly.
+
+### Feature-worktree production baseline (Aug 2026)
+
+Before editing an SPX feature in an isolated git worktree, compare every deploy-target file with the current Azure Kudu VFS source. This project can contain production fixes that were VFS-deployed but not yet committed to the release checkout, so a new worktree may be older than production.
+
+**Never upload whole stale copies** of `db_logger.py`, `webhook_listener.py`, or dashboard bundles from such a worktree: that can regress live fixes such as terminal completion, kiosk routing, or dashboard auth.
+
+Safe sequence:
+1. Create the worktree and identify files the feature needs to modify.
+2. Read back those exact production files through Kudu VFS and compare them with the worktree before editing.
+3. If production contains uncommitted fixes, obtain explicit approval to establish a production-source baseline commit on the feature branch, or carefully port only the verified feature delta.
+4. Read back deployed feature markers after VFS upload, then use the approved stop/start and six-probe health gate.
 
 ## User Workflow Preferences (Jul 2026)
 

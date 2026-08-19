@@ -443,6 +443,8 @@ Either use 1 shared database or upgrade to t3.small (2GB).
 
 Tuan signed up for Oracle Cloud, initially Free Tier then upgraded to Pay As You Go.
 
+**Current A1 entitlement / billing audit:** See `references/oracle-a1-entitlement-audit.md` for the Always Free vs PAYG allowance distinction, read-only OCI billing commands, budget-alert recipient pitfall, and RSA serial-console recovery.
+
 ### ARM Capacity Issues (CRITICAL)
 - Region `ap-kulai-2` (Malaysia) has SEVERE ARM capacity constraints.
 - Even with Pay As You Go, `VM.Standard.A1.Flex` may return "Out of host capacity".
