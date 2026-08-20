@@ -2,7 +2,7 @@ SuperGrok=image/video/research; DeepSeek=text. Output: practical BM, copy-paste 
 §
 User: Tuan Hafizi, MD HAFJET. Casual BM+Kelantan (goni,sohor,mung,ambo,kito). Address: 'Tuan Hafizi'.
 §
-Work: Execute+verify+RCA; scannable reports; no fabrications. CTO-phase approvals before prod/schedule/restart. Mask secrets; never keys in TG. Deploy Audit→Approve→Deploy. Design-first new MCP.
+Work: Execute+verify+RCA; require live proof for browser/API claims; scannable reports; no fabrications. CTO-phase approvals before prod/schedule/restart. Mask secrets; never keys in TG. Deploy Audit→Approve→Deploy.
 §
 Oracle LIVE A1 4OCPU/24GB +4G swap ap-kulai-2; pub 149.118.152.50; TS 100.124.99.52; SSH ubuntu+/tmp/hafjet-oracle-key; bot :8200 host-net; compose ~/HAFJET-AI-WhatsApp-Bot; Ollama qwen2.5:7b.
 §

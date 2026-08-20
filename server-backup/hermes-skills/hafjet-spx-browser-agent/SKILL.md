@@ -341,6 +341,10 @@ BACKEND_HEADERS: { 'X-Agent-Token': 'REPLACE_ME' },
 
 **Key: browser script only scrapes and POSTs facts. WhatsApp send decisions are made by the backend.**
 
+## Secure Bulk Push (validated)
+
+For authenticated payload schema, Tampermonkey private key storage, GM request timeouts, rotation, and live acceptance checks, see `references/secure-bulk-phone-push.md`. This reference supersedes any older examples that hard-code keys or use direct `fetch` abort errors as the only diagnostic.
+
 ## v3.2 — Push to HAFJET Backend
 
 **⚠️ CRITICAL: `__spx_poc_run()` does NOT auto-push.** After PoC completes, user MUST manually call `__spx_poc_push_hafjet()`. This is intentional — PoC is console-only verification before any backend writes.
@@ -362,7 +366,11 @@ function pushHafjet(apiUrl, apiKey) {
 window.__spx_poc_push_hafjet = pushHafjet;
 ```
 
-**Auth:** Backend endpoint `POST /api/spx/bulk-map-phones` uses `X-API-Key` header validated by middleware against `DASHBOARD_API_KEY`. JWT not required — endpoint signature is `request: Request` (not `Depends(get_current_staff)`). The middleware already handles API-key auth for `POST /api/spx/*`. **Important:** when an endpoint has both middleware (X-API-Key check) AND `Depends(get_current_staff)` (JWT check), the Tampermonkey autopilot can only provide the API key — replace `staff: dict = Depends(...)` with `request: Request` for autopilot endpoints.
+**Auth:** Backend endpoint `POST /api/spx/bulk-map-phones` uses `X-API-Key` header validated against `DASHBOARD_API_KEY`; JWT is not required because the Tampermonkey agent cannot hold a dashboard staff JWT. **Do not assume a broad middleware prefix protects this route.** Explicitly include `/api/spx/bulk-map-phones` (or a carefully scoped equivalent) in the server's protected-write routing and verify live that an unauthenticated `POST []` receives `401`.
+
+**Push verification order:** CORS preflight (`OPTIONS`) proves browser permission only; it does **not** prove the route executes. Before rollout, test all three: (1) preflight from the live SPX origin, (2) unauthenticated empty POST → `401`, and (3) authenticated empty POST → fast `200` with zero counts. Only then set the browser timeout. If the authenticated empty POST cannot finish well inside the timeout, diagnose the server route/worker before increasing `AbortController` timeouts.
+
+**Secret handling:** Never paste an API key into Telegram, console screenshots, commit history, or a delivered userscript. If one is exposed, revoke/rotate the App Service setting before further use. Keep the userscript's token in Tampermonkey protected storage or provision it through a separate secure local setup step; a dashboard JWT dependency must not be added to this agent endpoint.
 
 **Response:** `{updated, skipped, errors, total, details: [{tracking, reason}]}`
 
