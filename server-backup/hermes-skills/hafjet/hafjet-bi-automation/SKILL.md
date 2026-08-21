@@ -161,3 +161,4 @@ os.environ["LOYVERSE_ACCESS_TOKEN"] = token
 - `references/deployment-checklist.md` — Step-by-step production deployment guide
 - `references/supabase-debugging.md` — Key configuration, connection debugging, credential verification
 - `references/supabase-mcp-setup.md` — MCP config, OAuth auth, agent skills, schema deployment workaround
+- `references/telegram-bank-document-intake.md` — Safe Telegram PDF/image intake: payment-vs-invoice decision, explicit-write confirmation, and idempotent expense upsert

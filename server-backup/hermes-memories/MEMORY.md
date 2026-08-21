@@ -20,6 +20,6 @@ n8n n8n.hafjet.my (Hermes): Content Automation cron 12:25/20:25 MYT; API :9119; 
 §
 Hermes-Bot-Mode=desktop plugin only (~/.hermes/desktop-plugins/); NOT gateway/headless.
 §
-AI Live Streamer Hybrid B: G0–G5a + Polish CLOSED. G5b real TikTok private deferred; HITL/browser node now Windows TS 100.73.190.96 (not headless Office), host-key verify pending. Hermes orch→push→RTX worker+LT; session LIVE_GPU_LOCK; G4c/G5b/G6/G7 approval-gated.
+G5b Stage1 HITL Windows DESKTOP-MOPJU6T/TS 100.73.190.96 user `user`; Chrome profile local-only `C:\Users\User\hafjet-live-listeners\profiles\tiktok-g5b`. Manual login+private URL; no comments/speak/RTMP/public without approval. G4c/G6/G7 gated.
 §
 Personal buy: MBA 13 M5 16/512 Edu OK; iPad Air M4; dual 27 HDMI+DP. Cash~3.1k; prefer Edu/0% over S/L PayLater.

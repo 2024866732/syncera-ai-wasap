@@ -20,15 +20,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 65
+        "completed": 66
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-08-21T07:00:00+00:00",
-      "last_run_at": "2026-08-20T07:01:53.499165+00:00",
+      "next_run_at": "2026-08-22T07:00:00+00:00",
+      "last_run_at": "2026-08-21T07:03:39.645448+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -63,15 +63,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 61
+        "completed": 62
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-08-21T13:00:00+00:00",
-      "last_run_at": "2026-08-20T13:01:44.026631+00:00",
+      "next_run_at": "2026-08-22T13:00:00+00:00",
+      "last_run_at": "2026-08-21T13:01:40.517247+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -106,15 +106,15 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 56
+        "completed": 57
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-08-21T14:00:00+00:00",
-      "last_run_at": "2026-08-19T14:00:41.025583+00:00",
+      "next_run_at": "2026-08-22T14:00:00+00:00",
+      "last_run_at": "2026-08-20T14:01:40.709134+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -149,15 +149,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 55
+        "completed": 56
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-08-21T09:00:00+00:00",
-      "last_run_at": "2026-08-20T09:01:22.197209+00:00",
+      "next_run_at": "2026-08-22T09:00:00+00:00",
+      "last_run_at": "2026-08-21T09:01:03.525961+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -192,15 +192,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 49
+        "completed": 50
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-08-21T09:00:00+00:00",
-      "last_run_at": "2026-08-20T09:01:22.657081+00:00",
+      "next_run_at": "2026-08-22T09:00:00+00:00",
+      "last_run_at": "2026-08-21T09:00:58.976364+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -237,15 +237,15 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 41
+        "completed": 42
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-08-21T03:00:00+00:00",
-      "last_run_at": "2026-08-20T03:07:16.625653+00:00",
+      "next_run_at": "2026-08-22T03:00:00+00:00",
+      "last_run_at": "2026-08-21T03:01:03.490975+00:00",
       "last_status": "error",
       "last_error": "RuntimeError: HTTP 401: Wrong API Key",
       "last_delivery_error": null,
@@ -283,15 +283,15 @@
       "schedule_display": "0 15 * * *",
       "repeat": {
         "times": null,
-        "completed": 37
+        "completed": 38
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-14T17:05:27.034793+00:00",
-      "next_run_at": "2026-08-20T15:00:00+00:00",
-      "last_run_at": "2026-08-19T15:00:44.069817+00:00",
+      "next_run_at": "2026-08-21T15:00:00+00:00",
+      "last_run_at": "2026-08-20T15:01:23.861711+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -415,15 +415,15 @@
       "schedule_display": "0 0 * * *",
       "repeat": {
         "times": null,
-        "completed": 24
+        "completed": 25
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-27T12:46:17.963804+00:00",
-      "next_run_at": "2026-08-21T00:00:00+00:00",
-      "last_run_at": "2026-08-20T00:07:32.556329+00:00",
+      "next_run_at": "2026-08-22T00:00:00+00:00",
+      "last_run_at": "2026-08-21T00:07:29.716684+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -461,15 +461,15 @@
       "schedule_display": "every 30m",
       "repeat": {
         "times": null,
-        "completed": 1074
+        "completed": 1121
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-28T12:38:06.628044+00:00",
-      "next_run_at": "2026-08-20T14:03:54.999097+00:00",
-      "last_run_at": "2026-08-20T13:33:54.999097+00:00",
+      "next_run_at": "2026-08-21T14:16:56.222452+00:00",
+      "last_run_at": "2026-08-21T13:46:56.222452+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -622,5 +622,5 @@
       "workdir": null
     }
   ],
-  "updated_at": "2026-08-20T14:00:54.503941+00:00"
+  "updated_at": "2026-08-21T14:00:49.557783+00:00"
 }

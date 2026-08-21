@@ -302,6 +302,12 @@ Mine: **Top Headlines**, **Latest News**, **Most Popular**. Turn each title into
 - `scripts/html-extract.py` — HTML→text via stdlib `HTMLParser`. Copy to `/tmp` with `write_file`, then `python3 /tmp/html-extract.py page.html …`
 - `scripts/github-trending-parser.py` — Parse saved GitHub Trending HTML → `repo | desc | total | period_stars`. Handles Box-row attrs, skips `sponsors/`, prefers weekly stars.
 
+## Citation Ledger Hygiene (when `grounded-citations` is active)
+
+- Register URLs at retrieval time, but before a **strict** ledger verification either cite every registered source or start from a clean ledger containing only sources retained in the draft.
+- Broad-search and backup URLs often do not survive the final selection. Leaving them registered causes `verify --strict` to fail on uncited ledger entries even when every report claim is correctly cited.
+- For a Telegram-friendly digest, use concise inline `[n]` markers only on factual sentences, then render the exact `Sources` block mechanically. Keep strategic recommendations clearly framed as recommendations rather than presenting them as sourced facts.
+
 ## Verification Checklist
 - [ ] Date window grounded via `TZ=Asia/Kuala_Lumpur date` (title matches real week)
 - [ ] At least 3 web_search queries executed in parallel

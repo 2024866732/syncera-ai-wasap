@@ -1,0 +1,70 @@
+Cronjob Response: Laporan Teknologi & AI Harian
+(job_id: ad7baa160933)
+-------------
+
+# 📰 Laporan Teknologi & AI — 14–21 Ogos 2026
+
+*Disusun untuk Tuan Hafizi | Semakan: 21 Ogos, 15:00 MYT*
+
+## 🔥 Berita Teknologi Paling Panas
+
+- **Robotaxi masuk gear besar di Las Vegas.** Nevada lulus permit komersial untuk Tesla (hingga 5,000), Waymo (1,000) dan Uber/rakan autonomi (1,000) — siling gabungan **8,000 robotaxi** bagi 12 bulan. Tapi Tesla sendiri jangka rollout sebenar mungkin lebih rendah. [1]
+
+- **ChatGPT boleh urus Apple Messages.** Plug-in baharu membolehkan ChatGPT mengisih, menganalisis, draf/menghantar atau memadam mesej. Ia dikatakan berjalan secara lokal, namun OpenAI pesan jangan buang kelulusan akhir sebelum mesej dihantar. Automasi komunikasi makin sohor — HITL memang wajib. [2]
+
+- **AI gateway jadi aset strategik.** Bloomberg melaporkan Stripe memuktamadkan pemerolehan OpenRouter melebihi **US$7 bilion**; Stripe tidak mengulas spekulasi tersebut. OpenRouter menawarkan satu pintu ke 400+ model, jadi routing model pacak megah sebagai lapisan infra penting. [3][4]
+
+## 🤖 Dunia Open-Source AI Minggu Ni
+
+- **DeepSeek Harness (DSH) developer preview.** Runtime ejen MIT ini jadikan model, tools, skills, sesi, sandbox, storan, loop, scheduler dan UI sebagai plugin boleh tukar. Ia juga simpan log append-only untuk trace, replay dan audit setiap run. Menarik sungguh, tapi masih preview — jangan terus sumbat ke production. [5]
+
+- **Open-weight masih bersenggoti dengan model tertutup.** Meta melepaskan **Muse Glimmer**, model open-weight yang boleh jalan sendiri pada hardware pengguna; tetapi Muse Spark yang lebih berkuasa kekal dalam produk/API Meta. Maknanya pilihan local/private makin hidup, tapi frontier capability masih banyak duduk belakang API. [6]
+
+- **Isyarat besar:** fokus komuniti bukan setakat model baru, tetapi **harness, context/memory, observability dan routing**. Ini lebih dekat dengan masalah ejen sebenar di production.
+
+## ⭐ Projek GitHub Naik Bukit
+
+*Snapshot GitHub Trending mingguan semasa semakan; angka ialah ⭐ baharu minggu ini.*
+
+| Projek | Kenapa menarik | ⭐ minggu ini |
+|---|---|---:|
+| `semantica-agi/semantica` | Infra graph-native untuk context & accountable AI | 3,674 |
+| `cactus-compute/needle` | Foundation model **14MB** untuk edge/device kecil | 3,409 |
+| `unslothai/unsloth` | UI lokal untuk run/train LLM & diffusion | 3,300 |
+| `volcengine/OpenViking` | Context DB ejen: memory, RAG & skills | 2,444 |
+| `NVIDIA-NeMo/Switchyard` | Router LLM multi-provider, serasi API OpenAI/Anthropic | 932 |
+
+Data trend: [7]
+
+## 📌 Apa Kito Patut Tahu
+
+- **Jangan bergantung satu provider.** Cerita OpenRouter menguatkan nilai gateway multi-model: fallback, kawalan kos dan kurang vendor lock-in.
+- **Untuk bot HAFJET:** automasi yang boleh hantar mesej mesti kekal ada approval, terutama untuk mesej pelanggan atau transaksi.
+- **DSH patut masuk senarai R&D, bukan deploy terus.** Buat sandbox dan uji traceability, plugin security serta penggunaan RAM dulu.
+- **Edge AI makin molek.** Projek `needle` tunjuk model kecil sedang naik; boleh jadi relevan untuk kiosk/device, tetapi kena benchmark BM dan hardware sebenar dahulu.
+- **Bezakan permit, demo dan operasi live.** Robotaxi Nevada nampak gah, tetapi kelulusan besar belum tentu bermaksud fleet terus penuh atas jalan.
+
+## 📎 Sumber
+
+1. TechCrunch — Nevada robotaxi permits  
+   https://techcrunch.com/2026/08/20/tesla-uber-and-waymo-all-get-the-ok-to-operate-thousands-of-robotaxis-in-nevada/
+
+2. TechCrunch — ChatGPT Apple Messages plug-in  
+   https://techcrunch.com/2026/08/20/chatgpt-can-now-send-texts-for-you-with-new-apple-messages-plugin/
+
+3. TechCrunch — Stripe/OpenRouter  
+   https://techcrunch.com/2026/08/16/stripe-will-reportedly-acquire-ai-gateway-startup-openrouter-for-7b/
+
+4. Bloomberg — Stripe agreement report  
+   https://www.bloomberg.com/news/articles/2026-08-16/stripe-nears-deal-to-buy-ai-firm-openrouter-for-over-7-billion
+
+5. DeepSeek — Harness developer preview  
+   https://www.deepseek.com/harness/en/
+
+6. TechCrunch homepage — Meta Muse Glimmer coverage  
+   https://techcrunch.com/
+
+7. GitHub Trending weekly  
+   https://github.com/trending?since=weekly
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Laporan Teknologi & AI Harian").

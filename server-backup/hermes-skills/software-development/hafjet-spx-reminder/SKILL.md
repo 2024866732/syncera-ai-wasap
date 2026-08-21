@@ -257,8 +257,10 @@ For 2315 orders at 50/page = 47 pages × 30s = **~23.5 min** order sync + phone 
 
 **Fix 1 — SQL filter in `get_spx_due_orders()`:**
 ```sql
-AND spx_status NOT IN ('Collected', 'Returned', 'Cancelled', 'Collection Failed')
+AND spx_status NOT IN ('Collected', 'Returned', 'Cancelled', 'Collection Failed', 'CollectionFailed')
 ```
+
+**Canonical-alias parity (Aug 2026):** The terminal set in `upsert_spx_order()` and the reminder SQL filter must match exactly. Production can contain both `Collection Failed` and canonical `CollectionFailed`; excluding only the spaced form lets a legacy `CollectionFailed + Pending` row enter the reminder queue. Add a regression fixture containing one `CollectionFailed + Pending` row and one `ReadyForCollection + Pending` row (both valid phones); `get_spx_due_orders()` must return only the active row.
 
 **Fix 2 — Auto-complete in `upsert_spx_order()` (both UPDATE *and* INSERT):**
 
@@ -1106,9 +1108,18 @@ This means after initial sync, `COUNT(*) WHERE recipient_phone != ''` can be HIG
 
 **Prevention:** `bulk_map_phones()` always overwrites existing phone values — it uses `if cur["recipient_phone"] != phone` to compare and UPDATE. So re-running bulk map with real numbers WILL replace masked values. But always verify by downloading the remote DB and querying raw values — never trust the endpoint response alone.
 
-### ⚠️ Deploy both `db_logger.py` + `webhook_listener.py` when adding DB functions (Jul 2026)
+### ⚠️ Deploy compatible `db_logger.py` + `webhook_listener.py` source pairs (critical)
 
-**Pitfall:** When adding a new endpoint that calls a new function in `db_logger.py` (e.g., `bulk_map_phones()`), deploying ONLY `webhook_listener.py` will make the endpoint return success (it can import the old `db_logger` just fine) but the new function code doesn't exist on the remote — the endpoint silently uses the OLD behavior, returns success, but the DB is never updated.
+**Restart-only import trap:** A running Gunicorn worker may retain an earlier imported `db_logger` module, masking an on-disk mismatch until the next stop/start. If `webhook_listener.py` imports helpers absent from deployed `db_logger.py` (e.g. `get_spx_auto_sync_settings`), Gunicorn fails to boot with `ImportError` and health becomes `503`.
+
+**Preflight for every DB-layer VFS update:**
+1. Fresh-read **both** live `webhook_listener.py` and `db_logger.py` from Kudu VFS immediately before editing.
+2. Compare every `from db_logger import (...)` name in the live listener to definitions in the candidate `db_logger.py`; all imports must be present.
+3. Diff the candidate against fresh VFS source. If unrelated lines differ, do not upload it; rebase only the intended delta onto fresh live source.
+4. Upload verified file(s), read them back, then perform approved stop/start and the six-probe health gate.
+5. On startup failure, inspect the newest `StartupLogs/*_failure.log` before any second restart. Restore a verified compatible source pair, not a stale local/worktree copy.
+
+**New DB helpers:** When an endpoint imports a new `db_logger.py` helper (e.g. `bulk_map_phones()`), deploy the compatible `db_logger.py` alongside its caller in `webhook_listener.py`. Deploying only the caller can either leave old behavior running before restart or crash at the next restart.
 
 **Symptom:** `POST /api/spx/phones/bulk` returns `{"mapped":2, "not_found":0}` but querying the remote DB shows unchanged masked values.
 

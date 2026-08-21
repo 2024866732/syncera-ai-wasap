@@ -374,28 +374,92 @@ window.__spx_poc_push_hafjet = pushHafjet;
 
 **Response:** `{updated, skipped, errors, total, details: [{tracking, reason}]}`
 
-## v5.0 — Fire-and-Forget 🔥 (CURRENT)
+## v5.1.1+ — Secure Page-Console Autopilot (CURRENT)
 
-**Zero manual steps.** Buka SPX page → auto-scrape → auto-push → repeat setiap 15 minit.
+Use this pattern for the Tampermonkey SPX autopilot. **Never embed, deliver, log, or commit API keys.**
 
-Deployed file: `~/.hermes/whatsapp-bot/spx_autopilot_v1_rollout_safe.user.js`
-Delivery: copy to `~/.hermes/cache/documents/spx_autopilot_v5_fire_and_forget.txt` → `MEDIA:`
+### Sandbox-safe metadata and exports
 
-### CONFIG.AUTOPILOT Block (v5.0)
+With `@grant GM_*`, Tampermonkey runs a sandbox. Page DevTools cannot call `window.__spx_*` directly. Include the live SPX match and `unsafeWindow`:
+
 ```javascript
+// @match        https://sp.spx.shopee.com.my/*
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_xmlhttpRequest
+// @grant        unsafeWindow
+// @connect       hafjet-whatsapp-bot.azurewebsites.net
+```
+
+```javascript
+const PAGE = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+PAGE.__spx_poc_results = [];
+PAGE.__spx_set_hafjet_key = setHafjetApiKey;
+PAGE.__spx_poc_run = runPoC;
+PAGE.__spx_poc_push_hafjet = pushHafjet;
+```
+
+Use `PAGE.__spx_poc_results` throughout the script. Store the key only via `GM_setValue('hafjet_spx_api_key', key)` and read it via `GM_getValue`; the console setter is `__spx_set_hafjet_key('...')`.
+
+### Push and backend contract
+
+- Use `GM_xmlhttpRequest`, not browser `fetch` + `AbortController`.
+- Set a bounded `PUSH_TIMEOUT_MS: 45000` and report explicit `push_timeout_after_<ms>ms`, `network_error`, `http_<status>`, or `unauthorized` results.
+- `POST /api/spx/bulk-map-phones` expects the direct JSON array `[{tracking, phone}]`; `{phones:[...]}` is an empty payload under the deployed schema.
+- Before a rotation rollout, confirm live: SPX-origin CORS preflight `200`; unauthenticated empty POST `401`; authenticated empty-array POST fast `200`.
+- Add `/api/spx/bulk-map-phones` to the explicit protected write prefixes; do not assume another SPX prefix protects it.
+
+### Session and current eye controls
+
+- Default pickup test filter: `Ready For Collection`.
+- Wait up to 15 seconds for table/header/data rows before a cycle; defer if not ready. Do not stop just because generic page text contains “Login”.
+- For `svg.svg-icon.show-icon`, probe the raw SVG, normalized target, and pointer/clickable ancestors with native click, `PointerEvent` down/up/click, mouse sequence, double-click, and focus+Enter.
+- **A dispatched event is only an attempt.** Re-read the phone cell after each attempt and record/push only after it is unmasked and valid.
+- If no method unmasks a value, report possible browser-trusted event enforcement (`isTrusted` cannot be forged in JavaScript) and collect DOM/ancestor diagnostics; do not claim reveal success.
+
+### User delivery
+
+Deliver userscripts as `.txt` Telegram attachments with a short guide: disable older script, import, set the key locally, then run `__spx_poc_run({ limit: 5, status: 'Ready For Collection', dedupe: false })` and `__spx_poc_push_hafjet()`. Keep Telegram replies to three short lines or fewer.
+
+## v5.2 — Page-context reveal + secure push (CURRENT when v5.0 clicks are proven)
+
+**Use when SPX eye reveal works under `@grant none` but fails under GM sandbox grants.** Keep all DOM discovery, eye clicks, results, and console exports in page context. Do not use `unsafeWindow` or GM grants for this variant.
+
+### Required metadata and configuration
+```javascript
+// @match        https://sp.spx.shopee.com.my/*
+// @grant        none
+
 const AUTOPILOT = {
-    ENABLED: true,                        // auto-start on page load 🔥
-    INTERVAL_MINUTES: 15,                 // extraction interval
-    STATUS_FILTER: '',                    // ALL statuses (ReadyForCollection + Return_Outbound)
+    ENABLED: true,
+    INTERVAL_MINUTES: 15,
+    STATUS_FILTER: '',
     DEDUPE: true,
-    BATCH_LIMIT: 10,                      // scrape 10 orders per cycle
+    BATCH_LIMIT: 10,
     BACKEND_URL: 'https://hafjet-whatsapp-bot.azurewebsites.net/api/spx/bulk-map-phones',
-    API_KEY: 'MX86M7cpU6LOyEn5NN_fbSnnxoQ53PeNLcAlXfBCHbg',
+    API_KEY: '', // Never hard-code; retained only for compatibility.
     RETRY_MAX: 3,
-    PUSH_TIMEOUT_MS: 30000,               // 30s timeout
-    INITIAL_DELAY_MS: 2000,               // 2s delay (biar page render)
+    PUSH_TIMEOUT_MS: 45000,
 };
 ```
+
+### Key handling and push contract
+- Store the rotated key under a named `localStorage` key via `__spx_set_hafjet_key(value)`; never embed or deliver it in source/chat.
+- The page-context `fetch` sends `X-API-Key` and the **direct JSON array** `[{tracking, phone}]`. Do not wrap it in `{phones: ...}` because the current backend treats that object as an empty list.
+- Keep a bounded 45-second `AbortController`, but map timeout deterministically to `push_timeout_after_45000ms`; never report only an opaque abort message.
+- Other outcomes should be explicit: `missing_api_key`, `unauthorized`, `http_<status>`, or `network_error`.
+
+### Reveal safety
+- Preserve the known-good v5.0 DOM/click pipeline unchanged when it is proven on the live portal. Synthetic pointer/click additions are not a replacement for a page-context pipeline that SPX accepts.
+- Only mark a click successful after re-reading the phone cell and confirming the value is non-masked and passes phone validation.
+- With `@grant none`, export directly through `window.__spx_*`.
+
+### Deployment/test sequence
+1. Disable all older duplicate SPX scripts before import.
+2. Import the `.user.js` page-context variant and reload the live self-collection page.
+3. Set the key locally through `__spx_set_hafjet_key('...')`.
+4. Run a small manual scrape/reveal before enabling autopilot; push only after at least one revealed real phone is present.
+5. Confirm browser-console response has `total > 0`; `updated > 0` additionally requires a valid existing tracking record whose mapping can be updated.
 
 ### v5.0 Changes from v4.0
 - `ENABLED: true` — auto-start on page load (TAK perlu taip command)
