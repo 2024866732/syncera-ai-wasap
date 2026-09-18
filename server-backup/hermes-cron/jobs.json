@@ -2,33 +2,37 @@
   "jobs": [
     {
       "id": "ad7baa160933",
-      "name": "Laporan Teknologi & AI Harian",
-      "prompt": "You are an autonomous AI assistant for Tuan Hafizi of HAFJET. Execute this task fully autonomously - never ask questions or wait for input. All web searches and browsing must use your own web tools (web_search, web_extract, etc.).\n\nTASK: Find the top technology and open-source AI news from the past week, create a concise summary report, and deliver it directly to the user.\n\nSTEPS:\n1. Run web_search with query \"top technology news this week 2026\" limit=10\n2. Run web_search with query \"open source AI news this week 2026\" limit=10\n3. Run web_search with query \"trending GitHub repositories AI machine learning June 2026\" limit=5\n4. For the most interesting results, use web_extract to get details from 3-5 URLs\n5. Compose a comprehensive but concise report in casual Malay with some Kelantan dialect mixed in, incorporating terms like \"sohor\", \"goni\", \"pacak megah\", \"bersenggoti\" where it feels natural\n6. Structure the report with clear sections:\n   - \ud83d\udd25 Berita Teknologi Paling Panas\n   - \ud83e\udd16 Dunia Open-Source AI Minggu Ni\n   - \u2b50 Projek GitHub Naik Bukit\n   - \ud83d\udccc Apa Kito Patut Tahu (key takeaways)\n7. Include source links at the end\n8. Keep it scannable with bold headers, bullet points, and short paragraphs\n9. This output will be delivered directly to the user's Telegram chat\n\nIMPORTANT: Be autonomous. Use your own web tools for all research. Do not ask clarifying questions. Produce a polished, informative report.",
-      "skills": [],
-      "skill": null,
-      "model": null,
-      "provider": null,
+      "name": "Berita AI Harian (Pagi)",
+      "prompt": "Tuan Hafizi mahu ringkasan berita AI TERKINI dihantar ke Telegram setiap pagi (waktu Malaysia). Jalankan tugasan ini sepenuhnya autonomi — jangan tanya soalan, jangan tunggu input. Output akhir anda ADALAH mesej yang dihantar (jangan guna send_message).\n\nLANGKAH WAJIB:\n\n1. skill_view(name='tech-news-digest') dan ikut workflow + pitfall di dalamnya.\n\n2. Ground tarikh dulu (JANGAN agak dari ingatan):\n   TZ=Asia/Kuala_Lumpur date '+%Y-%m-%d %H:%M %Z'\n   Window liputan = 24-48 jam terakhir sahaja.\n\n3. Jalankan SEKURANG-KURANGNYA 4 web_search secara selari dalam satu round:\n   - \"AI news today <bulan> <hari> <tahun>\"\n   - \"artificial intelligence announcement this week <bulan> <tahun>\"\n   - \"open source AI model release <bulan> <tahun>\"\n   - \"trending AI GitHub repositories <bulan> <tahun>\"\n\n4. LARANGAN KERAS — JANGAN guna web_extract walaupun sekali. Backend ddgs pada host ini memang rosak untuk extraction (gagal 100%). Untuk butiran penuh guna:\n   (a) deep-search: 4-6 web_search bertarget pada tajuk berita (snippet + tarikh), dan\n   (b) curl + script tempatan:\n       curl -sL -A \"Mozilla/5.0\" -o /tmp/tc-home.html \"https://techcrunch.com/\"\n       python3 /home/hafizi145/.hermes/skills/research/tech-news-digest/scripts/html-extract.py /tmp/tc-home.html\n   Guna hanya URL yang datang dari hasil carian atau homepage — JANGAN reka slug/path URL, JANGAN reka nama repo atau bilangan star.\n\n5. Fokus AI dahulu: model baru & benchmark, agent/agentic framework, open-weight release, AI infra/GPU/data center, polisi & regulasi AI, AI dalam bisnes/funding. Teknologi umum lain hanya kalau berkait AI.\n\n6. Format laporan — BM casual + dialek Kelantan sedikit (sohor, goni, mung, kito, pacak megah) tapi jangan dipaksa. Scannable, bullet, ringkas (max ~450 patah perkataan):\n\n# 🤖 Berita AI — <tarikh MYT>\n## 🔥 Paling Panas\n(3-5 item, mesti ada tarikh terbit dalam window 24-48 jam)\n## 🤖 Open-Source & Model Baru\n(3-4 item)\n## ⭐ GitHub Naik Bukit\n\n| Projek | Apa Dia | ⭐ |\n|---|---|---|\n\n## 📌 Apa Kito Patut Tahu\n(2-4 bullet — kesan praktikal untuk HAFJET: OpenRouter/gateway, GPU lokal RTX, model Qwen/DeepSeek, agent Hermes)\n## 📎 Sumber\n(senarai bernombor + URL)\n\n7. Kalau benar-benar TIADA berita AI baharu (semua item sudah dilaporkan dalam run sebelum ini), balas TEPAT: [SILENT]\n\n8. Jangan guna execute_code (disekat dalam cron). Jangan guna python3 -c atau python3 << heredoc. Buat fail .py guna write_file kalau perlu.",
+      "skills": [
+        "tech-news-digest"
+      ],
+      "skill": "tech-news-digest",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "commandcode",
       "base_url": null,
       "script": null,
       "no_agent": false,
-      "context_from": null,
+      "context_from": [
+        "self"
+      ],
       "schedule": {
         "kind": "cron",
-        "expr": "0 7 * * *",
-        "display": "0 7 * * *"
+        "expr": "0 0 * * *",
+        "display": "0 0 * * *"
       },
-      "schedule_display": "0 7 * * *",
+      "schedule_display": "0 0 * * *",
       "repeat": {
         "times": null,
-        "completed": 66
+        "completed": 94
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-08-22T07:00:00+00:00",
-      "last_run_at": "2026-08-21T07:03:39.645448+00:00",
+      "next_run_at": "2026-09-19T00:00:00+00:00",
+      "last_run_at": "2026-09-18T00:03:29.179753+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -41,16 +45,19 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "provider_snapshot": null,
+      "model_snapshot": null
     },
     {
       "id": "9408be4cd593",
       "name": "Daily Sales Report",
-      "prompt": "Run the daily Loyverse sales report and send the summary to Hafizi on Telegram.\n\nSteps:\n1. Get the LOYVERSE_ACCESS_TOKEN from ~/.hermes/.env (extract it with: grep LOYVERSE_ACCESS_TOKEN ~/.hermes/.env | head -1 | cut -d= -f2-)\n2. Run the sales report script: LOYVERSE_ACCESS_TOKEN=<token> python3 ~/.hermes/skills/fetch_sales.py\n3. The script outputs a formatted summary to stdout and saves a CSV to ~/.hermes/reports/\n4. Send the summary output directly to Hafizi in this Telegram chat.\n\nImportant: The script handles everything \u2014 fetching from Loyverse API, pagination, CSV saving, and formatting. Just run it and deliver the output.",
+      "prompt": "Run the daily Loyverse sales report and send the summary to Hafizi on Telegram.\n\nSteps:\n1. Get the LOYVERSE_ACCESS_TOKEN from ~/.hermes/.env (extract it with: grep LOYVERSE_ACCESS_TOKEN ~/.hermes/.env | head -1 | cut -d= -f2-)\n2. Run the sales report script: LOYVERSE_ACCESS_TOKEN=<token> python3 ~/.hermes/skills/fetch_sales.py\n3. The script outputs a formatted summary to stdout and saves a CSV to ~/.hermes/reports/\n4. Send the summary output directly to Hafizi in this Telegram chat.\n\nImportant: The script handles everything — fetching from Loyverse API, pagination, CSV saving, and formatting. Just run it and deliver the output.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "commandcode",
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -63,15 +70,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 62
+        "completed": 90
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-08-22T13:00:00+00:00",
-      "last_run_at": "2026-08-21T13:01:40.517247+00:00",
+      "next_run_at": "2026-09-19T13:00:00+00:00",
+      "last_run_at": "2026-09-18T13:02:40.411911+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -84,16 +91,19 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "provider_snapshot": null,
+      "model_snapshot": null
     },
     {
       "id": "315e1bdcd7fc",
       "name": "HAFJET Server Daily Backup",
-      "prompt": "Run the server backup script to backup all Hermes config, skills, memories, and cron jobs to GitHub. Execute: bash /home/hafizi145/syncera-ai-wasap/scripts/backup-server.sh\n\nReport the result briefly \u2014 whether backup succeeded or if there were no changes.",
+      "prompt": "Run the server backup script to backup all Hermes config, skills, memories, and cron jobs to GitHub. Execute: bash /home/hafizi145/syncera-ai-wasap/scripts/backup-server.sh\n\nReport the result briefly — whether backup succeeded or if there were no changes.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "commandcode",
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -106,17 +116,17 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 57
+        "completed": 85
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-08-22T14:00:00+00:00",
-      "last_run_at": "2026-08-20T14:01:40.709134+00:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-09-19T14:00:00+00:00",
+      "last_run_at": "2026-09-17T14:00:18.639844+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 400: Model \"deepseek-v4-flash\" is not supported on this endpoint.",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -127,16 +137,22 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": {
+        "at": "2026-09-18T14:00:51.855472+00:00",
+        "by": "HAFJET-Hermes-Server:1814522:4db4dd75ae0147b48ad20dc74e6e75cb"
+      },
+      "failure_streak": 26,
+      "provider_snapshot": null,
+      "model_snapshot": null
     },
     {
       "id": "06496e813cd5",
       "name": "azure-credit-daily-check",
-      "prompt": "Run the Azure credit check script and report if costs are spiking.\n\nSteps:\n1. Run: bash /home/hafizi145/.hermes/scripts/azure_credit_check.sh\n2. If the cost exceeds $50 USD this month, send a warning: \"\u26a0\ufe0f Azure for Students credit alert: $X spent this month. Consider reviewing usage.\"\n3. If cost is $0-$50, just log silently \u2014 no need to bother the user.\n4. If the script fails (e.g., Azure CLI not available), report the error.\n\nOutput format: Only send a message to the user if there's a warning or error. Otherwise stay silent.",
+      "prompt": "Run the Azure credit check script and report if costs are spiking.\n\nSteps:\n1. Run: bash /home/hafizi145/.hermes/scripts/azure_credit_check.sh\n2. If the cost exceeds $50 USD this month, send a warning: \"⚠️ Azure for Students credit alert: $X spent this month. Consider reviewing usage.\"\n3. If cost is $0-$50, just log silently — no need to bother the user.\n4. If the script fails (e.g., Azure CLI not available), report the error.\n\nOutput format: Only send a message to the user if there's a warning or error. Otherwise stay silent.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "commandcode",
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -149,15 +165,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 56
+        "completed": 84
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-08-22T09:00:00+00:00",
-      "last_run_at": "2026-08-21T09:01:03.525961+00:00",
+      "next_run_at": "2026-09-19T09:00:00+00:00",
+      "last_run_at": "2026-09-18T09:01:39.246593+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -170,7 +186,10 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "provider_snapshot": null,
+      "model_snapshot": null
     },
     {
       "id": "9a0b34159a84",
@@ -178,8 +197,8 @@
       "prompt": "Run once, report today's date and a brief status check. No actions needed.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "commandcode",
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -192,15 +211,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 50
+        "completed": 79
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-08-22T09:00:00+00:00",
-      "last_run_at": "2026-08-21T09:00:58.976364+00:00",
+      "next_run_at": "2026-09-19T09:00:00+00:00",
+      "last_run_at": "2026-09-18T09:02:26.404435+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -213,16 +232,19 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "provider_snapshot": null,
+      "model_snapshot": null
     },
     {
       "id": "ebdae9cc10ab",
       "name": "hafjet-pickup-reminder",
-      "prompt": "Run the HAFJET pickup reminder script. Execute: python3 /home/hafizi145/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_pickup_reminder.py\n\nSteps:\n1. Load env vars from ~/.hermes/.env (GOOGLE_SHEET_ID, GOOGLE_SHEETS_CREDENTIALS, PICKUP_REMINDER_TAB, WHATSAPP_CLOUD_PHONE_ID, WHATSAPP_CLOUD_ACCESS_TOKEN, OWNER_PHONE).\n2. The script reads the Google Sheet repair tab, filters STATUS_REPAIR == 'SIAP DIAMBIL', and sends a free-form WhatsApp reminder to each CUSTOMER (NO_PHONE column) \u2014 NOT the owner.\n3. If WhatsApp returns error 470 (24h window), it logs and skips (owner will handle template later).\n4. Sends an optional owner summary of pending count to OWNER_PHONE.\n5. Report: how many sent, how many failed, any 470 blocks. Keep it concise.",
+      "prompt": "Run the HAFJET pickup reminder script. Execute: python3 /home/hafizi145/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_pickup_reminder.py\n\nSteps:\n1. Load env vars from ~/.hermes/.env (GOOGLE_SHEET_ID, GOOGLE_SHEETS_CREDENTIALS, PICKUP_REMINDER_TAB, WHATSAPP_CLOUD_PHONE_ID, WHATSAPP_CLOUD_ACCESS_TOKEN, OWNER_PHONE).\n2. The script reads the Google Sheet repair tab, filters STATUS_REPAIR == 'SIAP DIAMBIL', and sends a free-form WhatsApp reminder to each CUSTOMER (NO_PHONE column) — NOT the owner.\n3. If WhatsApp returns error 470 (24h window), it logs and skips (owner will handle template later).\n4. Sends an optional owner summary of pending count to OWNER_PHONE.\n5. Report: how many sent, how many failed, any 470 blocks. Keep it concise.",
       "skills": [],
       "skill": null,
-      "model": "deepseek-v4-flash-free",
-      "provider": "opencode-zen",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "commandcode",
       "provider_snapshot": null,
       "model_snapshot": null,
       "base_url": null,
@@ -237,17 +259,17 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 42
+        "completed": 70
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-08-22T03:00:00+00:00",
-      "last_run_at": "2026-08-21T03:01:03.490975+00:00",
+      "next_run_at": "2026-09-19T03:00:00+00:00",
+      "last_run_at": "2026-09-18T03:00:45.723836+00:00",
       "last_status": "error",
-      "last_error": "RuntimeError: HTTP 401: Wrong API Key",
+      "last_error": "RuntimeError: HTTP 400: Error from provider (Console): Upstream request failed: Model is unavailable.",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -259,7 +281,8 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 26
     },
     {
       "id": "db55396890ff",
@@ -283,15 +306,15 @@
       "schedule_display": "0 15 * * *",
       "repeat": {
         "times": null,
-        "completed": 38
+        "completed": 66
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-14T17:05:27.034793+00:00",
-      "next_run_at": "2026-08-21T15:00:00+00:00",
-      "last_run_at": "2026-08-20T15:01:23.861711+00:00",
+      "next_run_at": "2026-09-18T15:00:00+00:00",
+      "last_run_at": "2026-09-17T15:00:43.251441+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -299,18 +322,19 @@
       "origin": null,
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0
     },
     {
       "id": "41a5046bdc08",
       "name": "HAFJET Monthly Gaji-Profit Tracker",
-      "prompt": "Run the HAFJET monthly Gaji vs Profit tracker update.\n\nSteps:\n1. Get Loyverse token: read /tmp/.loyverse_token (if missing, run: grep LOYVERSE_ACCESS_TOKEN ~/.hermes/.env | head -1 | cut -d= -f2- > /tmp/.loyverse_token)\n2. Run the tracker script for the PREVIOUS month (not current). Compute it: if today is day 1, the target month is last month. Example: on Aug 1, run for July. Use Python in the script to derive last month automatically if possible, OR pass explicit args: python3 /tmp/gaji_profit_calc.py YYYY MM where YYYY MM = last month.\n3. The script auto-fetches Loyverse sales for that month, subtracts fixed costs (Sewa RM400 + BSN RM400 + TNB RM500 = RM1300), computes net profit, baki hidup, and hire-readiness status, then updates ~/.hermes/reports/gaji_profit_tracker.csv automatically.\n4. After the script runs, read the final lines of output and report a concise Telegram summary to Tuan Hafizi:\n   - Bulan laporan\n   - Jualan total\n   - Net Profit\n   - Kos Tetap (RM1,300)\n   - Baki Hidup (after costs, before salary)\n   - Status hire-readiness (READY / PART-TIME / BELUM + gap amount)\n5. Keep the message short and scannable (bullet points). Use Malay. Note: API only returns 31 days history, so the run on day 1 captures the full previous month correctly.\n\nImportant: The script handles fetching, CSV update, and calculation. Just run it for the correct previous month and deliver the summary. If the token file is missing AND grep fails, report the blocker honestly \u2014 do not invent numbers.",
+      "prompt": "Run the HAFJET monthly Gaji vs Profit tracker update.\n\nSteps:\n1. Get Loyverse token: read /tmp/.loyverse_token (if missing, run: grep LOYVERSE_ACCESS_TOKEN ~/.hermes/.env | head -1 | cut -d= -f2- > /tmp/.loyverse_token)\n2. Run the tracker script for the PREVIOUS month (not current). Compute it: if today is day 1, the target month is last month. Example: on Aug 1, run for July. Use Python in the script to derive last month automatically if possible, OR pass explicit args: python3 /tmp/gaji_profit_calc.py YYYY MM where YYYY MM = last month.\n3. The script auto-fetches Loyverse sales for that month, subtracts fixed costs (Sewa RM400 + BSN RM400 + TNB RM500 = RM1300), computes net profit, baki hidup, and hire-readiness status, then updates ~/.hermes/reports/gaji_profit_tracker.csv automatically.\n4. After the script runs, read the final lines of output and report a concise Telegram summary to Tuan Hafizi:\n   - Bulan laporan\n   - Jualan total\n   - Net Profit\n   - Kos Tetap (RM1,300)\n   - Baki Hidup (after costs, before salary)\n   - Status hire-readiness (READY / PART-TIME / BELUM + gap amount)\n5. Keep the message short and scannable (bullet points). Use Malay. Note: API only returns 31 days history, so the run on day 1 captures the full previous month correctly.\n\nImportant: The script handles fetching, CSV update, and calculation. Just run it for the correct previous month and deliver the summary. If the token file is missing AND grep fails, report the blocker honestly — do not invent numbers.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
-      "provider_snapshot": "nous",
-      "model_snapshot": "tencent/hy3:free",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "commandcode",
+      "provider_snapshot": null,
+      "model_snapshot": null,
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -323,17 +347,17 @@
       "schedule_display": "0 14 1 * *",
       "repeat": {
         "times": null,
-        "completed": 2
+        "completed": 3
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-16T07:43:12.162195+00:00",
-      "next_run_at": "2026-09-01T14:00:00+00:00",
-      "last_run_at": "2026-08-01T14:00:37.239260+00:00",
+      "next_run_at": "2026-10-01T14:00:00+00:00",
+      "last_run_at": "2026-09-01T14:00:50.253287+00:00",
       "last_status": "error",
-      "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'nous' -> 'xai-oauth'; model 'tencent/hy3:free' -> 'grok-4.5'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=41a5046bdc08 provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
+      "last_error": "RuntimeError: [drift_skip] Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'nous' -> 'commandcode'; model 'tencent/hy3:free' -> 'deepseek-v4-flash'), and this job is unpinned. No inference call was made. To run on the new config, on the host running Hermes pin it explicitly: `hermes cron edit 41a5046bdc08 --provider <provider> --model <model>` (or pin the original values to keep them). This alert is sent once; the job stays skipped until the config is pinned or restored. See #44585.",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -345,7 +369,9 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "drift_alerted": true,
+      "failure_streak": 1
     },
     {
       "id": "938acee3db9b",
@@ -396,13 +422,13 @@
     {
       "id": "7b74334921e6",
       "name": "hafjet-low-stock-alert",
-      "prompt": "Run the HAFJET low stock alert script. Execute: python3 /home/hafizi145/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_low_stock_alert.py\n\nSteps:\n1. Load env vars from ~/.hermes/.env (LOYVERSE_ACCESS_TOKEN, WHATSAPP_CLOUD_PHONE_ID, WHATSAPP_CLOUD_ACCESS_TOKEN, OWNER_PHONE, LOW_STOCK_THRESHOLD).\n2. Paginate all Loyverse inventory levels (/v1.0/inventory) and items (/v1.0/items) to get variant-name mappings.\n3. Filter items where in_stock <= LOW_STOCK_THRESHOLD (default 5).\n4. Group by store (HAFJET Raub, HAFJET LORI).\n5. Send a WhatsApp alert to Owner with the list of low stock items, grouped by store.\n6. If no low stock items found, print \"all healthy\" \u2014 no alert sent. Keep it concise.",
+      "prompt": "Run the HAFJET low stock alert script. Execute: python3 /home/hafizi145/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_low_stock_alert.py\n\nSteps:\n1. Load env vars from ~/.hermes/.env (LOYVERSE_ACCESS_TOKEN, WHATSAPP_CLOUD_PHONE_ID, WHATSAPP_CLOUD_ACCESS_TOKEN, OWNER_PHONE, LOW_STOCK_THRESHOLD).\n2. Paginate all Loyverse inventory levels (/v1.0/inventory) and items (/v1.0/items) to get variant-name mappings.\n3. Filter items where in_stock <= LOW_STOCK_THRESHOLD (default 5).\n4. Group by store (HAFJET Raub, HAFJET LORI).\n5. Send a WhatsApp alert to Owner with the list of low stock items, grouped by store.\n6. If no low stock items found, print \"all healthy\" — no alert sent. Keep it concise.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
-      "provider_snapshot": "openai-codex",
-      "model_snapshot": "gpt-5.6-terra",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "commandcode",
+      "provider_snapshot": null,
+      "model_snapshot": null,
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -415,17 +441,17 @@
       "schedule_display": "0 0 * * *",
       "repeat": {
         "times": null,
-        "completed": 25
+        "completed": 53
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-27T12:46:17.963804+00:00",
-      "next_run_at": "2026-08-22T00:00:00+00:00",
-      "last_run_at": "2026-08-21T00:07:29.716684+00:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-09-19T00:00:00+00:00",
+      "last_run_at": "2026-09-18T00:00:26.945639+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: [drift_skip:silent] Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'openai-codex' -> 'commandcode'; model 'gpt-5.6-terra' -> 'deepseek-v4-flash'), and this job is unpinned. No inference call was made. To run on the new config, on the host running Hermes pin it explicitly: `hermes cron edit 7b74334921e6 --provider <provider> --model <model>` (or pin the original values to keep them). This alert is sent once; the job stays skipped until the config is pinned or restored. See #44585.",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -437,7 +463,9 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "drift_alerted": true,
+      "failure_streak": 26
     },
     {
       "id": "a38c88eb8f31",
@@ -461,17 +489,17 @@
       "schedule_display": "every 30m",
       "repeat": {
         "times": null,
-        "completed": 1121
+        "completed": 2424
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-28T12:38:06.628044+00:00",
-      "next_run_at": "2026-08-21T14:16:56.222452+00:00",
-      "last_run_at": "2026-08-21T13:46:56.222452+00:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-09-18T14:25:59.769533+00:00",
+      "last_run_at": "2026-09-18T13:55:59.769533+00:00",
+      "last_status": "error",
+      "last_error": "Script exited with code 255\nstderr:\nssh: connect to host 100.121.94.41 port 22: Connection timed out",
       "last_delivery_error": null,
       "deliver": "local",
       "origin": {
@@ -483,18 +511,19 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 339
     },
     {
       "id": "51bbc34f429d",
       "name": "peringatan-bayaran-bsn",
-      "prompt": "Hantar peringatan ringkas dalam Bahasa Melayu kepada Tuan Hafizi: \u201cPeringatan: Bayaran BSN RM359 perlu dibayar hari ini (28 haribulan). Baki rekod asal: RM17,100. Ini ialah jadual pinjaman sehingga bayaran akhir pada November 2028.\u201d",
+      "prompt": "Hantar peringatan ringkas dalam Bahasa Melayu kepada Tuan Hafizi: “Peringatan: Bayaran BSN RM359 perlu dibayar hari ini (28 haribulan). Baki rekod asal: RM17,100. Ini ialah jadual pinjaman sehingga bayaran akhir pada November 2028.”",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
-      "provider_snapshot": "openai-codex",
-      "model_snapshot": "gpt-5.6-terra",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "commandcode",
+      "provider_snapshot": null,
+      "model_snapshot": null,
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -507,17 +536,17 @@
       "schedule_display": "0 4 28 * *",
       "repeat": {
         "times": 28,
-        "completed": 0
+        "completed": 1
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-29T09:30:59.271614+00:00",
-      "next_run_at": "2026-08-28T04:00:00+00:00",
-      "last_run_at": null,
-      "last_status": null,
-      "last_error": null,
+      "next_run_at": "2026-09-28T04:00:00+00:00",
+      "last_run_at": "2026-08-28T04:00:10.249472+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: [drift_skip] Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'openai-codex' -> 'commandcode'; model 'gpt-5.6-terra' -> 'deepseek-v4-flash'), and this job is unpinned. No inference call was made. To run on the new config, on the host running Hermes pin it explicitly: `hermes cron edit 51bbc34f429d --provider <provider> --model <model>` (or pin the original values to keep them). This alert is sent once; the job stays skipped until the config is pinned or restored. See #44585.",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -528,12 +557,15 @@
         "user_id": "1485374469"
       },
       "enabled_toolsets": null,
-      "workdir": null
+      "workdir": null,
+      "fire_claim": null,
+      "drift_alerted": true,
+      "failure_streak": 1
     },
     {
       "id": "3dd49dbedce9",
       "name": "Fasa1 CCTV Watchdog (pasif)",
-      "prompt": "Watchdog Fasa 1 CCTV hybrid offload \u2014 senyap bila OK, alert bila anomaly.",
+      "prompt": "Watchdog Fasa 1 CCTV hybrid offload — senyap bila OK, alert bila anomaly.",
       "skills": [],
       "skill": null,
       "model": null,
@@ -579,13 +611,13 @@
     {
       "id": "bb8a6cae36e8",
       "name": "HAFJET Monthly P&L Report (v2)",
-      "prompt": "Generate and deliver the HAFJET monthly Profit & Loss report using pnl_generator_v2.py.\n\nSteps:\n1. Run: python3 /home/hafizi145/.hermes/skills/pnl_generator_v2.py (auto-detects the PREVIOUS month)\n2. The script fetches Loyverse revenue, Supabase expenses, and prints a complete P&L with hire-readiness verdict.\n3. It also updates pnl_tracker_v2.csv and pnl_dashboard_v2.html.\n4. Read the console output and deliver a concise Telegram summary to Tuan Hafizi:\n   - Period (Month Year)\n   - Revenue, COGS, Gross Profit, Gross Margin %\n   - Expenses (variable + fixed), Net Profit, Net Margin %\n   - Hire Readiness: READY or NOT READY + gap amount + months estimate\n   - Strategic insight (Phone+Repair revenue vs Bill/Reload ratio)\n5. Keep the summary scannable with bullet points in Bahasa Melayu.\n\nThe script handles everything. If Supabase credentials are missing, it will fall back to hardcoded fixed costs (RM 1,300). If Loyverse data is truncated by the 31-day limit, warn the user. Report blockers honestly \u2014 do not invent numbers.",
+      "prompt": "Generate and deliver the HAFJET monthly Profit & Loss report using pnl_generator_v2.py.\n\nSteps:\n1. Run: python3 /home/hafizi145/.hermes/skills/pnl_generator_v2.py (auto-detects the PREVIOUS month)\n2. The script fetches Loyverse revenue, Supabase expenses, and prints a complete P&L with hire-readiness verdict.\n3. It also updates pnl_tracker_v2.csv and pnl_dashboard_v2.html.\n4. Read the console output and deliver a concise Telegram summary to Tuan Hafizi:\n   - Period (Month Year)\n   - Revenue, COGS, Gross Profit, Gross Margin %\n   - Expenses (variable + fixed), Net Profit, Net Margin %\n   - Hire Readiness: READY or NOT READY + gap amount + months estimate\n   - Strategic insight (Phone+Repair revenue vs Bill/Reload ratio)\n5. Keep the summary scannable with bullet points in Bahasa Melayu.\n\nThe script handles everything. If Supabase credentials are missing, it will fall back to hardcoded fixed costs (RM 1,300). If Loyverse data is truncated by the 31-day limit, warn the user. Report blockers honestly — do not invent numbers.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
-      "provider_snapshot": "xai-oauth",
-      "model_snapshot": "grok-4.5",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "commandcode",
+      "provider_snapshot": null,
+      "model_snapshot": null,
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -598,17 +630,17 @@
       "schedule_display": "0 14 1 * *",
       "repeat": {
         "times": null,
-        "completed": 0
+        "completed": 1
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-04T11:14:54.991788+00:00",
-      "next_run_at": "2026-09-01T14:00:00+00:00",
-      "last_run_at": null,
-      "last_status": null,
-      "last_error": null,
+      "next_run_at": "2026-10-01T14:00:00+00:00",
+      "last_run_at": "2026-09-01T14:00:50.163593+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: [drift_skip] Skipped to prevent unintended spend: global inference config drifted since this job was created (provider 'xai-oauth' -> 'commandcode'; model 'grok-4.5' -> 'deepseek-v4-flash'), and this job is unpinned. No inference call was made. To run on the new config, on the host running Hermes pin it explicitly: `hermes cron edit bb8a6cae36e8 --provider <provider> --model <model>` (or pin the original values to keep them). This alert is sent once; the job stays skipped until the config is pinned or restored. See #44585.",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -619,8 +651,11 @@
         "user_id": "1485374469"
       },
       "enabled_toolsets": null,
-      "workdir": null
+      "workdir": null,
+      "fire_claim": null,
+      "drift_alerted": true,
+      "failure_streak": 1
     }
   ],
-  "updated_at": "2026-08-21T14:00:49.557783+00:00"
+  "updated_at": "2026-09-18T14:00:51.855735+00:00"
 }

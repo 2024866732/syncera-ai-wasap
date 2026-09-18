@@ -171,5 +171,6 @@ If all smoke tests pass, the deployment is considered successful. Retain the dep
 - See `references/spx-command-pack-conventions.md` for SPX command pack workflow.
 - See `references/deploy-copilot-format.md` for the STEP/ACTION/RESULT report format.
 - See `references/kudu-zip-api-disaster-2026-07-28.md` for the Kudu ZIP root-wipe incident and recovery.
+- See `references/kitchen-production-migration.md` for the HAFJET Kitchen Supabase→Vercel migration run: pooler-vs-direct connectivity, sb_secret_ apikey header, RLS SQL statement-splitting, pre-push secret audit. (Added 2026-08-23)
 - See `references/whatsapp-delivery-24h-window.md` for WhatsApp 24h window / template messages / error 131047. (Added 2026-08-08)
 - See `templates/deploy-checklist.txt` for a printable step-by-step checklist.

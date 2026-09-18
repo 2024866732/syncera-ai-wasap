@@ -1,0 +1,61 @@
+Cronjob Response: Berita AI Harian (Pagi)
+(job_id: ad7baa160933)
+-------------
+
+# 🤖 Berita AI — 17 September 2026
+
+*Window liputan: 15–17 Sep 2026 (48 jam). Disusun oleh Hermes-HAFJET untuk Tuan Hafizi.*
+
+---
+
+## 🔥 Paling Panas
+
+- **OpenAI borak valuasi $1.2 trilion** — FT laporkan 16 Sep: OpenAI sedang runding pusingan swasta sebelum potensi IPO. Reuters turut laporkan perkara sama. Signal modal AI tak sejuk lagi, goni.
+- **Huawei pamer Ascend 960 kat Shanghai** (16–17 Sep) — Wang Tao bentang cip Ascend 960, jualan komersial 2027. Jawapan China pada dominasi Nvidia makin serius.
+- **Nvidia Vera Rubin NVL72 debut MLPerf Inference v6.1** (16 Sep) — sehingga **3.7x throughput** berbanding GB300 NVL72. MLCommons rekod penyertaan, tambah ujian baharu **Agentic Inference**.
+- **Anthropic satukan Claude** (16 Sep) — Cowork + Chat jadi satu Claude, plus **Claude Docs / Slides / Design** beta. Roll out Pro & Max beberapa minggu.
+- **Gemini 3.8 Live + Extended Thinking** (15 Sep) — model dialog suara; **#1 Speech-to-Speech Quality Index (82.6)**, 68.6% agentic task completion. Voice agent production-ready.
+
+## 🤖 Open-Source & Model Baru
+
+- **Union Alpha** (16 Sep) — stealth model atas OpenRouter + OpenCode: **free, 256K context, tool calling, multimodal**. Pembangun tak didedahkan. Cocok untuk ujian coding agent.
+- **Google Home MCP server** (16 Sep, early access US) — Claude/ChatGPT boleh kawal device rumah ikut bahasa manusia. MCP makin jadi standard kawalan.
+- **Koa (Salesforce + Nvidia)** (15 Sep) — model reasoning CRM pertama, post-trained dari **Nemotron 3 Super**. Enterprise pilih model sendiri, bukan lab frontier semata.
+- **Background:** DeepSeek V4.1-Flash (10 Sep, multimodal native) dan Kimi K2.8 Preview (11 Sep) masih rujukan landskap open-weight — bukan berita minggu ni.
+
+## ⭐ GitHub Naik Bukit
+
+| Projek | Apa Dia | ⭐ Minggu |
+|---|---|---|
+| bilawalsidhu/gods-eye-view | Simulator satelit, spatial intelligence atas glob 3D | 14,777 |
+| ayghri/i-have-adhd | Skill halang coding agent kubur jawapan | 13,737 |
+| alibaba/open-code-review | Code review hybrid: pipeline + LLM agent | 8,594 |
+| DietrichGebert/ponytail | Agent fikir macam senior dev malas — kod terbaik = kod tak ditulis | 7,218 |
+| affaan-m/ECC | Harness optimization: skills, memory, security | 5,292 |
+| obra/superpowers | Framework skills + metodologi agentic | 4,023 |
+| TauricResearch/TradingAgents | Framework trading multi-agent LLM | 3,350 |
+| Tencent/WeKnora | Platform knowledge LLM: RAG + agent + wiki | 3,034 |
+
+## 📌 Apa Kito Patut Tahu
+
+- **Union Alpha:** free 256K kat OpenRouter — sesuai jadi fallback murah untuk agent Hermes, tapi stealth = tiada SLA/privasi jelas. **Jangan hantar data sensitif HAFJET**.
+- **MCP makin standard** (Google Home, Codex skills) — laluan logik untuk HAFJET ekspos CCTV/Frigate + Loyverse sebagai MCP tool, satu interface untuk semua agent.
+- **Gemini 3.8 Live** = alternatif cloud untuk voice assistant HAFJET (Whisper + Piper kekal murah/lokal).
+- **Push safety-evaluator + Amodei suruh slowdown** → risiko polisi naik. Kekalkan HITL + watermark pipeline konten n8n macam sekarang.
+- **Koa + one-Claude + $1.2T** → enterprise makin pakai vendor tunggal. Kito kekal multi-provider routing (OpenRouter/LiteLLM) supaya tak terkunci.
+
+## 📎 Sumber
+
+1. OpenAI $1.2T (FT via Gulf News) — https://gulfnews.com/technology/openai-targets-mind-boggling-12-trillion-valuation-in-shock-new-funding-talks-1.500676079
+2. Huawei Ascend 960 (Bloomberg, 16 Sep) — https://www.bloomberg.com/news/articles/2026-09-16/huawei-set-to-unveil-china-s-best-answer-to-nvidia-ai-chip-reign
+3. Nvidia Vera Rubin MLPerf v6.1 (NVIDIA Blog) — https://blogs.nvidia.com/blog/vera-rubin-nvl72-mlperf-inference/
+4. One Claude: Cowork + Chat merge — https://claude.com/blog/cowork-is-now-claude
+5. Safety evaluators embedded (TechCrunch) — https://techcrunch.com/2026/09/16/anthropic-and-openai-want-to-embed-safety-evaluators-will-they-really-be-independent/
+6. Gemini 3.8 Live (Google Blog) — https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-8-live-gemini-3-8-live-extended-thinking/
+7. Union Alpha (OpenRouter) — https://openrouter.ai/stealth/union-alpha
+8. Google Home MCP (TechCrunch) — https://techcrunch.com/2026/09/16/your-ai-agents-can-now-control-your-google-home-devices/
+9. Al Gore on data-center backlash (TechCrunch) — https://techcrunch.com/2026/09/16/al-gore-has-a-surprisingly-calm-take-on-the-ai-data-center-backlash/
+10. Koa CRM reasoning model (Constellation) — https://www.constellationr.com/insights/news/salesforce-launches-koa-crm-reasoning-model-built-nvidias-nemotron
+11. GitHub Trending weekly — https://github.com/trending?since=weekly
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Berita AI Harian (Pagi)").

@@ -17,12 +17,8 @@ WSL2, Azure VPS, hybrid topologies. Driven by Tuan Hafizi's tight fixed-cost dis
 - Reuse existing hardware first:
   - PC-gaming: Ryzen 7 8700F + RTX 4070 12GB + 32GB RAM + 3TB NVMe. Powerful but electricity
     ~RM40+/mo 24/7 → was switched OFF, bot moved to VPS.
-  - PC-office (confirmed Jul 2026): Intel i3, 18GB RAM, 512GB SSD — **Linux partition is only
-    100GB (~400GB unallocated, not yet grown)**; 320GB HDD (NTFS, holds office documents,
-    NEVER format). On-demand boot keeps electricity ~RM5-15/mo. If PC Office needs more space
-    (Docker images, AI models, backups), grow `/` into the unallocated space — disk op, do it
-    when PC is off / carefully; 100GB is enough for Hermes + base tools for now.
-- PC-office beats Azure VPS specs: 18GB RAM vs 1GB, 512GB vs 30GB, plus 320GB HDD.
+  - PC Office (live verified Aug 2026): Fujitsu D581, Intel i3-2100 (2C/4T, 3.10GHz), **16GiB RAM + 8GiB swap**, Intel iGPU. The 477GB SSD is already fully allocated through LVM: `/` = 98GB (73% used) and `/mnt/cctv` = 368GB (**92% used; only 29GB free**). The 298GB HDD is NTFS: 176GB mounted at `/mnt/hafjet-backup` (29% used), with a separate 122GB partition unmounted. NEVER format the NTFS HDD. On-demand boot keeps electricity ~RM5-15/mo.
+- PC Office beats the small Azure VPS for memory and storage, but `/mnt/cctv` is the immediate capacity-risk mount. Audit retention or storage expansion before deploying more recordings/models there; do not assume SSD space is unallocated.
 
 ## Dual-Boot Ubuntu + Windows (CRITICAL pitfalls)
 When installing Ubuntu on the same SSD as Windows:
@@ -495,15 +491,33 @@ oci compute instance launch \
 - The create response includes `connection-string`; use that exact command, adding the recovery key using `-i` to both the outer SSH and the SSH command inside `ProxyCommand`.
 - Treat a serial-console key as short-lived. Deliver it only via an approved secure channel; after normal SSH is restored, delete the OCI console connection and recovery key. Any private key pasted into chat must be rotated.
 
-### Oracle ARM VM Specs (Confirmed Aug 2026)
-| Resource | Value |
-|----------|-------|
+### Oracle ARM VM Specs and revised Free allocation (verified Aug 2026)
+
+**Policy changed:** Oracle's current Always Free A1 allocation is **2 OCPU + 12 GB total**. Treat the older 4 OCPU / 24 GB claim as historical, not the default for new sizing.
+
+| Resource | HAFJET verified post-resize state |
+|----------|-----------------------------------|
 | Shape | VM.Standard.A1.Flex |
-| CPU | 4 cores ARM (Neoverse-N1) |
-| RAM | 24GB |
-| Storage | 45GB boot volume |
-| IP | Public IP assigned at launch |
-| Cost | **SGD 0.00** (Always Free) |
+| CPU | **2 OCPU** (Ampere Altra ARM, 3.0 GHz) |
+| RAM | **12 GB** |
+| Network bandwidth | 2 Gbps |
+| Boot volume | 47 GB, 10 VPUs/GB |
+| Public IP | 149.118.152.50 |
+| Tailscale IP | 100.124.99.52 |
+| Region | ap-kulai-2 (Malaysia) |
+
+**PAYG caveat:** Oracle's public price list says paid tenancies receive 3,000 A1 OCPU-hours and 18,000 A1 GB-hours per month at no charge. A 4 OCPU / 24 GB instance in a 31-day month consumes 2,976 / 17,856 respectively, leaving only 24 OCPU-hours / 144 GB-hours. Do not rely on this narrow PAYG margin to guarantee free operation; use 2 OCPU / 12 GB for the no-charge posture and verify Cost API before claiming cost status.
+
+### Safe A1 resize-to-free workflow (production)
+
+1. **Read-only precheck:** use OCI Cost API and Budget API to confirm actual/forecast spend; inspect current `shape-config`. A budget is notification-only, never a hard spending cap.
+2. **Verify alert delivery:** an ACTIVE alert whose `recipients` field is empty sends no useful email. Configure and re-read a recipient before relying on it.
+3. **Backup first:** OCI Always Free includes five volume backups. Create one named pre-resize full boot-volume backup and wait for `AVAILABLE`; confirm the `free-tier-retained=true` system tag where returned.
+4. **Stop then resize:** stop the instance and wait for `STOPPED`; update the existing A1 shape with both `--shape VM.Standard.A1.Flex` and `--shape-config '{"ocpus":2,"memoryInGBs":12}'`.
+5. **Asynchronous caveat:** OCI can return the instance as `STOPPED` before a shape update is reflected, and a second update can return HTTP 409 `currently being modified`. Never retry blindly. Fresh `instance get` must show 2 OCPU / 12 GB before start.
+6. **Start and verify:** start only after the new shape is confirmed. Verify `RUNNING`, then test the production health endpoint and report its real status. Preserve the boot-volume backup as rollback evidence.
+
+Reference: `references/oracle-a1-entitlement-audit.md`.
 
 ### Docker Permission Fix (Fresh Ubuntu on Oracle)
 ```bash
@@ -927,6 +941,23 @@ command: postgres -c shared_buffers=128MB -c work_mem=4MB -c max_connections=20
 - When PC off, bot "sleeps". No fixed-cost increase if Azure already paid.
 - Alternative: deprecate Azure entirely once PC-office is proven → save RM30/mo.
 
+## PC RTX 4070 as development node
+
+For HAFJET Kitchen or other development that needs large local storage, use the RTX WSL node only after confirming host identity and target path. The direct Azure SSH key may not authorize there; a verified one-time PC Office transport hop exists. After migration, build/test/database commands run on RTX, not PC Office. See `references/pc-rtx-development-node.md` for the verified host, transfer command, Node runtime caveat, and loopback-only disposable PostgreSQL pattern.
+
+### RTX access via PC Office key (verified Aug 2026)
+
+The PC Office hop is not merely a `ProxyJump` transport: the RTX authorization key is stored on PC Office as `~/.ssh/id_ed25519_office2rtx`. Therefore a local `ssh -J ... hafjet@<RTX>` attempt can reach RTX but still fail its final public-key authentication. For RTX-only development work, first enter PC Office with the local gateway key, then invoke the second hop with that Office-resident identity:
+
+```bash
+ssh -o BatchMode=yes hafizi145@<PC_OFFICE_TS_IP> \
+  'ssh -i ~/.ssh/id_ed25519_office2rtx -o IdentitiesOnly=yes -o BatchMode=yes hafjet@<RTX_TS_IP> "cd /home/hafjet/projects/hafjet-kitchen && git status --short --branch"'
+```
+
+**Scope rule:** this uses PC Office only as SSH transport. Do not create, edit, test, or install anything in its project directories. All repository writes and Node/test commands must be inside the second-hop RTX command.
+
+**Approval rule:** remote writes or SCP operations involving raw Tailscale IPs may raise a separate security approval even when the user has authorized the task. Batch a verified set of changes behind one approval where practical; if the approval is not granted, do not claim work was performed.
+
 ## PC Office as Hermes Node #2 (offload from Azure) — bootstrap
 Tuan's standing choice (Jul 2026): run Hermes on PC Office (18GB RAM) as a second node
 to offload the 1GB Azure VPS. PC Office is reachable ONLY via Tailscale
@@ -1001,6 +1032,24 @@ was online at Tailscale IP 100.121.94.41 (~93–195ms via DERP hkg), latency acc
   config** (not a separate profile) for consistency — see RESOLVED STATE below.
 - Reference: `references/pc-office-node2-bootstrap.md` — exact commands for Tuan to paste
   on PC Office + per-step pitfalls (key register, enable Tailscale SSH, Hermes install).
+
+### PC Office Node.js project baseline (verified Aug 2026)
+
+For a new Node/Next.js project executed remotely from Azure through SSH:
+
+1. Probe the target first: `hostname`, `df -h "$HOME"`, target project existence, and `node`/`npm` availability. Do not assume the VPS Node path applies to PC Office.
+2. PC Office uses user-managed NVM; non-interactive SSH does not load it automatically. Prefix every remote Node/NPM command with:
+   ```bash
+   source "$HOME/.nvm/nvm.sh"
+   ```
+   Then verify `node --version` and `npm --version` on the target before scaffolding.
+3. `create-next-app` can ask an interactive Turbopack question. Use explicit CLI choices (including `--turbopack` or `--no-turbopack` when supported) and check that `package.json` and `node_modules/` were created before continuing.
+4. Next.js 15 baseline lint command should be `eslint .`; do not assume legacy `next lint` exists. For Playwright TypeScript configuration, install `@playwright/test` (not only `playwright`). If the baseline declares `test:integration`, Vitest config must include `tests/**/*.test.ts`; a unit-only `include` pattern prevents integration suites from running.
+5. On an empty E2E directory, validate configuration without treating no tests as an error:
+   ```bash
+   npx playwright test --list --pass-with-no-tests
+   ```
+6. Before claiming baseline completion, run remotely and record exact output for `npm run lint`, `npm run typecheck`, `npm test`, `git log -1`, and `git status --short --branch`.
 
 ### RESOLVED STATE — Pilihan B (confirmed 2026-07-19)
 After the LAN route was fixed, the FULL bootstrap completed cleanly with a plain re-run.

@@ -1,25 +1,31 @@
-SuperGrok=image/video/research; DeepSeek=text. Output: practical BM, copy-paste ready.
+SuperGrok=Apple IAP hafizi145@gmail.com; web may show Free while Apple active; xai-oauth, no XAI_API_KEY.
 §
 User: Tuan Hafizi, MD HAFJET. Casual BM+Kelantan (goni,sohor,mung,ambo,kito). Address: 'Tuan Hafizi'.
 §
 Work: Execute+verify+RCA; require live proof for browser/API claims; scannable reports; no fabrications. CTO-phase approvals before prod/schedule/restart. Mask secrets; never keys in TG. Deploy Audit→Approve→Deploy.
 §
-Oracle LIVE A1 4OCPU/24GB +4G swap ap-kulai-2; pub 149.118.152.50; TS 100.124.99.52; SSH ubuntu+/tmp/hafjet-oracle-key; bot :8200 host-net; compose ~/HAFJET-AI-WhatsApp-Bot; Ollama qwen2.5:7b.
+compose ~/HAFJET-AI-WhatsApp-Bot.
 §
-Supabase ksqrpttesrrnzatgagyh: schema hardened DEPLOYED. fixed_costs RM1300 from DB, vendors 18. RLS 2 pol/table, UNIQUE msg_id. SDK global py3.10/SQL Editor.
+Supabase ksqrpttesrrnzatgagyh: expenses whatsapp_message_id NOT NULL tg-pdf-{receipt}, category_source=manual (rejects auto), UNIQUE receipt_number. SDK /usr/bin/python3.
 §
-Deploy: webhook_v2 ACTIVE :8080 (gunicorn ~/.local/bin py3.10). Hermes venv NO pip; guna /usr/bin/python3. Pickup cron: scripts/run_pickup_live.sh. TG file → MEDIA:.
+Deploy: webhook_v2 :8080 (gunicorn py3.10).
 §
-SPX: reminder 15m 08-21; terminal→Completed; kiosk only active context. Desired auto-sync dashboard: 30m 09-19, toggle 15/30+manual; reuse phone only exact normalized SPX name with 1 valid unique history phone; no overwrite; VFS.
+reuse phone only exact name + valid history; no overwrite; VFS.
 §
-HAFJET ops: ~/HAFJET-Operating-Manual-v1.md. Content: Brand HAFJET+Raub, Threads/IG/FB/TikTok, BM casual, CTA wa.me/60198021500, 12:30&20:30 MYT.
+HAFJET ops: ~/HAFJET-Operating-Manual-v1.md. Premis HAFJET (Hafizi Gadget), Taman Aminan Lestari, Raub. Content: Threads/IG/FB/TikTok, BM casual, CTA wa.me/60198021500, 12:30&20:30 MYT. Live off-catalog (jam buka dll) → bio/beg kuning, jangan cipta.
 §
-Expense TG PDF/img auto-log: SECRET_KEY; manual category; idempotent receipt_number. Vendors: E-PAY/JomPAY2360→6c8e862b util; TNB→c7f2b782; Sewa→9aadb46c; Shopee e33a06c1; TnG cbc64606. Labels win (Lori/Makan→misc+notes).
+Expense vendors: E-PAY2360→6c8e862b; TNB→c7f2b782; BSN→71c653d0 loan; Sewa→9aadb46c; myTNB dates M/D/YYYY.
 §
-n8n n8n.hafjet.my (Hermes): Content Automation cron 12:25/20:25 MYT; API :9119; img OpenRouter gemini-flash-image; HITL TG 1485374469; no auto-social; no keys in TG.
+n8n n8n.hafjet.my: Content cron 12:25/20:25 MYT; API :9119; img OpenRouter gemini-flash-image; HITL 1485374469; no auto-social.
 §
-Hermes-Bot-Mode=desktop plugin only (~/.hermes/desktop-plugins/); NOT gateway/headless.
+Kitchen prod: RTX hafjet@100.119.32.87 ~/projects/hafjet-kitchen; Prisma 6.19.1; makan.hafjet.my; RLS/private 10MB bucket.
 §
-G5b Stage1 HITL Windows DESKTOP-MOPJU6T/TS 100.73.190.96 user `user`; Chrome profile local-only `C:\Users\User\hafjet-live-listeners\profiles\tiktok-g5b`. Manual login+private URL; no comments/speak/RTMP/public without approval. G4c/G6/G7 gated.
+Brain=Hermes AINA_* not consumer. Live GPU_STOP 80C/11000MB (inner CB ~10752). Groq Azure→CF1010; egress SOCKS RTX :10808 via Tailscale 100.65.152.29. Model Aina=groq/compound-mini; qwen3.6-27b 0/3 JSON(think); llama-3.1-8b TIADA; gpt-oss 8k TPM. Orch restart→re-POST /session/start. GO LIVE only exact approved /live URL.
 §
-Personal buy: MBA 13 M5 16/512 Edu OK; iPad Air M4; dual 27 HDMI+DP. Cash~3.1k; prefer Edu/0% over S/L PayLater.
+CCTV alert=TG group -5330700835 (entrance🛎️/outdoor_shop🚶 +snapshot). Office PC reboot: Frigate `docker compose up -d`, xiaomi-ingest :8092 manual (no auto-start).
+§
+orch standby antara live (Tuan buka live sendiri).
+§
+Cron: model bare deepseek-v4-flash → HTTP400 kat CommandCode; pin job model=deepseek/deepseek-v4.1-flash.
+§
+Cron Hermes: job LLM yang TAK dipin (model/provider kosong) akan drift_skip SENYAP bila config global berubah — kena pin --provider+--model (deepseek/deepseek-v4.1-flash).

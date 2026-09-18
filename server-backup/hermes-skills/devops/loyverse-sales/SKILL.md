@@ -63,6 +63,20 @@ sys.exit(result.returncode)
 python3 /tmp/run_sales.py
 ```
 
+### Option 3: Self-contained wrapper (✅ best — no /tmp token file, no shell secrets)
+
+`~/.hermes/scripts/run_daily_sales_report.py` reads `LOYVERSE_ACCESS_TOKEN` straight out of
+`~/.hermes/.env` in Python, exports it into the child env, and execs `fetch_sales.py`:
+
+```bash
+python3 ~/.hermes/scripts/run_daily_sales_report.py > /tmp/daily_sales_out.txt 2> /tmp/daily_sales_err.txt
+cat /tmp/daily_sales_out.txt          # clean Markdown summary (stdout)
+tail -5 /tmp/daily_sales_err.txt      # pagination log + 402 warning (stderr)
+```
+
+Nothing secret ever touches the shell, so the `***` censoring pitfall cannot bite.
+Runtime ≈1-2 min (limit=10 → ~20 pages before the expected HTTP 402 at the 31-day wall).
+
 The wrapper reads the token from the file and sets it as an env var — no shell masking issues.
 
 ## Profit Calculation from COGS 🏆
@@ -614,4 +628,5 @@ Save as `/tmp/loyverse_test.py` and run with `python3 /tmp/loyverse_test.py`.
 | `$(...)` token extraction fails with syntax errors / "you must specify a list of bytes" | Hermes terminal censors secrets with `***`, breaking `cut` and subshells | Run `grep` directly in separate commands, or use `scripts/telegram-delivery.py` which extracts env vars via Python subprocess |
 | Telegram send fails with "Bad Request: message text is empty" | JSON payload not properly encoded | Use Python's `json.dumps()` instead of shell string interpolation |
 | API returns `UNAUTHORIZED: Access token is not valid` after copying from Developer Portal | Copied **App Secret** instead of **Access Token** | App Secret is in Developer Portal; Access Token must be generated separately in **Back Office → Settings → Apps → Generate Access Token**. They are different values. |
+| **Cron job "Daily Sales Report" silently fails every day, no CSV written** | Hermes cron job `9408be4cd593` inherited the global `model.default` (`deepseek-v4-flash`, bare) → CommandCode returns `HTTP 400: Model "deepseek-v4-flash" is not supported on this endpoint.` Run is marked `failed` in `executions.db` but nothing is delivered to Telegram, so it looks like a no-op day | Job MUST stay pinned: `--provider commandcode --model deepseek/deepseek-v4.1-flash`. Verify with `sqlite3 ~/.hermes/cron/executions.db "select claimed_at,status,error from executions where job_id='9408be4cd593' order by claimed_at desc limit 5"`. Permanent fix = convert job to `no_agent=True` + `script=run_daily_sales_report.py` (zero LLM, immune to model drift). |
 

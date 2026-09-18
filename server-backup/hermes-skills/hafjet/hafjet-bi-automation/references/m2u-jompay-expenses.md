@@ -55,6 +55,56 @@ AND deleted_at IS NULL
 - Never echo secrets; print month rollup after insert
 - PDF text: `read_file` on cached doc path works (anydoc) when terminal blocked
 
+## DuitNow Transfer / TnG / Scan & Pay receipts (non-JomPAY)
+
+M2U also emits `DuitNow Transfer` and `Scan & Pay` receipts. Fields differ from JomPAY:
+
+| PDF label | Maps to |
+|-----------|---------|
+| Reference ID (`791143529M`, `QR86156299`) | `receipt_number` |
+| Beneficiary name / account / bank | `notes` (mask account) |
+| Recipient reference (e.g. `Toll`, `Toll Parking`) | `notes` |
+| Amount | `total_amount` |
+
+Established mapping (verified against existing rows, 2026-09-15):
+
+| Pattern | vendor_id | vendor_name_raw | category | payment_method |
+|---|---|---|---|---|
+| DuitNow Transfer → own TnG eWallet | `cbc64606-d2b0-4976-a64a-5c8c8c9c0e3d` | `TOUCH N GO eWALLET` | `misc` | `transfer` |
+| Scan & Pay QR to own name | ask Tuan — no precedent | — | — | `scan_pay` |
+
+- Precedent row: 2026-08-13, RM10.00, ref `061483612M`, `misc`, notes
+  "DuitNow Transfer to own TnG eWallet … Recipient reference: Toll Parking".
+- TnG has **no row in `vendors`** — reuse the nameless `misc` vendor id above, keep
+  the human label in `vendor_name_raw`.
+- A `Scan & Pay` QR receipt with only "Beneficiary Name = own name" has **no
+  inferable purpose** → ask Tuan before inserting; do not guess `misc`.
+
+## ⚠️ Pitfall — cached PDF is PRUNED by the gateway (2026-09-11)
+
+The gateway runs an hourly **`Document cache cleanup: removed N stale file(s)`** pass over
+`~/.hermes/cache/documents/`. A receipt that arrived but was **not processed in the same turn**
+(often because the agent run died — e.g. the xAI OAuth 403 failure) is deleted within hours.
+The Telegram message then points at a path that no longer exists.
+
+Symptoms / handling:
+
+- `ls ~/.hermes/cache/documents/` shows only the newest PDF; earlier ones are gone.
+- `grep "Cached user document" gateway.log` proves it DID arrive — trust that, plus
+  `grep "Document cache cleanup" gateway.log` for the prune evidence. Never claim the
+  user failed to send it.
+- Recovery: ask Tuan to resend. Do NOT guess the missing amount/vendor from the filename.
+- **Process every intake PDF in the same turn it arrives** (extract → confirm → insert).
+
+Also check why a past receipt was never logged:
+
+```bash
+grep -n "unauthenticated:bad-credentials\|Non-retryable client error" ~/.hermes/logs/agent.log*
+```
+
+A 403 provider failure on the intake turn explains a silently-missing expense row.
+
+
 ## Example success (2026-08-15)
 
 - Ref `260871731M`, RM 77.00, utilities, id `5a79028f-…`

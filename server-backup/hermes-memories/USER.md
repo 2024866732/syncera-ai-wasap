@@ -1,13 +1,11 @@
-User: Tuan Hafizi, MD HAFJET. Uni student (Apple Edu OK). BM/Kelantan; technical; cost-conscious. No CC (SPayLater only). Prefers 13" if dual monitors+iPad. AWS+Oracle; UpCloud suspended Aug 2026.
+User: Tuan Hafizi, MD HAFJET. Uni student (Apple Edu OK). X @hafizigadget145.
 §
-Constraints: explicit approval for restarts; loopback API; D.6 estimates only; RTSP creds redacted. Prefers free cloud; budget-conscious; email: syahrulhafizi101@gmail.com.
+Work style (Aug 2026): gated state-machine execution — install→wire→validate→cleanup each need OWN approval phrase; stop conditions honored exactly (avatar/session mismatch, CB, body code!=0, orch unreachable=paused). Acceptance = Tuan's senses: WAVs via MEDIA, he confirms audio+lipsync per speak; code:0 ≠ audible proof. Avatar 'sarah' = his visual pick (Aina lagged); voice persona kekal Aina. Honest BLOCKED reports, per-job tables, hard STOP.
 §
-Hardware: i3-2100 CPU-only, 1GB+4GB swap, Ubuntu 26.04. Cams TC74 / C560WS .226/s2 outdoor / C6N indoor. Disk~94%.
+PC Office live specs (Aug 2026): Fujitsu D581; Intel i3-2100 2C/4T 3.10GHz, 16GiB RAM, 8GiB swap, Intel iGPU; Ubuntu 26.04 LTS. SSD 477GB: / 98GB and /mnt/cctv 368GB; HDD 298GB NTFS.
 §
-Comms: Telegram, structured BM; prefers task chat replies ≤3 lines, with nontrivial code/guides delivered as .txt attachments.
+Comms: Telegram, structured BM; ≤3-line replies; code/guides as .txt. Big autonomous batches, report 1-2×/batch in 'TASK N COMPLETE' format; gates only at task boundaries & production. Secrets: refuses to paste API keys in TG — he edits orch.env himself via nano then says 'done'; never write/log secrets for him; flag chat-exposed keys for rotation.
 §
 Preferences: Audit-first; approval-gated prod. Official WA Cloud API; hybrid Azure+Oracle. Gadget: Edu+GC > long BNPL; quote effective value.
 §
-Pelajar universiti; layak Apple Education (MY). Elak AppleCare+/insurans extended (pandangan fiqh gharar). Elak ansuran berbunga/PayLater panjang bila boleh (riba concern). Tiada credit card; ada Shopee PayLater & Lazada PayLater.
-§
-Setup Apple: rancang MBA 13" (bukan 15"); dah ada iPad Air M4 + Apple Pencil Pro + AirTag + USB-C→HDMI. Ada 2× monitor 27" (HDMI+DP, tiada USB-C). Perlu USB-C→DP untuk dual display. Cash ~RM3k band; consider Apple Store TRX (perjalanan ~2 jam) + Edu GC promo.
+Buy: Mac mini M6 Edu RM4299 (pickup TRX 22 Sep 26), 12C GPU 24/256 HDMI port. n8n kekal Azure. External SSD beli Okt.
