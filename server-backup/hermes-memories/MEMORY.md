@@ -6,7 +6,7 @@ Work: Execute+verify+RCA; require live proof for browser/API claims; scannable r
 §
 compose ~/HAFJET-AI-WhatsApp-Bot.
 §
-Supabase ksqrpttesrrnzatgagyh: expenses whatsapp_message_id NOT NULL tg-pdf-{receipt}, category_source=manual (rejects auto), UNIQUE receipt_number. SDK /usr/bin/python3.
+category_source=manual (rejects auto), UNIQUE receipt_number.
 §
 Deploy: webhook_v2 :8080 (gunicorn py3.10).
 §
@@ -14,7 +14,7 @@ reuse phone only exact name + valid history; no overwrite; VFS.
 §
 HAFJET ops: ~/HAFJET-Operating-Manual-v1.md. Premis HAFJET (Hafizi Gadget), Taman Aminan Lestari, Raub. Content: Threads/IG/FB/TikTok, BM casual, CTA wa.me/60198021500, 12:30&20:30 MYT. Live off-catalog (jam buka dll) → bio/beg kuning, jangan cipta.
 §
-Expense vendors: E-PAY2360→6c8e862b; TNB→c7f2b782; BSN→71c653d0 loan; Sewa→9aadb46c; myTNB dates M/D/YYYY.
+Expense vendors: E-PAY2360→6c8e862b; TNB→c7f2b782; BSN→71c653d0; Sewa→9aadb46c; myTNB M/D/YYYY.
 §
 n8n n8n.hafjet.my: Content cron 12:25/20:25 MYT; API :9119; img OpenRouter gemini-flash-image; HITL 1485374469; no auto-social.
 §
@@ -26,6 +26,4 @@ CCTV alert=TG group -5330700835 (entrance🛎️/outdoor_shop🚶 +snapshot). Of
 §
 orch standby antara live (Tuan buka live sendiri).
 §
-Cron: model bare deepseek-v4-flash → HTTP400 kat CommandCode; pin job model=deepseek/deepseek-v4.1-flash.
-§
-Cron Hermes: job LLM yang TAK dipin (model/provider kosong) akan drift_skip SENYAP bila config global berubah — kena pin --provider+--model (deepseek/deepseek-v4.1-flash).
+Cron Hermes: unpinned model → HTTP400/drift_skip SENYAP; pin SEMUA job LLM --provider commandcode --model deepseek/deepseek-v4.1-flash. Pulih job lama = side-effect sebenar: pickup hantar WA pelanggan; cooldown 7h state ~/.hermes/state/pickup_reminder_state.json (kosong=blast penuh).

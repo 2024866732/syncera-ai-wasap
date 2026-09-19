@@ -77,6 +77,34 @@ Gunakan skill ini bila tugasan melibatkan operasi kedai HAFJET, termasuk jualan 
   4. Jika error lain → print warning, proceed anyway (mungkin rate limit dll).
 - **Semak pending count dulu** — kalau > 50, script akan ambil masa ~7 minit untuk 600+ entries.\n  Guna DRY_RUN=1 untuk lihat count tanpa send. Kalau > 100, jalankan secara berperingkat\n  atau minta Tuan cleanup data lama dulu.\n  **Jul 24 real-world timing:** 606 messages in ~7 min (background mode, exit 0).\n  **Zero 470 blocks** observed despite many old tickets — all free-form texts went through.\n- Hantar reminder lembut sekali sehari maksimum.
 - Elakkan spam; jangan lebih 1 reminder/customer/day.
+- **✅ DEDUPE COOLDOWN — DIPASANG 2026-09-19 (Tuan approve pilihan "A"):** the script now has
+  per-Repair-ID suppression. State lives LOCALLY at `~/.hermes/state/pickup_reminder_state.json`
+  (`{Repair ID: ISO timestamp}`, 0600) — the Google Sheet is **never written to**, so it can be
+  deleted or moved at any time. Rows sent within `PICKUP_REMINDER_COOLDOWN_DAYS` (default **7**)
+  are skipped; `MAX_PER_RUN` (default 0 = no cap) can hard-limit a run. Owner summary now shows
+  `🧊 Skip cooldown`. Backup of the pre-fix script: `hafjet_pickup_reminder.py.bak-20260919`.
+  **Verify with:** `scripts/pickup_cooldown_e2e_test.py` (fake sheet + fake send → run 1 sends 3
+  and writes state, run 2 sends 0; must print `✅ LULUS`) — run it with the venv python
+  `/home/hafizi145/hermes-agent/venv/bin/python3` (system python3 lacks google-api-client).
+  **Why it mattered:** every run re-sent the *entire* SIAP set — byte-identical
+  `Sent=606 Failed=15` on 2026-08-03/07/10/12/14/17 and 2026-09-19 (621 SIAP rows → 606 sent +
+  13 no-phone + 2 dual-number HTTP 400), tickets back to 2022. The set never drains, so ~606
+  customers got the same reminder daily → WhatsApp quality-rating penalty risk.
+  Still open (Tuan's call): prune old SIAP rows, or add `LAST_REMINDER_SENT` to the sheet.
+- **Dual-number cells cause HTTP 400** — cells like `601111144636/0104163884` fail every run
+  (13 no-phone + these 2 are the recurring `Failed=15`). Split on `/` and take the first number,
+  or fix the sheet rows.
+- **Cron-prompt/sheet value mismatch:** the cron prompt says `STATUS_REPAIR ==
+  'SIAP DIAMBIL'`, but no such value exists in the sheet (header is `Status`;
+  values: SIAP 621, '' 190, CANCEL 71, SELESAI & TELAH DIAMBIL 48, REJECT 46,
+  BELUM SIAP 6, SEDIA DI AMBIL 6, ...). Using 'SIAP DIAMBIL' literally = 0 sends.
+  Correct filter is `SIAP`. Also 6 rows of variant `SEDIA DI AMBIL` are never caught.
+- **Cron-safe invocation:** use `scripts/hafjet_pickup_runner.py` (NOT the raw
+  script with the cron prompt's env list — those vars are absent from
+  `~/.hermes/.env`). Runner bridges `~/.hermes/whatsapp-bot/.env` creds →
+  `WHATSAPP_CLOUD_*`, injects sheet ID / SA path / tab / owner / status, strips stale
+  `COLUMN_NAME_*`. Run in `background=true` + log to
+  `~/.hermes/logs/pickup_run_cron_<ts>.log` (~10 min for 606 sends).
 - **Detect credential failure pattern:** Jika cron ke-2+ berturut-turut gagal dengan
   error credential yang sama (Phone ID / Token invalid), report mesti lebih assertive —
   sertakan langkah Tuan perlu buat dengan jelas, bukan sekadar "still broken".
@@ -89,6 +117,38 @@ Gunakan skill ini bila tugasan melibatkan operasi kedai HAFJET, termasuk jualan 
 - Sends WhatsApp alert to OWNER_PHONE only if items found
 - Cron: `0 0 * * *` (8:00 AM MYT), Job ID: `7b74334921e6`
 - If no low stock items: prints "all healthy", no alert sent
+
+**Runner (verified 2026-09-19): `scripts/hafjet_low_stock_runner.py`**
+The raw cron command `python3 .../hafjet_low_stock_alert.py` fails standalone: none of
+`WHATSAPP_CLOUD_PHONE_ID`, `WHATSAPP_CLOUD_ACCESS_TOKEN`, `OWNER_PHONE`,
+`LOW_STOCK_THRESHOLD` exist in `~/.hermes/.env` (it stores the unsuffixed
+`WHATSAPP_PHONE_ID` / `WHATSAPP_ACCESS_TOKEN` names). Use the runner instead — it
+bridges names (bot `.env` creds first, main `.env` fallback), injects
+`OWNER_PHONE=60198021500` + threshold 5, probes the Phone ID (GET → HTTP 200 = creds OK)
+and shells out to the alert script with the venv python.
+```
+python3 ~/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_low_stock_runner.py --dry   # build + print payload
+python3 ~/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_low_stock_runner.py         # live send
+```
+`DRY_RUN=1` support was added to the alert script itself (env var) — dry run prints the
+exact WhatsApp payload(s) and never calls the Graph API.
+Runtime: inventory 18,128 levels + 9,239 variants ≈ 4–5 min → always run
+`background=true` with the log at `~/.hermes/logs/low_stock_{dry,live}_<ts>.log`, then
+`process(action='wait')` in 60s chunks (per the command-safety cron pitfalls).
+
+**Verdict (2026-09-19 live run):** preflight HTTP 200, 18,128 inventory levels,
+9,239 variants, **17,704 records ≤5** (HAFJET LORI 9,045 / HAFJET Raub 8,659), one
+WhatsApp part sent to 60198021500, exit 0.
+⚠️ **Data-quality signal:** ~98% of inventory records flag as low stock and the top
+entries carry *negative* stock (e.g. KALENDAR HAFJET -166). This is an inventory
+baseline problem in Loyverse (legacy/service variants, negative balances), not a real
+17k reorder list. Escalate baseline cleanup to Tuan; do not treat the count as demand.
+
+**Cron drift outage (Aug 1 – Sep 18, 2026):** this job silently
+`drift_skip:silent`-ed for 7 weeks (last good run 2026-07-31) because it was unpinned
+while the global provider/model changed. Fixed by pinning
+(`hermes cron edit 7b74334921e6 --provider commandcode --model deepseek/deepseek-v4.1-flash`).
+Any Hermes job that must keep running needs an explicit provider+model pin.
 
 ## Format mesej
 
@@ -430,7 +490,8 @@ Google Sheet below, NOT the bot DB.
 
 ### Scripts
 - `scripts/hafjet_pickup_reminder.py` — Main pickup reminder script. Reads GSheet, filters SIAP, sends WhatsApp.
-- `scripts/hafjet_low_stock_alert.py` — Low stock alert. Paginates Loyverse inventory, joins variant→item names, sends WhatsApp alert to owner if items ≤ threshold.
+- `scripts/hafjet_low_stock_alert.py` — Low stock alert. Paginates Loyverse inventory, joins variant→item names, sends WhatsApp alert to owner if items ≤ threshold. Honors `DRY_RUN=1`.
+- `scripts/hafjet_low_stock_runner.py` — Env-bridging runner for the low stock alert (cron-safe, `--dry`). Use this instead of calling the alert script directly.
 - External: `~/run_pickup_reminder.py` — Wrapper that bridges env var names and sets hardcoded config for terminal runs (not part of skill directory).
 
 ### References

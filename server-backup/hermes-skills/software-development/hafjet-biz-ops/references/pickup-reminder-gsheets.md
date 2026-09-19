@@ -121,4 +121,33 @@ python3 ~/.hermes/skills/software-development/hafjet-biz-ops/scripts/hafjet_pick
 
 ## Cron
 - Job `ebdae9cc10ab`, schedule `0 3 * * *` (11:00 AM MYT).
-- Prompt runs the script; reports sent/failed/470/400 blocks concisely.
+- Prompt runs the runner `hafjet_pickup_runner.py` (PATCHED 2026-09-19) — do NOT call
+  `hafjet_pickup_reminder.py` raw from cron: `GOOGLE_SHEET_ID` / `GOOGLE_SHEETS_CREDENTIALS` /
+  `OWNER_PHONE` live in `~/.hermes/whatsapp-bot/.env`, not in `~/.hermes/.env`.
+- Reports sent/failed/470/400 blocks + cooldown-skip concisely.
+
+## Cooldown dedupe (FIX 2026-09-19, Tuan approved option "A")
+**Problem found:** runs on 03/07/10/12/14/17 Aug all logged byte-identical `Sent=606 Failed=15`
+— the set never drained, so the same 606 customers (tickets back to 2022) got a reminder EVERY
+day. Silent WhatsApp quality-rating / number-ban risk.
+
+**Fix:** `hafjet_pickup_reminder.py` now skips any `Repair ID` reminded within `COOLDOWN_DAYS`.
+
+| Item | Value |
+|------|-------|
+| State file | `~/.hermes/state/pickup_reminder_state.json` (`{"ID-551": "2026-09-19T03:25:00+00:00"}`, chmod 600) |
+| Default cooldown | **7 days** (`PICKUP_REMINDER_COOLDOWN_DAYS`, e.g. `30`) |
+| Override state path | `PICKUP_REMINDER_STATE=/path/to.json` |
+| Safety cap | `MAX_PER_RUN=100` (0 = off; runner already exported it, script only honours it now) |
+| Google Sheet | **never written** — state is local, so rollback = delete the JSON |
+
+**Verified 2026-09-19 (all DRY_RUN, zero customer messages):**
+1. Real sheet + real state → `skip 606 | hantar 15` (13 tiada no. telefon + 2 sel dua-nombor → 400).
+2. Real state with `ID-001` backdated 8 days → `skip 605 | hantar 16` (cooldown expiry works).
+3. Empty state → `skip 0 | hantar 621` (baseline).
+4. E2E harness `scripts/pickup_cooldown_e2e_test.py` (fake sheet + fake send): run 1 sends 3 and
+   writes 3 state keys; run 2 immediately after → `skip 3`, **0 messages**. Dedupe proven.
+
+Bootstrap note: state was seeded from the 2026-09-19 11:01 MYT log (`✅ Sent -> <phone> (<ID>)`)
+so the 606 already-reminded customers are cooling until **26 Sep 2026**.
+If the state file is lost, run a DRY_RUN first — an empty state means a full 621-row blast.

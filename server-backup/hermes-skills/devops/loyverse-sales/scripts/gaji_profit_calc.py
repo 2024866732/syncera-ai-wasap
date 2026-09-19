@@ -35,6 +35,7 @@ REPORTS_DIR = os.path.expanduser("~/.hermes/reports")
 CSV_PATH = os.path.join(REPORTS_DIR, "gaji_profit_tracker.csv")
 TOKEN_FILE = "/tmp/.loyverse_token"
 FIXED_COST = 400.0 + 400.0 + 500.0  # Sewa + BSN + TNB = 1300
+TOKEN = ""                           # FIX 2026-09-19: global; diisi oleh main() guna load_token()
 HIRE_READY_THRESHOLD = 3200.0        # baki_hidup needed to hire full-time
 PART_TIME_THRESHOLD = 1500.0         # baki_hidup needed to hire part-time
 MYT = timezone(timedelta(hours=8))
@@ -175,6 +176,8 @@ def upsert_tracker(bulan, jualan, net_profit, baki_hidup, status):
 
 
 def main():
+    global TOKEN                    # FIX 2026-09-19: TOKEN mesti global — api_get() baca global ini.
+                                    # Dulu 'TOKEN = load_token()' jadikan ia lokal => NameError.
     TOKEN = load_token()
     if not TOKEN:
         print("❌ LOYVERSE_ACCESS_TOKEN not found (env, /tmp/.loyverse_token, or .env).")

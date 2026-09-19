@@ -29,6 +29,8 @@ PHONE_ID = os.environ.get("WHATSAPP_CLOUD_PHONE_ID")
 WHATSAPP_TOKEN = os.environ.get("WHATSAPP_CLOUD_ACCESS_TOKEN")
 OWNER = os.environ.get("OWNER_PHONE")
 THRESHOLD = int(os.environ.get("LOW_STOCK_THRESHOLD", "5"))
+# DRY_RUN=1 builds and prints the alert payload without calling the Graph API.
+DRY_RUN = os.environ.get("DRY_RUN", "0").strip() == "1"
 
 for k, v in [("LOYVERSE_ACCESS_TOKEN", LOYVERSE_TOKEN),
              ("WHATSAPP_CLOUD_PHONE_ID", PHONE_ID),
@@ -206,13 +208,16 @@ def main():
     print(f"   Alert split into {len(messages)} WhatsApp message(s)")
 
     # Send to OWNER
-    if OWNER:
+    if OWNER and not DRY_RUN:
         OWNER_N = OWNER.strip().replace(" ", "").replace("+", "")
         if OWNER_N.startswith("0"):
             OWNER_N = "6" + OWNER_N
         for index, message in enumerate(messages, start=1):
             send_whatsapp(OWNER_N, message)
             print(f"📱 Alert part {index}/{len(messages)} sent to {OWNER_N}")
+    elif DRY_RUN:
+        print("🧪 DRY RUN — no WhatsApp message sent. Payload(s):\n")
+        print("\n\n".join(messages))
     else:
         print("⚠️ OWNER_PHONE not set — printing alert here:\n")
         print("\n\n".join(messages))

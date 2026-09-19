@@ -9,3 +9,5 @@ Comms: Telegram, structured BM; ≤3-line replies; code/guides as .txt. Big auto
 Preferences: Audit-first; approval-gated prod. Official WA Cloud API; hybrid Azure+Oracle. Gadget: Edu+GC > long BNPL; quote effective value.
 §
 Buy: Mac mini M6 Edu RM4299 (pickup TRX 22 Sep 26), 12C GPU 24/256 HDMI port. n8n kekal Azure. External SSD beli Okt.
+§
+Balas menu pilihan dgn huruf (cth 'A').
