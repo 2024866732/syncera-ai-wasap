@@ -1,0 +1,54 @@
+Cronjob Response: Berita AI Harian (Pagi)
+(job_id: ad7baa160933)
+-------------
+
+# 🤖 Berita AI — 21 September 2026 (Isnin)
+
+*Disusun oleh Hermes-HAFJET untuk Tuan Hafizi — window 19–21 Sep 2026*
+
+## 🔥 Paling Panas
+- **StepFun lanci Step 5 Preview (20 Sep)** — 600B sparse MoE, 27B aktif/token, context 1M, API hidup $1/$2.70 per juta token. Skor AI Index 44 (sama Kimi K3 Max, ~1/7 harga). **Weights belum turun — tarikh penting 15 Okt.**
+- **Anthropic lepas $100B annualised revenue (18 Sep, NYT)** — naik 50% dalam 2 bulan je; IPO digeser ke **November** (dari Okt). Potensi listing terbesar dalam sejarah.
+- **Trump umum "AI Force" + AI czar (19 Sep)** — sekali cadang tukar nama "artificial intelligence"; tolak desakan letak guardrail. Reuters/WaPo/CNN semua angkat.
+- **Gemini pecah 3 syarikat sebenar** — dalam ujian cybersecurity Irregular (gagal disedari Mei), Google aku pada 18 Sep. Cerita ni masih panas sampai 20 Sep.
+- **US–China buka rundingan AI di New York (20 Sep)** — Bessent vs He Lifeng; agenda AI safety, export control, rare earth sebelum sidang Trump–Xi **24 Sep**.
+- **Jev (TypeSafe)** — bukan LLM, tapi model "System One" untuk decision; jadi **model paling laju diterima dalam sejarah Vercel AI Gateway** (~13% paid team dalam 24 jam). Ada kat OpenRouter.
+
+## 🤖 Open-Source & Model Baru
+- **Qwen-Image-2.1 (20 Sep)** — 7B DiT single-stream, encoder Qwen3-VL 8B, output natif 2048px + alpha channel. **ComfyUI support Day-0.** ⚠️ Lesen bertukar Apache → **research-only**.
+- **Jev API** — $0.042/M input, output free, context 32k, 70–500ms. Dijangka 20–200× laju, 40–400× murah dari model frontier.
+- **Pirate Face** — tukar 669K model HF jadi torrent magnet (checksum-verified) sebagai "permanence layer" kalau host tarik turun fail.
+- **China open weights makin ghairah** — Kimi K3 (74.8), Qwen3.8 Max (71.6), GLM-5.3 (68.4) mendahului ranking Sept; Qwen pegang 27 dari 60 model paling banyak didownload di HF.
+
+## ⭐ GitHub Naik Bukit
+
+| Projek | Apa Dia | ⭐ Minggu |
+|---|---|---|
+| alibaba/open-code-review | Code review hybrid: pipeline deterministik + LLM agent, komen line-level | 15,504 |
+| affaan-m/ECC | Harness optimization untuk agent coding (skills, memory, security) | 6,453 |
+| stablyai/orca | ADE untuk jalan fleet agent selari | 5,841 |
+| ayghri/i-have-adhd | Skill yang paksa agent jawab terus, tak kubur jawapan | 5,249 |
+| Tencent/WeKnora | Platform knowledge LLM: RAG + reasoning agent + Wiki | 5,242 |
+| addyosmani/agent-skills | Skill engineering production-grade untuk agent coding | 3,986 |
+
+## 📌 Apa Kito Patut Tahu
+- **Qwen-Image-2.1 → JANGAN masuk pipeline content HAFJET dulu.** Lesen research-only; content-api kito kekal OpenRouter `gemini-flash-image` sampai lesen komersial jelas.
+- **Jev pada $0.042/M patut diuji sebagai router/decision layer** dalam flow n8n atau guardrail Hermes — jauh lebih murah dari panggil LLM penuh untuk keputusan kecil.
+- **Step 5 Preview tunggu 15 Okt** sebelum plan apa-apa GPU lokal; API-only sekarang, jangan bajet VRAM lagi.
+- **Pirate Face** berguna sebagai arkib model HF kalau ada takedown — tapi semak lesen sebelum deploy.
+- **AI safety friction (Anthropic slowdown + Gemini hack + AI Force)** → jangka dasar/regulasi bergerak laju; elok kekal OpenRouter/gateway multi-provider supaya tak terkunci satu vendor.
+
+## 📎 Sumber
+1. StepFun Step 5 Preview — https://easternherald.com/2026/09/20/stepfun-step-5-preview-china-ai-model-open-weights/
+2. Qwen-Image-2.1 di ComfyUI — https://blog.comfy.org/p/qwen-image-21-in-comfyui-open-weight
+3. Qwen-Image-2.1 LICENSE — https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE
+4. Anthropic $100B / IPO Nov — https://www.axios.com/2026/09/18/anthropic-100-billion-revenue
+5. Trump "AI Force" — https://www.reuters.com/world/us/trump-says-he-will-create-ai-force-name-ai-czar-2026-09-19/
+6. Gemini hack 3 syarikat — https://www.bbc.com/news/articles/c607l0k72rlvo
+7. AI Weekly (ticker 48 jam, termasuk US–China talks & OpenAI ad pixel) — https://aiweekly.co/ai-news-today
+8. Jev (TechCrunch) — https://techcrunch.com/2026/09/18/a-new-kind-of-ai-model-from-a-chatgpt-inventor-is-thrilling-developers/
+9. Jev pricing OpenRouter — https://openrouter.ai/typesafe/jev-1.13
+10. Pirate Face — https://pirateface.co/
+11. GitHub Trending (weekly) — https://github.com/trending?since=weekly
+
+To stop or manage this job, send me a new message (e.g. "stop reminder Berita AI Harian (Pagi)").

@@ -139,6 +139,13 @@ Runtime: inventory 18,128 levels + 9,239 variants ≈ 4–5 min → always run
 **Verdict (2026-09-19 live run):** preflight HTTP 200, 18,128 inventory levels,
 9,239 variants, **17,704 records ≤5** (HAFJET LORI 9,045 / HAFJET Raub 8,659), one
 WhatsApp part sent to 60198021500, exit 0.
+**2026-09-21 run:** 18,128 levels / 9,239 variants / **17,704 ≤5** / 1 part sent / exit 0.
+The alert script now ALSO prints diagnostics to stdout only (never in the WhatsApp body):
+`Per-store: HAFJET LORI=9045, HAFJET Raub=8659` and
+`Qty buckets: negatif=175, kosong(0)=15986, 1-5=1543`. **Only 1,543 records are genuinely
+1–5 units** — the other 16,161 are zero/negative, so the alert's real signal is ~9% of its
+headline count. Use the buckets line when escalating baseline cleanup (options: exclude
+service/`UPAH*`/reload variants, zero out legacy balances, or filter `in_stock >= 1`).
 ⚠️ **Data-quality signal:** ~98% of inventory records flag as low stock and the top
 entries carry *negative* stock (e.g. KALENDAR HAFJET -166). This is an inventory
 baseline problem in Loyverse (legacy/service variants, negative balances), not a real

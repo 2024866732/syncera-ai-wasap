@@ -81,10 +81,10 @@ curl -s http://127.0.0.1:8740/health   # gate G3, brain_mode, llm_configured, qu
 | Polish | RTX speak-queue e2e + G2 T7–9 leftovers | `approve polish` (Task 8 = diff only) · `OK Task 8 apply` · `approve polish done` |
 | G4a | 4 listeners **fixtures** ≥90% CI | bare `approve G4` = **G4a only** |
 | G4b | One platform Office live dry-run | `approve G4b shopee` (or tiktok/fb/ig) |
-| G4c | Four platforms private soak | `approve G4c` |
+| G4c | Four platforms private soak | **PREP 2026-09-20** (Shopee first) — `references/g4c-shopee-ig-prep-2026-09-20.md`. Soak still needs `approve G4c` |
 | G5a | Lab private full path 10 min (injector/mock + real orch + real RTX) | bare `approve G5` = **G5a only** |
-| G5b | Real TikTok.com private short | `approve G5b tiktok` (GUI+HITL+live URL required) |
-| G5 done | Formal G5 close docs | `approve G5a done` / `approve G5 done` |
+| G5b | Real TikTok.com private short | **CLOSED PASS 2026-09-20** — `references/g5b-tiktok-closed-pass-2026-09-20.md` |
+| G5 done | Formal G5 close docs | G5a+G5b evidence recorded; G6/G7 still gated |
 | G6 | Private multi-platform 15 min | `approve G6` |
 | G7 | Public HAFJET live | `approve G7 public` |
 
@@ -93,7 +93,8 @@ curl -s http://127.0.0.1:8740/health   # gate G3, brain_mode, llm_configured, qu
 - **G2 Task 8 CCTV `SKIP_LIVE_LOCK`:** **APPLIED + verified** on RTX `~/cctv-analysis/cctv_analyze.py` (backup `*.bak.polish-task8`).
 - **G4a CLOSED** · **G4b TikTok CLOSED (mock)** — real TikTok.com still deferred (Office no DISPLAY).
 - **G5a lab CLOSED (PASS)** — injector + file-bridge push + RTX worker · 600s+ · 15× `ok_spoke` · pause **0.009s** · session `LIVE_GPU_LOCK` · clean shutdown. See `references/g5a-lab-private-fullpath.md` + repo `docs/runbook-g5a-lab.md`.
-- **G5b real TikTok.com / G4c / G6 multi-RTMP / G7 public:** not started — need separate approve. G5b Stage 1 HITL target is Windows browser node `100.73.190.96`; require headed GUI + local-only profile + a working approved management/browser path before attach.
+- **G5b real TikTok.com CLOSED PASS (2026-09-20)** — `@hafizi.raub/live`, 9/9 `ok_spoke` `humanaudio_code:0`, peak VRAM 9,933 MB / 57°C, listener+consumer stopped clean. Evidence: `references/g5b-tiktok-closed-pass-2026-09-20.md`. Topology = RTX Windows CDP (not node `100.73.190.96`).
+- **G4c / G6 multi-RTMP / G7 public:** not started — need separate approve.
 - Do not start a gate or heavy subtask without matching phrase / `OK Task N` / `approve G#`.
 
 ## Design / approval gate (mandatory)
@@ -132,7 +133,9 @@ G5a lab 10 min: **`references/g5a-lab-private-fullpath.md`** (injector, push job
 G5b Windows HITL node: **`references/g5b-windows-hitl-node.md`** (Stage 0 management/browser proof; local-only profile)  
 CosyVoice offline Stage 1: **`references/cosyvoice-stage1-safe-offline.md`** (isolated 0.5B validation; coexistence gate before any LiveTalking wiring)
 LT client `/offer` storm: **`references/livetalking-webrtc-offer-storm.md`**
-LT VRAM ceiling + session picking: **`references/livetalking-vram-ceiling-and-session-picking.md`** — `Called in wrong state: stable`, 12 sessions/16 s, `ambiguous_sessions` silences Aina, negotiation guard + CDP hot-patch with no stream drop (locked 2026-09-12)
+LT VRAM ceiling + session picking: **`references/livetalking-vram-ceiling-and-session-picking.md`**
+G5b TikTok.com CLOSED PASS: **`references/g5b-tiktok-closed-pass-2026-09-20.md`**
+G4c Shopee/IG prep: **`references/g4c-shopee-ig-prep-2026-09-20.md`**
 
 ## Orchestrator API (G3+)
 

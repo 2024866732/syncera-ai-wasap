@@ -24,15 +24,15 @@
       "schedule_display": "0 0 * * *",
       "repeat": {
         "times": null,
-        "completed": 95
+        "completed": 97
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-17T19:45:08.198112+00:00",
-      "next_run_at": "2026-09-20T00:00:00+00:00",
-      "last_run_at": "2026-09-19T00:02:11.538197+00:00",
+      "next_run_at": "2026-09-22T00:00:00+00:00",
+      "last_run_at": "2026-09-21T00:02:12.253406+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -70,15 +70,15 @@
       "schedule_display": "0 13 * * *",
       "repeat": {
         "times": null,
-        "completed": 91
+        "completed": 93
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T12:38:11.402405+00:00",
-      "next_run_at": "2026-09-20T13:00:00+00:00",
-      "last_run_at": "2026-09-19T13:01:36.550916+00:00",
+      "next_run_at": "2026-09-22T13:00:00+00:00",
+      "last_run_at": "2026-09-21T13:02:25.344296+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -116,17 +116,17 @@
       "schedule_display": "0 14 * * *",
       "repeat": {
         "times": null,
-        "completed": 86
+        "completed": 88
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-26T12:44:09.614498+00:00",
-      "next_run_at": "2026-09-20T14:00:00+00:00",
-      "last_run_at": "2026-09-18T14:01:36.110287+00:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-09-22T14:00:00+00:00",
+      "last_run_at": "2026-09-20T14:01:05.755996+00:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 429: Upstream model provider is temporarily unavailable. Please try again in a moment.",
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -138,10 +138,10 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": {
-        "at": "2026-09-19T14:00:39.841214+00:00",
-        "by": "HAFJET-Hermes-Server:1814522:ddbc56dfacb44cb0b68b63262f6ed497"
+        "at": "2026-09-21T14:02:00.883950+00:00",
+        "by": "HAFJET-Hermes-Server:1814522:785b5a52ba014d50b03f8a0f518b4d6f"
       },
-      "failure_streak": 0,
+      "failure_streak": 1,
       "provider_snapshot": null,
       "model_snapshot": null
     },
@@ -165,15 +165,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 85
+        "completed": 87
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T06:52:16.690632+00:00",
-      "next_run_at": "2026-09-20T09:00:00+00:00",
-      "last_run_at": "2026-09-19T09:02:29.735021+00:00",
+      "next_run_at": "2026-09-22T09:00:00+00:00",
+      "last_run_at": "2026-09-21T09:01:53.709965+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -211,15 +211,15 @@
       "schedule_display": "0 9 * * *",
       "repeat": {
         "times": null,
-        "completed": 81
+        "completed": 83
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-03T01:24:26.325093+00:00",
-      "next_run_at": "2026-09-20T09:00:00+00:00",
-      "last_run_at": "2026-09-19T09:02:40.932137+00:00",
+      "next_run_at": "2026-09-22T09:00:00+00:00",
+      "last_run_at": "2026-09-21T09:02:02.070495+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -259,15 +259,15 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 71
+        "completed": 73
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-12T14:37:32.432693+00:00",
-      "next_run_at": "2026-09-20T03:00:00+00:00",
-      "last_run_at": "2026-09-19T03:12:00.147773+00:00",
+      "next_run_at": "2026-09-22T03:00:00+00:00",
+      "last_run_at": "2026-09-21T03:02:08.519894+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -306,15 +306,15 @@
       "schedule_display": "0 15 * * *",
       "repeat": {
         "times": null,
-        "completed": 67
+        "completed": 69
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-14T17:05:27.034793+00:00",
-      "next_run_at": "2026-09-19T15:00:00+00:00",
-      "last_run_at": "2026-09-18T15:01:21.599013+00:00",
+      "next_run_at": "2026-09-21T15:00:00+00:00",
+      "last_run_at": "2026-09-20T15:01:19.613299+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 29352 for telegram:1485374469 was not found; delivered without thread_id",
@@ -441,15 +441,15 @@
       "schedule_display": "0 0 * * *",
       "repeat": {
         "times": null,
-        "completed": 54
+        "completed": 56
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-27T12:46:17.963804+00:00",
-      "next_run_at": "2026-09-20T00:00:00+00:00",
-      "last_run_at": "2026-09-19T00:09:59.740591+00:00",
+      "next_run_at": "2026-09-22T00:00:00+00:00",
+      "last_run_at": "2026-09-21T00:08:32.459954+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -488,15 +488,15 @@
       "schedule_display": "every 30m",
       "repeat": {
         "times": null,
-        "completed": 2470
+        "completed": 2564
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-28T12:38:06.628044+00:00",
-      "next_run_at": "2026-09-19T14:08:41.442537+00:00",
-      "last_run_at": "2026-09-19T13:38:41.442537+00:00",
+      "next_run_at": "2026-09-21T14:32:01.862674+00:00",
+      "last_run_at": "2026-09-21T14:02:01.862674+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -655,5 +655,5 @@
       "failure_streak": 1
     }
   ],
-  "updated_at": "2026-09-19T14:00:39.841449+00:00"
+  "updated_at": "2026-09-21T14:02:01.862998+00:00"
 }

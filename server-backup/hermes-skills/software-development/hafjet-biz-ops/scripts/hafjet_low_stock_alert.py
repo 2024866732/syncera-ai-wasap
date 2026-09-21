@@ -178,6 +178,17 @@ def main():
 
     print(f"   Low stock (≤{THRESHOLD}): {len(low)} items")
 
+    if low:
+        # Diagnostic only (stdout, never in the WhatsApp body): separates a real reorder
+        # shortlist from an inventory-baseline problem in Loyverse.
+        per_store = {}
+        for row in low:
+            per_store[row["store"]] = per_store.get(row["store"], 0) + 1
+        print("   Per-store: " + ", ".join(f"{s}={c}" for s, c in sorted(per_store.items())))
+        neg = sum(1 for row in low if row["qty"] < 0)
+        zero = sum(1 for row in low if row["qty"] == 0)
+        print(f"   Qty buckets: negatif={neg}, kosong(0)={zero}, 1-{THRESHOLD}={len(low) - neg - zero}")
+
     if not low:
         print("✅ Semua stok sihat. Tiada alert dihantar.")
         return

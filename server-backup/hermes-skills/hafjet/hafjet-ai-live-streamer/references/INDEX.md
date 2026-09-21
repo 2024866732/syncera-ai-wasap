@@ -15,9 +15,10 @@
 | `g4a-listeners-fixtures.md` | Fixture listeners CI |
 | `g4b-tiktok-office-dryrun.md` | Mock live + headless block |
 | **`polish-speak-queue-e2e.md`** | **Queue→TTS→LT e2e, file bridge, Task 8 diff-first** |
+| **`g5b-tiktok-closed-pass-2026-09-20.md`** | **G5b TikTok.com CLOSED PASS** |
+| **`g4c-shopee-ig-prep-2026-09-20.md`** | **G4c Shopee/IG fixture prep** |
 
-## Live status snapshot (2026-08-18 polish)
+## Live status snapshot (2026-09-20)
 
-- G0–G4b mock closed; polish A1–A3+B1+D PASS
-- Task 8 CCTV SKIP_LIVE_LOCK: **await `OK Task 8 apply`**
-- G4c / TikTok.com GUI / RTMP public: not started
+- G0–G5a closed; **G5b CLOSED PASS** (`g5b-tiktok-closed-pass-2026-09-20.md`)
+- G4c Shopee/IG · G6 multi-platform 15 min · G7 public: not started
