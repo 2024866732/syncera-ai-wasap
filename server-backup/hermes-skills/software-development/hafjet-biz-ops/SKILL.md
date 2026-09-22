@@ -140,6 +140,9 @@ Runtime: inventory 18,128 levels + 9,239 variants ≈ 4–5 min → always run
 9,239 variants, **17,704 records ≤5** (HAFJET LORI 9,045 / HAFJET Raub 8,659), one
 WhatsApp part sent to 60198021500, exit 0.
 **2026-09-21 run:** 18,128 levels / 9,239 variants / **17,704 ≤5** / 1 part sent / exit 0.
+**2026-09-22 run:** 18,128 levels / 9,242 variants / **17,704 ≤5** / 1 part sent / exit 0
+(per-store LORI 9,045 / Raub 8,659; buckets negatif=175, kosong=15,987, 1–5=1,542).
+Runner path used end-to-end (`hafjet_low_stock_runner.py`, preflight HTTP 200, ~1 min runtime).
 The alert script now ALSO prints diagnostics to stdout only (never in the WhatsApp body):
 `Per-store: HAFJET LORI=9045, HAFJET Raub=8659` and
 `Qty buckets: negatif=175, kosong(0)=15986, 1-5=1543`. **Only 1,543 records are genuinely
